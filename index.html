@@ -79,10 +79,11 @@
     }
 
     textarea {
-      min-height: 160px;
+      min-height: 180px;
       resize: vertical;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       line-height: 1.35;
+      white-space: pre;
     }
 
     button {
@@ -109,6 +110,7 @@
       font-size: 14px;
       color: var(--muted);
       min-height: 22px;
+      white-space: pre-wrap;
     }
 
     .tool-grid {
@@ -151,6 +153,7 @@
       border: 1px solid var(--line);
       background: #0c1020;
       padding: 14px;
+      min-height: 420px;
     }
 
     canvas {
@@ -210,6 +213,7 @@
         <h2>Paste from Sheets / Excel</h2>
         <div class="hint">
           Supported values: numbers, B, Shaft, X / Block / ■, blank cells.
+          Mobile copy sometimes strips tabs, so this importer now auto-pads rows and also supports loose pasted text.
         </div>
         <textarea id="gridInput">X	7	6	9	7	9	X
 X	X	6	8	10	7	B
@@ -334,8 +338,8 @@ X	X	3	2		1	2
       );
     }
 
-    function parseCell(token) {
-      const t = String(token ?? "").trim();
+    function parseCellToken(raw) {
+      const t = String(raw ?? "").trim();
       if (t === "" || t === ".") return { type: TYPE.EMPTY };
       const low = t.toLowerCase();
       if (low === "x" || low === "block" || t === "■") return { type: TYPE.BLOCK };
@@ -343,24 +347,7 @@ X	X	3	2		1	2
       if (low === "shaft" || low === "s") return { type: TYPE.SHAFT };
       const n = Number(t);
       if (!Number.isNaN(n)) return { type: TYPE.NUMBER, value: n };
-      throw new Error(`Invalid cell token: ${t}`);
-    }
-
-    function splitPastedLine(line) {
-      if (line.includes("\t")) return line.split("\t");
-      if (line.includes(",")) return line.split(",");
-      return line.trim().split(/\s+/);
-    }
-
-    function parseGrid(text) {
-      const lines = text.replace(/\r/g, "").split("\n").filter(line => line.length > 0);
-      const rows = lines.map(line => splitPastedLine(line).map(parseCell));
-      for (const row of rows) {
-        if (row.length !== COLS) {
-          throw new Error(`Each row must have exactly ${COLS} cells.`);
-        }
-      }
-      return rows;
+      throw new Error(`Invalid token: ${t}`);
     }
 
     function serializeCell(cell) {
@@ -375,9 +362,65 @@ X	X	3	2		1	2
     }
 
     function updateTextareaFromGrid() {
-      gridInput.value = model.grid
-        .map(row => row.map(serializeCell).join("\t"))
-        .join("\n");
+      gridInput.value = model.grid.map(row => row.map(serializeCell).join("\t")).join("\n");
+    }
+
+    function splitRowSmart(line) {
+      if (line.includes("\t")) return line.split("\t");
+
+      if (line.includes(",")) return line.split(",").map(x => x.trim());
+
+      const tokens = line.trim().split(/\s+/).filter(Boolean);
+      return tokens;
+    }
+
+    function chunkFlatTokens(tokens, rowsHint) {
+      const rows = [];
+      for (let i = 0; i < tokens.length; i += COLS) {
+        rows.push(tokens.slice(i, i + COLS));
+      }
+      return rows;
+    }
+
+    function normalizeRowTokens(tokens) {
+      const row = tokens.slice(0, COLS);
+      while (row.length < COLS) row.push("");
+      return row;
+    }
+
+    function parseGridLoose(text) {
+      const clean = text.replace(/\r/g, "").trim();
+
+      if (!clean) {
+        throw new Error("Paste area is empty.");
+      }
+
+      let lines = clean.split("\n").map(line => line.trimEnd()).filter(line => line.length > 0);
+
+      let tokenRows = [];
+      let rowMode = true;
+
+      for (const line of lines) {
+        const tokens = splitRowSmart(line);
+        if (tokens.length > COLS) {
+          rowMode = false;
+          break;
+        }
+      }
+
+      if (rowMode) {
+        tokenRows = lines.map(splitRowSmart).map(normalizeRowTokens);
+      } else {
+        const flatTokens = clean
+          .replace(/\n/g, "\t")
+          .split(/\t+/)
+          .map(t => t.trim())
+          .filter(t => t.length > 0);
+        tokenRows = chunkFlatTokens(flatTokens).map(normalizeRowTokens);
+      }
+
+      const parsed = tokenRows.map(row => row.map(parseCellToken));
+      return parsed;
     }
 
     function coordKey(r, c) {
@@ -503,7 +546,6 @@ X	X	3	2		1	2
     function dijkstra(grid, startNodes, goalNodes, extraFree = new Set()) {
       const rows = grid.length;
       const goalSet = new Set(goalNodes.map(([r, c]) => coordKey(r, c)));
-
       const dist = new Map();
       const steps = new Map();
       const prev = new Map();
@@ -540,6 +582,7 @@ X	X	3	2		1	2
           const add = extraFree.has(nk) ? 0 : cellCost(cell);
           const nextCost = cur.cost + add;
           const nextLen = cur.len + 1;
+
           const oldCost = dist.get(nk);
           const oldLen = steps.get(nk);
 
@@ -578,7 +621,123 @@ X	X	3	2		1	2
       const gates = gateAttackCells(grid, gateType);
       if (!gates.length) throw new Error("No valid gate attack cells.");
 
-      // Red: gate priority only
       const redGatePath = dijkstra(grid, starts, gates);
       if (!redGatePath) throw new Error("No valid red path.");
-      const redSet = new Set
+      const redSet = new Set(redGatePath.map(([r, c]) => coordKey(r, c)));
+
+      const bubbles = findBubbles(grid);
+      const remainingBubbles = bubbles.filter(([r, c]) => !redSet.has(coordKey(r, c)));
+
+      const shafts = findShaftClusters(grid);
+      const bluePaths = [];
+      const blueStarts = starts.concat(redGatePath);
+
+      for (const cluster of shafts) {
+        const touches = shaftTouchPoints(grid, cluster);
+        const path = dijkstra(grid, blueStarts, touches, redSet);
+        if (path) bluePaths.push(uniquePath(path));
+      }
+
+      for (const bubble of remainingBubbles) {
+        const path = dijkstra(grid, blueStarts, [bubble], redSet);
+        if (path) bluePaths.push(uniquePath(path));
+      }
+
+      return {
+        redPath: uniquePath(redGatePath),
+        bluePaths
+      };
+    }
+
+    function shaftRects(grid) {
+      return findShaftClusters(grid).map(cells => {
+        const rows = cells.map(([r]) => r);
+        const cols = cells.map(([, c]) => c);
+        return {
+          minR: Math.min(...rows),
+          maxR: Math.max(...rows),
+          minC: Math.min(...cols),
+          maxC: Math.max(...cols)
+        };
+      });
+    }
+
+    function cellCenter(r, c) {
+      return {
+        x: PAD + c * CELL + CELL / 2,
+        y: TITLE_H + PAD + r * CELL + CELL / 2
+      };
+    }
+
+    function drawSinglePath(path, color, width) {
+      if (!path || path.length < 2) return;
+
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      ctx.lineWidth = width + 6;
+      ctx.strokeStyle = "#000";
+      ctx.beginPath();
+      let p = cellCenter(path[0][0], path[0][1]);
+      ctx.moveTo(p.x, p.y);
+      for (let i = 1; i < path.length; i++) {
+        p = cellCenter(path[i][0], path[i][1]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+
+      ctx.lineWidth = width;
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      p = cellCenter(path[0][0], path[0][1]);
+      ctx.moveTo(p.x, p.y);
+      for (let i = 1; i < path.length; i++) {
+        p = cellCenter(path[i][0], path[i][1]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    }
+
+    function drawLegend() {
+      const y = canvas.height - 28;
+
+      ctx.lineWidth = 18;
+      ctx.strokeStyle = "#000";
+      ctx.beginPath();
+      ctx.moveTo(32, y);
+      ctx.lineTo(112, y);
+      ctx.stroke();
+
+      ctx.lineWidth = 12;
+      ctx.strokeStyle = "#ef4444";
+      ctx.beginPath();
+      ctx.moveTo(32, y);
+      ctx.lineTo(112, y);
+      ctx.stroke();
+
+      ctx.fillStyle = "#111";
+      ctx.font = "700 18px system-ui";
+      ctx.fillText("1st Strongest Z", 124, y + 6);
+
+      ctx.lineWidth = 18;
+      ctx.strokeStyle = "#000";
+      ctx.beginPath();
+      ctx.moveTo(360, y);
+      ctx.lineTo(440, y);
+      ctx.stroke();
+
+      ctx.lineWidth = 12;
+      ctx.strokeStyle = "#2563eb";
+      ctx.beginPath();
+      ctx.moveTo(360, y);
+      ctx.lineTo(440, y);
+      ctx.stroke();
+
+      ctx.fillStyle = "#111";
+      ctx.fillText("2nd Strongest Z", 452, y + 6);
+    }
+
+    function render() {
+      const rows = model.grid.length;
+      canvas.width = COLS * CELL + PAD * 2;
+      canvas.height = rows * 
