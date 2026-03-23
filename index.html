@@ -1,5 +1,4 @@
 <!doctype html>
-
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -14,154 +13,161 @@
       --muted: #aeb8d4;
       --line: #313857;
       --red: #ef4444;
-      --blue: #3b82f6;
+      --blue: #2563eb;
       --cyan: #67e8f9;
       --neon: #39ff14;
       --black: #0a0a0a;
       --white: #ffffff;
-      --tile: #ffffff;
-      --cell-size: 58px;
       --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    }* { box-sizing: border-box; }
-body {
-  margin: 0;
-  font-family: var(--font);
-  background: var(--bg);
-  color: var(--text);
-}
+    }
 
-.app {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 18px;
-  display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 18px;
-}
+    * { box-sizing: border-box; }
 
-.card {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.24);
-}
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+    }
 
-h1, h2, h3 { margin: 0 0 12px; }
-h1 { font-size: 24px; }
-h2 { font-size: 18px; }
-h3 { font-size: 15px; color: var(--muted); }
-p, label, button, input, select, textarea { font: inherit; }
+    .app {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 390px 1fr;
+      gap: 18px;
+    }
 
-.controls {
-  display: grid;
-  gap: 12px;
-}
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.24);
+    }
 
-.row {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: 1fr 1fr;
-}
+    h1, h2 { margin: 0 0 12px; }
+    h1 { font-size: 24px; }
+    h2 { font-size: 18px; }
 
-.full { grid-column: 1 / -1; }
+    .controls {
+      display: grid;
+      gap: 12px;
+    }
 
-input, select, textarea, button {
-  width: 100%;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--panel-2);
-  color: var(--text);
-  padding: 10px 12px;
-}
+    .row {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr 1fr;
+    }
 
-textarea {
-  min-height: 180px;
-  resize: vertical;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  line-height: 1.35;
-}
+    .row3 {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr 1fr 1fr;
+    }
 
-button {
-  cursor: pointer;
-  font-weight: 700;
-}
+    input, select, textarea, button {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
+    }
 
-button.primary {
-  background: #2448d8;
-  border-color: #3358e8;
-}
+    textarea {
+      min-height: 160px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      line-height: 1.35;
+    }
 
-button.secondary {
-  background: #26304f;
-}
+    button {
+      cursor: pointer;
+      font-weight: 700;
+    }
 
-.palette {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
+    button.primary {
+      background: #2448d8;
+      border-color: #3358e8;
+    }
 
-.chip {
-  display: grid;
-  place-items: center;
-  min-height: 56px;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  font-weight: 800;
-  user-select: none;
-}
+    button.secondary {
+      background: #26304f;
+    }
 
-.chip.num { background: #fff; color: #111; }
-.chip.block { background: #000; color: #fff; }
-.chip.bubble { background: var(--cyan); color: #111; }
-.chip.shaft { background: var(--neon); color: #111; }
-.chip.empty { background: #d8dee9; color: #111; }
+    .hint {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
 
-.board-wrap {
-  display: grid;
-  gap: 14px;
-}
+    .status {
+      font-size: 14px;
+      color: var(--muted);
+      min-height: 22px;
+    }
 
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
 
-.canvas-wrap {
-  overflow: auto;
-  border-radius: 16px;
-  border: 1px solid var(--line);
-  background: #0c1020;
-  padding: 14px;
-}
+    .tool {
+      min-height: 56px;
+      border-radius: 14px;
+      border: 2px solid var(--line);
+      font-weight: 800;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 6px;
+      user-select: none;
+    }
 
-canvas {
-  display: block;
-  background: white;
-  border-radius: 10px;
-  margin: 0 auto;
-  max-width: 100%;
-  height: auto;
-}
+    .tool.active {
+      border-color: #8ab4ff;
+      box-shadow: 0 0 0 2px rgba(138,180,255,.15) inset;
+    }
 
-.hint {
-  font-size: 13px;
-  color: var(--muted);
-  line-height: 1.45;
-}
+    .tool.number { background: #fff; color: #111; }
+    .tool.block { background: #000; color: #fff; }
+    .tool.bubble { background: var(--cyan); color: #111; }
+    .tool.shaft { background: var(--neon); color: #111; }
+    .tool.empty { background: #d8dee9; color: #111; }
 
-.status {
-  font-size: 14px;
-  color: var(--muted);
-  min-height: 22px;
-}
+    .board-wrap {
+      display: grid;
+      gap: 14px;
+    }
 
-.small { font-size: 12px; color: var(--muted); }
+    .canvas-wrap {
+      overflow: auto;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #0c1020;
+      padding: 14px;
+    }
 
+    canvas {
+      display: block;
+      background: white;
+      border-radius: 10px;
+      margin: 0 auto;
+      max-width: 100%;
+      height: auto;
+      touch-action: none;
+    }
+
+    .small { font-size: 12px; color: var(--muted); }
+
+    @media (max-width: 1024px) {
+      .app { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -169,80 +175,110 @@ canvas {
     <div class="card controls">
       <div>
         <h1>ZM Pathfinder</h1>
-        <div class="hint">Static single-file app for GitHub Pages. Grid is always 7 columns wide. Cost priority is exponential first, tile count second.</div>
-      </div><div class="row">
-    <label>
-      Title
-      <input id="titleInput" value="Gate 1" />
-    </label>
-    <label>
-      Gate type
-      <select id="gateType">
-        <option value="normal">Normal / Graveyard (5 attack points)</option>
-        <option value="end">End Gate (3 attack points)</option>
-      </select>
-    </label>
-  </div>
+        <div class="hint">
+          Paste from Google Sheets / Excel or build visually. Grid is always 7 wide.
+          Cost priority is exponential first, tile count second.
+        </div>
+      </div>
 
-  <div class="row">
-    <label>
-      Rows
-      <input id="rowsInput" type="number" min="1" value="11" />
-    </label>
-    <label>
-      Start side
-      <select id="startSide">
-        <option value="bottom">Bottom</option>
-      </select>
-    </label>
-  </div>
+      <div class="row">
+        <label>
+          Title
+          <input id="titleInput" value="Gate 1" />
+        </label>
+        <label>
+          Gate type
+          <select id="gateType">
+            <option value="normal">Normal / Graveyard (5 attack points)</option>
+            <option value="end">End Gate (3 attack points)</option>
+          </select>
+        </label>
+      </div>
 
-  <div class="full">
-    <h2>Grid input</h2>
-    <div class="hint">Use 7 comma-separated cells per row. Allowed values: numbers, X, B, S, . for empty. Example: <code>1,2,.,.,.,3,.</code></div>
-    <textarea id="gridInput">X,7,6,9,7,9,X
+      <div class="row">
+        <label>
+          Rows
+          <input id="rowsInput" type="number" min="1" value="11" />
+        </label>
+        <label>
+          Number tool value
+          <input id="numberValueInput" type="number" min="1" value="1" />
+        </label>
+      </div>
 
-X,X,6,8,10,7,B S,S,X,6,8,6,8 S,S,6,7,6,8,X S,S,5,4,5,X,X 7,5,5,6,4,S,S X,3,4,3,X,S,S X,4,3,4,3,S,S X,X,4,3,4,1,3 X,X,3,2,.,1,2 1,2,.,.,.,3,.</textarea> </div>
+      <div>
+        <h2>Paste from Sheets / Excel</h2>
+        <div class="hint">
+          Supported values: numbers, B, Shaft, X / Block / ■, blank cells.
+        </div>
+        <textarea id="gridInput">X	7	6	9	7	9	X
+X	X	6	8	10	7	B
+Shaft	Shaft	X	6	8	6	8
+Shaft	Shaft	6	7	6	8	X
+Shaft	Shaft	5	4	5	X	X
+7	5	5	6	4	Shaft	Shaft
+X	3	4	3	X	Shaft	Shaft
+X	4	3	4	3	Shaft	Shaft
+X	X	4	3	4	1	3
+X	X	3	2		1	2
+1	2				3	</textarea>
+      </div>
 
-<div class="full row">
-    <button id="loadBtn" class="secondary">Load Grid</button>
-    <button id="solveBtn" class="primary">Solve</button>
-  </div>
+      <div class="row3">
+        <button id="loadBtn" class="secondary">Load Pasted Grid</button>
+        <button id="clearBtn" class="secondary">Clear Board</button>
+        <button id="solveBtn" class="primary">Solve</button>
+      </div>
 
-  <div class="full row">
-    <button id="downloadBtn" class="secondary">Download PNG</button>
-    <button id="sampleBtn" class="secondary">Load Sample</button>
-  </div>
+      <div class="row3">
+        <button id="downloadBtn" class="secondary">Download PNG</button>
+        <button id="sampleGate1Btn" class="secondary">Sample Gate 1</button>
+        <button id="sampleBlankBtn" class="secondary">Blank 11 Rows</button>
+      </div>
 
-  <div>
-    <h2>Rules hardcoded</h2>
-    <div class="hint">
-      • Red = gate priority only. Bubble only if it naturally sits on red's optimal gate route.<br>
-      • Blue = shaft priority, solved independently first. Blue reuses red only when cheaper.<br>
-      • All bubbles are mandatory overall.<br>
-      • Movement is orthogonal only.<br>
-      • Shafts are touch-only and rendered as merged 2×3 blocks.<br>
-      • Empty cells are free traversal. Black cells are blocked.<br>
-      • Normal gates and graveyards use 5 attack points. End gates use 3.
+      <div>
+        <h2>Visual placement tools</h2>
+        <div class="hint">
+          Tap a tool, then tap cells in the preview board. Shaft fills a full 2×3 block
+          starting from the tapped cell as the top-left corner.
+        </div>
+        <div class="tool-grid">
+          <button class="tool number active" data-tool="number">Number</button>
+          <button class="tool block" data-tool="block">Block</button>
+          <button class="tool bubble" data-tool="bubble">Bubble</button>
+          <button class="tool shaft" data-tool="shaft">Shaft 2×3</button>
+          <button class="tool empty" data-tool="empty">Empty</button>
+        </div>
+      </div>
+
+      <div>
+        <h2>Rules hardcoded</h2>
+        <div class="hint">
+          • Red = gate priority only. Bubble only if it naturally sits on red’s optimal gate path.<br>
+          • Blue = shaft priority, solved independently first. Blue reuses red only when cheaper.<br>
+          • All bubbles are mandatory overall.<br>
+          • Movement is orthogonal only.<br>
+          • Shafts are touch-only and rendered as merged 2×3 blocks.<br>
+          • Empty cells are free traversal. Black cells are blocked.<br>
+          • Normal gates and graveyards use 5 attack points. End gates use 3.
+        </div>
+      </div>
+
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="card board-wrap">
+      <div>
+        <h2>Preview</h2>
+        <div class="small">Tap cells here to edit the board visually.</div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="boardCanvas" width="900" height="1200"></canvas>
+      </div>
     </div>
   </div>
 
-  <div class="status" id="status"></div>
-</div>
-
-<div class="card board-wrap">
-  <div class="topbar">
-    <div>
-      <h2>Preview</h2>
-      <div class="small">This canvas is the final overlay export.</div>
-    </div>
-  </div>
-  <div class="canvas-wrap">
-    <canvas id="boardCanvas" width="900" height="1200"></canvas>
-  </div>
-</div>
-
-  </div>  <script>
+  <script>
     const COLS = 7;
     const CELL = 88;
     const PAD = 18;
@@ -250,25 +286,35 @@ X,X,6,8,10,7,B S,S,X,6,8,6,8 S,S,6,7,6,8,X S,S,5,4,5,X,X 7,5,5,6,4,S,S X,3,4,3,X
     const LEGEND_H = 70;
 
     const TYPE = {
-      BLOCK: 'block',
-      EMPTY: 'empty',
-      NUMBER: 'number',
-      BUBBLE: 'bubble',
-      SHAFT: 'shaft'
+      BLOCK: "block",
+      EMPTY: "empty",
+      NUMBER: "number",
+      BUBBLE: "bubble",
+      SHAFT: "shaft"
     };
 
-    const statusEl = document.getElementById('status');
-    const gridInput = document.getElementById('gridInput');
-    const titleInput = document.getElementById('titleInput');
-    const gateTypeEl = document.getElementById('gateType');
-    const rowsInput = document.getElementById('rowsInput');
-    const canvas = document.getElementById('boardCanvas');
-    const ctx = canvas.getContext('2d');
+    const TOOL = {
+      NUMBER: "number",
+      BLOCK: "block",
+      BUBBLE: "bubble",
+      SHAFT: "shaft",
+      EMPTY: "empty"
+    };
+
+    const statusEl = document.getElementById("status");
+    const gridInput = document.getElementById("gridInput");
+    const titleInput = document.getElementById("titleInput");
+    const gateTypeEl = document.getElementById("gateType");
+    const rowsInput = document.getElementById("rowsInput");
+    const numberValueInput = document.getElementById("numberValueInput");
+    const canvas = document.getElementById("boardCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let activeTool = TOOL.NUMBER;
 
     let model = {
-      title: 'Gate 1',
-      gateType: 'normal',
-      rows: 11,
+      title: "Gate 1",
+      gateType: "normal",
       grid: [],
       redPath: [],
       bluePaths: []
@@ -278,393 +324,261 @@ X,X,6,8,10,7,B S,S,X,6,8,6,8 S,S,6,7,6,8,X S,S,5,4,5,X,X 7,5,5,6,4,S,S X,3,4,3,X
       statusEl.textContent = msg;
     }
 
+    function makeCellEmpty() {
+      return { type: TYPE.EMPTY };
+    }
+
+    function makeBlankGrid(rows) {
+      return Array.from({ length: rows }, () =>
+        Array.from({ length: COLS }, () => makeCellEmpty())
+      );
+    }
+
     function parseCell(token) {
-      const t = token.trim();
-      if (t === 'X') return { type: TYPE.BLOCK };
-      if (t === 'B') return { type: TYPE.BUBBLE };
-      if (t === 'S') return { type: TYPE.SHAFT };
-      if (t === '.' || t === '') return { type: TYPE.EMPTY };
+      const t = String(token ?? "").trim();
+      if (t === "" || t === ".") return { type: TYPE.EMPTY };
+      const low = t.toLowerCase();
+      if (low === "x" || low === "block" || t === "■") return { type: TYPE.BLOCK };
+      if (low === "b") return { type: TYPE.BUBBLE };
+      if (low === "shaft" || low === "s") return { type: TYPE.SHAFT };
       const n = Number(t);
       if (!Number.isNaN(n)) return { type: TYPE.NUMBER, value: n };
       throw new Error(`Invalid cell token: ${t}`);
     }
 
+    function splitPastedLine(line) {
+      if (line.includes("\t")) return line.split("\t");
+      if (line.includes(",")) return line.split(",");
+      return line.trim().split(/\s+/);
+    }
+
     function parseGrid(text) {
-      const rows = text.trim().split(/\n+/).map(line => line.split(',').map(parseCell));
+      const lines = text.replace(/\r/g, "").split("\n").filter(line => line.length > 0);
+      const rows = lines.map(line => splitPastedLine(line).map(parseCell));
       for (const row of rows) {
-        if (row.length !== COLS) throw new Error(`Each row must have exactly ${COLS} cells.`);
+        if (row.length !== COLS) {
+          throw new Error(`Each row must have exactly ${COLS} cells.`);
+        }
       }
       return rows;
     }
 
-    function cellCost(cell) {
-      if (cell.type === TYPE.BLOCK || cell.type === TYPE.SHAFT) return Infinity;
-      if (cell.type === TYPE.EMPTY) return 0;
-      if (cell.type === TYPE.BUBBLE) return 0;
-      const n = cell.value;
-      if (n <= 0) return Infinity;
-      if (n <= 10) return Math.pow(2, n - 1);
-      return Math.pow(2, 9) * Math.pow(1.6, n - 10);
+    function serializeCell(cell) {
+      switch (cell.type) {
+        case TYPE.BLOCK: return "X";
+        case TYPE.BUBBLE: return "B";
+        case TYPE.SHAFT: return "Shaft";
+        case TYPE.EMPTY: return "";
+        case TYPE.NUMBER: return String(cell.value);
+        default: return "";
+      }
     }
 
-    function inBounds(r, c, rows, cols = COLS) {
-      return r >= 0 && r < rows && c >= 0 && c < cols;
+    function updateTextareaFromGrid() {
+      gridInput.value = model.grid
+        .map(row => row.map(serializeCell).join("\t"))
+        .join("\n");
+    }
+
+    function coordKey(r, c) {
+      return `${r},${c}`;
+    }
+
+    function parseKey(key) {
+      return key.split(",").map(Number);
+    }
+
+    function inBounds(r, c, rows) {
+      return r >= 0 && r < rows && c >= 0 && c < COLS;
     }
 
     function neighbors(r, c, rows) {
-      return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].filter(([rr,cc]) => inBounds(rr,cc,rows));
+      return [
+        [r - 1, c],
+        [r + 1, c],
+        [r, c - 1],
+        [r, c + 1]
+      ].filter(([rr, cc]) => inBounds(rr, cc, rows));
     }
 
     function isTraversable(cell) {
       return cell.type !== TYPE.BLOCK && cell.type !== TYPE.SHAFT;
     }
 
-    function gateAttackCells(grid, gateType) {
-      const rows = grid.length;
-      const topRow = 0;
-      // Valid attack tiles are non-block, non-shaft tiles in the top row.
-      const candidates = [];
-      for (let c = 0; c < COLS; c++) {
-        if (isTraversable(grid[topRow][c])) candidates.push([topRow, c]);
-      }
-      // Prefer center band width based on gate type, but only if traversable; fall back to all traversable top row.
-      const preferred = gateType === 'end' ? [2,3,4] : [1,2,3,4,5];
-      const prefCells = preferred.filter(c => grid[topRow][c] && isTraversable(grid[topRow][c])).map(c => [0,c]);
-      return prefCells.length ? prefCells : candidates;
+    function exponentialCost(n) {
+      if (n <= 0) return Infinity;
+      if (n <= 10) return Math.pow(2, n - 1);
+      return Math.pow(2, 9) * Math.pow(1.6, n - 10);
     }
 
-    function bottomStartCells(grid) {
+    function cellCost(cell) {
+      if (cell.type === TYPE.EMPTY) return 0;
+      if (cell.type === TYPE.BUBBLE) return 0;
+      if (cell.type === TYPE.NUMBER) return exponentialCost(cell.value);
+      return Infinity;
+    }
+
+    function bottomStarts(grid) {
       const r = grid.length - 1;
       const out = [];
       for (let c = 0; c < COLS; c++) {
-        if (isTraversable(grid[r][c])) out.push([r,c]);
+        if (isTraversable(grid[r][c])) out.push([r, c]);
       }
       return out;
     }
 
-    function coordKey([r,c]) { return `${r},${c}`; }
-
-    function shortestPath(grid, starts, goals, blocked = new Set(), preferFewestTiles = true) {
-      const rows = grid.length;
-      const goalSet = new Set(goals.map(coordKey));
-      const dist = new Map();
-      const prev = new Map();
-      const steps = new Map();
-      const queue = [];
-
-      for (const s of starts) {
-        const k = coordKey(s);
-        dist.set(k, 0);
-        steps.set(k, 0);
-        queue.push({ node: s, cost: 0, stepCount: 0 });
+    function gateAttackCells(grid, gateType) {
+      const preferred = gateType === "end" ? [2, 3, 4] : [1, 2, 3, 4, 5];
+      const valid = [];
+      for (const c of preferred) {
+        if (grid[0][c] && isTraversable(grid[0][c])) valid.push([0, c]);
       }
+      if (valid.length) return valid;
 
-      while (queue.length) {
-        queue.sort((a,b) => a.cost !== b.cost ? a.cost - b.cost : a.stepCount - b.stepCount);
-        const cur = queue.shift();
-        const [r,c] = cur.node;
-        const k = coordKey(cur.node);
-        if (cur.cost !== dist.get(k) || cur.stepCount !== steps.get(k)) continue;
-        if (goalSet.has(k)) {
-          const path = [];
-          let walk = k;
-          while (walk) {
-            const [rr,cc] = walk.split(',').map(Number);
-            path.push([rr,cc]);
-            walk = prev.get(walk);
-          }
-          return path.reverse();
-        }
-
-        for (const [rr,cc] of neighbors(r,c,rows)) {
-          const nk = `${rr},${cc}`;
-          if (blocked.has(nk)) continue;
-          const cell = grid[rr][cc];
-          if (!isTraversable(cell)) continue;
-          const nextCost = cur.cost + cellCost(cell);
-          const nextSteps = cur.stepCount + 1;
-          const oldCost = dist.get(nk);
-          const oldSteps = steps.get(nk);
-          const better = oldCost === undefined || nextCost < oldCost || (nextCost === oldCost && nextSteps < oldSteps);
-          if (better) {
-            dist.set(nk, nextCost);
-            steps.set(nk, nextSteps);
-            prev.set(nk, k);
-            queue.push({ node:[rr,cc], cost: nextCost, stepCount: nextSteps });
-          }
-        }
+      const fallback = [];
+      for (let c = 0; c < COLS; c++) {
+        if (isTraversable(grid[0][c])) fallback.push([0, c]);
       }
-      return null;
-    }
-
-    function shaftClusters(grid) {
-      const rows = grid.length;
-      const seen = new Set();
-      const clusters = [];
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (grid[r][c].type !== TYPE.SHAFT) continue;
-          const k = `${r},${c}`;
-          if (seen.has(k)) continue;
-          const stack = [[r,c]];
-          const cells = [];
-          while (stack.length) {
-            const [rr,cc] = stack.pop();
-            const kk = `${rr},${cc}`;
-            if (seen.has(kk)) continue;
-            if (!inBounds(rr,cc,rows) || grid[rr][cc].type !== TYPE.SHAFT) continue;
-            seen.add(kk);
-            cells.push([rr,cc]);
-            stack.push([rr+1,cc],[rr-1,cc],[rr,cc+1],[rr,cc-1]);
-          }
-          clusters.push(cells);
-        }
-      }
-      return clusters;
-    }
-
-    function shaftTouchPoints(grid, cluster) {
-      const rows = grid.length;
-      const out = new Set();
-      for (const [r,c] of cluster) {
-        for (const [rr,cc] of neighbors(r,c,rows)) {
-          if (isTraversable(grid[rr][cc])) out.add(`${rr},${cc}`);
-        }
-      }
-      return [...out].map(k => k.split(',').map(Number));
+      return fallback;
     }
 
     function findBubbles(grid) {
       const out = [];
       for (let r = 0; r < grid.length; r++) {
         for (let c = 0; c < COLS; c++) {
-          if (grid[r][c].type === TYPE.BUBBLE) out.push([r,c]);
+          if (grid[r][c].type === TYPE.BUBBLE) out.push([r, c]);
         }
       }
       return out;
     }
 
-    function solveModel(grid, gateType) {
-      const starts = bottomStartCells(grid);
-      const bubbles = findBubbles(grid);
-      const gates = gateAttackCells(grid, gateType);
-      const shafts = shaftClusters(grid);
-
-      // Red: gate priority only. Test each bubble either on red if unavoidable/optimal or leave for blue.
-      // We solve red to gate first.
-      let redPath = shortestPath(grid, starts, gates);
-      if (!redPath) throw new Error('No valid red path to gate.');
-
-      // If a bubble is on red path, great. If not, blue must handle it.
-      const redSet = new Set(redPath.map(coordKey));
-      const remainingBubbles = bubbles.filter(b => !redSet.has(coordKey(b)));
-
-      // Blue: solve independent segments to touch all shafts + remaining bubbles.
-      const bluePaths = [];
-      const redCells = new Set(redPath.map(coordKey));
-      const blueStarts = starts;
-
-      for (const cluster of shafts) {
-        const touches = shaftTouchPoints(grid, cluster);
-        // Blue may reuse red if cheaper, otherwise independent from bottom.
-        const combinedStarts = [...blueStarts, ...redPath];
-        const seg = shortestPath(grid, combinedStarts, touches);
-        if (seg) bluePaths.push(seg);
-      }
-
-      for (const bubble of remainingBubbles) {
-        const combinedStarts = [...blueStarts, ...redPath];
-        const seg = shortestPath(grid, combinedStarts, [bubble]);
-        if (seg) bluePaths.push(seg);
-      }
-
-      return { redPath, bluePaths };
-    }
-
-    function mergeShaftRectangles(grid) {
-      return shaftClusters(grid).map(cells => {
-        const rows = cells.map(c => c[0]);
-        const cols = cells.map(c => c[1]);
-        return {
-          minR: Math.min(...rows),
-          maxR: Math.max(...rows),
-          minC: Math.min(...cols),
-          maxC: Math.max(...cols)
-        };
-      });
-    }
-
-    function cellCenter(r, c) {
-      return {
-        x: PAD + c * CELL + CELL / 2,
-        y: TITLE_H + PAD + r * CELL + CELL / 2
-      };
-    }
-
-    function drawLegend(ctx, w, h) {
-      const y = h - 28;
-      ctx.lineWidth = 18;
-      ctx.strokeStyle = '#000';
-      ctx.beginPath(); ctx.moveTo(32,y); ctx.lineTo(112,y); ctx.stroke();
-      ctx.lineWidth = 12;
-      ctx.strokeStyle = '#ef4444';
-      ctx.beginPath(); ctx.moveTo(32,y); ctx.lineTo(112,y); ctx.stroke();
-      ctx.fillStyle = '#111';
-      ctx.font = '700 18px system-ui';
-      ctx.fillText('1st Strongest Z', 124, y + 6);
-
-      ctx.lineWidth = 18;
-      ctx.strokeStyle = '#000';
-      ctx.beginPath(); ctx.moveTo(360,y); ctx.lineTo(440,y); ctx.stroke();
-      ctx.lineWidth = 12;
-      ctx.strokeStyle = '#2563eb';
-      ctx.beginPath(); ctx.moveTo(360,y); ctx.lineTo(440,y); ctx.stroke();
-      ctx.fillStyle = '#111';
-      ctx.fillText('2nd Strongest Z', 452, y + 6);
-    }
-
-    function drawPaths(paths, color, width) {
-      for (const path of paths) {
-        if (!path || path.length < 2) continue;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = width + 6;
-        ctx.strokeStyle = '#000';
-        ctx.beginPath();
-        let p = cellCenter(path[0][0], path[0][1]);
-        ctx.moveTo(p.x, p.y);
-        for (let i = 1; i < path.length; i++) {
-          p = cellCenter(path[i][0], path[i][1]);
-          ctx.lineTo(p.x, p.y);
-        }
-        ctx.stroke();
-
-        ctx.lineWidth = width;
-        ctx.strokeStyle = color;
-        ctx.beginPath();
-        p = cellCenter(path[0][0], path[0][1]);
-        ctx.moveTo(p.x, p.y);
-        for (let i = 1; i < path.length; i++) {
-          p = cellCenter(path[i][0], path[i][1]);
-          ctx.lineTo(p.x, p.y);
-        }
-        ctx.stroke();
-      }
-    }
-
-    function render() {
-      const rows = model.grid.length;
-      canvas.width = COLS * CELL + PAD * 2;
-      canvas.height = rows * CELL + PAD * 2 + TITLE_H + LEGEND_H;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = '#111';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.font = '700 40px system-ui';
-      ctx.fillText(model.title.toUpperCase(), canvas.width / 2, 28);
-
-      const shaftRects = mergeShaftRectangles(model.grid);
+    function findShaftClusters(grid) {
+      const rows = grid.length;
+      const seen = new Set();
+      const clusters = [];
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < COLS; c++) {
-          const x = PAD + c * CELL;
-          const y = TITLE_H + PAD + r * CELL;
-          const cell = model.grid[r][c];
-          if (cell.type === TYPE.SHAFT) continue;
+          if (grid[r][c].type !== TYPE.SHAFT) continue;
+          const startKey = coordKey(r, c);
+          if (seen.has(startKey)) continue;
 
-          if (cell.type === TYPE.BLOCK) {
-            ctx.fillStyle = '#000';
-            ctx.fillRect(x, y, CELL, CELL);
-            ctx.strokeStyle = '#bbb';
-            ctx.strokeRect(x, y, CELL, CELL);
-          } else if (cell.type === TYPE.BUBBLE) {
-            ctx.fillStyle = '#7fe7ff';
-            ctx.fillRect(x, y, CELL, CELL);
-            ctx.strokeStyle = '#3cb8cf';
-            ctx.strokeRect(x, y, CELL, CELL);
-            ctx.fillStyle = '#111';
-            ctx.font = '700 28px system-ui';
-            ctx.fillText('B', x + CELL/2, y + CELL/2);
-          } else {
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(x, y, CELL, CELL);
-            ctx.strokeStyle = '#ccc';
-            ctx.strokeRect(x, y, CELL, CELL);
-            if (cell.type === TYPE.NUMBER) {
-              ctx.fillStyle = '#111';
-              ctx.font = '700 28px system-ui';
-              ctx.fillText(String(cell.value), x + CELL/2, y + CELL/2);
-            }
+          const stack = [[r, c]];
+          const cells = [];
+
+          while (stack.length) {
+            const [rr, cc] = stack.pop();
+            const k = coordKey(rr, cc);
+            if (seen.has(k)) continue;
+            if (!inBounds(rr, cc, rows)) continue;
+            if (grid[rr][cc].type !== TYPE.SHAFT) continue;
+
+            seen.add(k);
+            cells.push([rr, cc]);
+            stack.push([rr - 1, cc], [rr + 1, cc], [rr, cc - 1], [rr, cc + 1]);
+          }
+
+          clusters.push(cells);
+        }
+      }
+
+      return clusters;
+    }
+
+    function shaftTouchPoints(grid, cluster) {
+      const rows = grid.length;
+      const set = new Set();
+
+      for (const [r, c] of cluster) {
+        for (const [rr, cc] of neighbors(r, c, rows)) {
+          if (isTraversable(grid[rr][cc])) {
+            set.add(coordKey(rr, cc));
           }
         }
       }
 
-      for (const rect of shaftRects) {
-        const x = PAD + rect.minC * CELL;
-        const y = TITLE_H + PAD + rect.minR * CELL;
-        const w = (rect.maxC - rect.minC + 1) * CELL;
-        const h = (rect.maxR - rect.minR + 1) * CELL;
-        ctx.fillStyle = '#39FF14';
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = '#0a8f00';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x, y, w, h);
-        ctx.fillStyle = '#111';
-        ctx.font = '700 26px system-ui';
-        ctx.fillText('Shaft', x + w/2, y + h/2);
+      return [...set].map(parseKey);
+    }
+
+    function dijkstra(grid, startNodes, goalNodes, extraFree = new Set()) {
+      const rows = grid.length;
+      const goalSet = new Set(goalNodes.map(([r, c]) => coordKey(r, c)));
+
+      const dist = new Map();
+      const steps = new Map();
+      const prev = new Map();
+      const queue = [];
+
+      for (const [r, c] of startNodes) {
+        const k = coordKey(r, c);
+        dist.set(k, 0);
+        steps.set(k, 0);
+        queue.push({ r, c, cost: 0, len: 0 });
       }
 
-      drawPaths(model.bluePaths, '#2563eb', 10);
-      drawPaths([model.redPath], '#ef4444', 12);
-      drawLegend(ctx, canvas.width, canvas.height);
-    }
+      while (queue.length) {
+        queue.sort((a, b) => (a.cost !== b.cost ? a.cost - b.cost : a.len - b.len));
+        const cur = queue.shift();
+        const ck = coordKey(cur.r, cur.c);
+        if (cur.cost !== dist.get(ck) || cur.len !== steps.get(ck)) continue;
 
-    function loadGrid() {
-      model.title = titleInput.value.trim() || 'Gate';
-      model.gateType = gateTypeEl.value;
-      model.grid = parseGrid(gridInput.value);
-      model.rows = model.grid.length;
-      rowsInput.value = model.rows;
-      model.redPath = [];
-      model.bluePaths = [];
-      render();
-      setStatus('Grid loaded.');
-    }
+        if (goalSet.has(ck)) {
+          const path = [];
+          let walk = ck;
+          while (walk) {
+            path.push(parseKey(walk));
+            walk = prev.get(walk);
+          }
+          return path.reverse();
+        }
 
-    function solve() {
-      try {
-        if (!model.grid.length) loadGrid();
-        const solved = solveModel(model.grid, model.gateType);
-        model.redPath = solved.redPath;
-        model.bluePaths = solved.bluePaths;
-        render();
-        setStatus('Solved.');
-      } catch (err) {
-        setStatus(err.message || String(err));
+        for (const [nr, nc] of neighbors(cur.r, cur.c, rows)) {
+          const nk = coordKey(nr, nc);
+          const cell = grid[nr][nc];
+          if (!isTraversable(cell)) continue;
+
+          const add = extraFree.has(nk) ? 0 : cellCost(cell);
+          const nextCost = cur.cost + add;
+          const nextLen = cur.len + 1;
+          const oldCost = dist.get(nk);
+          const oldLen = steps.get(nk);
+
+          const better =
+            oldCost === undefined ||
+            nextCost < oldCost ||
+            (nextCost === oldCost && nextLen < oldLen);
+
+          if (better) {
+            dist.set(nk, nextCost);
+            steps.set(nk, nextLen);
+            prev.set(nk, ck);
+            queue.push({ r: nr, c: nc, cost: nextCost, len: nextLen });
+          }
+        }
       }
+
+      return null;
     }
 
-    function downloadPNG() {
-      const a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
-      a.download = `${(model.title || 'solver').replace(/\s+/g, '_')}.png`;
-      a.click();
+    function uniquePath(path) {
+      if (!path || !path.length) return [];
+      const out = [path[0]];
+      for (let i = 1; i < path.length; i++) {
+        const [r1, c1] = out[out.length - 1];
+        const [r2, c2] = path[i];
+        if (r1 !== r2 || c1 !== c2) out.push(path[i]);
+      }
+      return out;
     }
 
-    document.getElementById('loadBtn').addEventListener('click', loadGrid);
-    document.getElementById('solveBtn').addEventListener('click', solve);
-    document.getElementById('downloadBtn').addEventListener('click', downloadPNG);
-    document.getElementById('sampleBtn').addEventListener('click', () => {
-      titleInput.value = 'Gate 1';
-      gateTypeEl.value = 'normal';
-      gridInput.value = `X,7,6,9,7,9,X\nX,X,6,8,10,7,B\nS,S,X,6,8,6,8\nS,S,6,7,6,8,X\nS,S,5,4,5,X,X\n7,5,5,6,4,S,S\nX,3,4,3,X,S,S\nX,4,3,4,3,S,S\nX,X,4,3,4,1,3\nX,X,3,2,.,1,2\n1,2,.,.,.,3,.`;
-      loadGrid();
-    });
+    function solveBoard(grid, gateType) {
+      const starts = bottomStarts(grid);
+      if (!starts.length) throw new Error("No valid bottom start cells.");
 
-    loadGrid();
-  </script></body>
-</html>
+      const gates = gateAttackCells(grid, gateType);
+      if (!gates.length) throw new Error("No valid gate attack cells.");
+
+      // Red: gate priority only
+      const redGatePath = dijkstra(grid, starts, gates);
+      if (!redGatePath) throw new Error("No valid red path.");
+      const redSet = new Set
