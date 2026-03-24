@@ -466,6 +466,14 @@
       };
     }
 
+    function parseClipboard(text) {
+      return text
+        .replace(/\r/g, "")
+        .split("\n")
+        .filter(row => row.length > 0)
+        .map(row => row.split("\t"));
+    }
+
     async function pasteFromClipboard(){
       try{
         const text = await navigator.clipboard.readText();
@@ -476,24 +484,24 @@
     }
 
     function applyText(text){
-      if(!text || !text.trim()) return;
+      if(!text) return;
 
-      const rows = text.trim().split("\n");
+      const data = parseClipboard(text);
       const startR = lastSelected.r;
       const startC = lastSelected.c;
 
-      rows.forEach((row, ri) => {
-        const cols = row.split(/\t|,/);
-
-        cols.forEach((raw, ci) => {
+      for(let ri = 0; ri < data.length; ri++){
+        for(let ci = 0; ci < data[ri].length; ci++){
           const r = startR + ri;
           const c = startC + ci;
-          if(!grid[r] || grid[r][c] === undefined) return;
+          if(!grid[r] || grid[r][c] === undefined) continue;
 
-          const val = String(raw).trim();
-          if(!val) return;
+          const raw = data[ri][ci];
+          const val = String(raw ?? "");
 
-          if(!isNaN(val)){
+          if(val === ""){
+            grid[r][c] = "";
+          } else if(!isNaN(val)){
             grid[r][c] = Number(val);
           } else if(val.toUpperCase() === "X"){
             grid[r][c] = "X";
@@ -508,8 +516,8 @@
               }
             }
           }
-        });
-      });
+        }
+      }
 
       resetSolve();
       render();
