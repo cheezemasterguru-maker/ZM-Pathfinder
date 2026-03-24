@@ -6,256 +6,314 @@
 <title>ZM Pathfinder</title>
 
 <style>
-body {
-  margin: 0;
-  font-family: sans-serif;
-  background: #0b1020;
-  color: white;
-  text-align: center;
-}
+  body{
+    margin:0;
+    background:#0b1020;
+    color:#fff;
+    font-family:Arial,sans-serif;
+    text-align:center;
+  }
 
-.logo {
-  width: 100%;
-  max-width: 500px;
-}
+  .wrap{
+    max-width:760px;
+    margin:0 auto;
+    padding:10px 12px 24px;
+  }
 
-h1 {
-  margin: 10px 0;
-}
+  .logo{
+    width:100%;
+    max-width:520px;
+    display:block;
+    margin:0 auto 6px;
+  }
 
-.controls {
-  position: sticky;
-  top: 0;
-  background: #0b1020;
-  padding: 10px;
-  z-index: 10;
-}
+  h1{
+    margin:4px 0 12px;
+    font-size:38px;
+    font-weight:800;
+  }
 
-button, select, input {
-  margin: 4px;
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-  font-weight: bold;
-}
+  .topbar{
+    position:sticky;
+    top:0;
+    z-index:20;
+    background:#0b1020;
+    padding:8px 0 10px;
+  }
 
-.number { background:#fff; color:#000; }
-.block { background:#000; color:#fff; }
-.bubble { background:#7dd3fc; color:#000; }
-.shaft { background:#7CFC00; color:#000; }
-.empty { background:#ccc; color:#000; }
-.solve { background:#2448d8; color:#fff; }
-.copy { background:#26304f; color:#fff; }
+  .gate-select{
+    width:100%;
+    max-width:680px;
+    margin:0 auto 10px;
+    display:block;
+    font-size:16px;
+    font-weight:700;
+    padding:10px 12px;
+    border:none;
+    border-radius:14px;
+    background:#f1f1f1;
+    color:#111;
+  }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  max-width: 500px;
-  margin: auto;
-  gap: 2px;
-}
+  .tool-row,
+  .action-row{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:10px;
+    margin:8px 0;
+  }
 
-.cell {
-  background: #f0f0f0;
-  color: #111;
-  aspect-ratio: 1;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:bold;
-  outline: none;
-  user-select: none;
-  min-height: 50px;
-}
+  button{
+    border:none;
+    border-radius:14px;
+    padding:14px 18px;
+    font-size:17px;
+    font-weight:800;
+  }
 
-.cell.block { background:#000; color:#fff; }
-.cell.bubble { background:#7dd3fc; color:#000; }
-.cell.shaft { background:#7CFC00; color:#000; }
-.cell.selected {
-  box-shadow: inset 0 0 0 3px #f59e0b;
-}
+  .number{background:#fff;color:#111;}
+  .block{background:#000;color:#fff;border:1px solid #444;}
+  .bubble{background:#8fd3f7;color:#111;}
+  .shaft{background:#98f44d;color:#111;}
+  .empty{background:#d9d9d9;color:#111;}
+  .action{background:#28345f;color:#fff;}
+  .solve{background:#3152f0;color:#fff;}
 
-.report {
-  max-width: 700px;
-  margin: 16px auto;
-  background: #131a30;
-  border: 1px solid #2a355f;
-  border-radius: 10px;
-  padding: 12px;
-  text-align: left;
-  white-space: pre-wrap;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
+  .hint{
+    color:#c9d2f3;
+    font-size:14px;
+    line-height:1.35;
+    margin:10px auto 14px;
+    max-width:700px;
+  }
 
-.canvas-wrap {
-  max-width: 900px;
-  margin: 20px auto;
-  padding: 10px;
-}
+  .report{
+    max-width:700px;
+    margin:0 auto 14px;
+    background:#131a30;
+    border:1px solid #2a355f;
+    border-radius:14px;
+    padding:14px;
+    text-align:left;
+    white-space:pre-wrap;
+    font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size:16px;
+  }
 
-canvas {
-  background: #fff;
-  max-width: 100%;
-  border-radius: 10px;
-}
+  .grid-wrap{
+    overflow:auto;
+    padding-bottom:8px;
+  }
 
-.small {
-  color: #b9c2e6;
-  margin-top: 4px;
-  font-size: 14px;
-}
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    gap:3px;
+    max-width:720px;
+    margin:0 auto;
+    background:#0b1020;
+  }
+
+  .cell{
+    background:#efefef;
+    color:#111;
+    min-height:70px;
+    aspect-ratio:1 / 1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    font-weight:800;
+    user-select:none;
+    -webkit-user-select:none;
+    border:none;
+    outline:none;
+  }
+
+  .cell.selected{
+    box-shadow:inset 0 0 0 4px #f59e0b;
+  }
+
+  .cell.block{
+    background:#000;
+    color:#fff;
+  }
+
+  .cell.bubble{
+    background:#8fd3f7;
+    color:#111;
+  }
+
+  .cell.shaft{
+    background:#98f44d;
+    color:#111;
+  }
 </style>
 </head>
-
 <body>
+<div class="wrap">
 
-<img src="file_00000000e35071fda5e92d9996ac3621.png" class="logo" alt="ZM Pathfinder Logo">
-<h1>ZM Pathfinder</h1>
+  <img src="file_00000000e35071fda5e92d9996ac3621.png" class="logo" alt="Logo">
+  <h1>ZM Pathfinder</h1>
 
-<div class="controls">
-  <select id="gateType">
-    <option value="standard">Standard (regular gates / graveyard — 5 attack points)</option>
-    <option value="end">End (end gate — 3 attack points)</option>
-  </select>
+  <div class="topbar">
+    <select id="gateType" class="gate-select">
+      <option value="standard">Standard — 5 attack points</option>
+      <option value="end">End — 3 attack points</option>
+    </select>
 
-  <button class="number" onclick="setTool('number')">Number</button>
-  <button class="block" onclick="setTool('block')">Block</button>
-  <button class="bubble" onclick="setTool('bubble')">Bubble</button>
-  <button class="shaft" onclick="setTool('shaft')">Shaft 2x3</button>
-  <button class="empty" onclick="setTool('empty')">Empty</button>
+    <div class="tool-row">
+      <button class="number" onclick="setTool('number')">Number</button>
+      <button class="block" onclick="setTool('block')">Block</button>
+      <button class="bubble" onclick="setTool('bubble')">Bubble</button>
+      <button class="shaft" onclick="setTool('shaft')">Shaft 2x3</button>
+      <button class="empty" onclick="setTool('empty')">Empty</button>
+    </div>
 
-  <br>
+    <div class="action-row">
+      <button class="action" onclick="pasteFromClipboard()">📋 Paste From Clipboard</button>
+      <button class="action" onclick="copyGridText()">Copy Grid Text</button>
+      <button class="action" onclick="clearBoard()">Clear Board</button>
+      <button class="action" onclick="loadSampleGate1()">Sample Gate 1</button>
+    </div>
+  </div>
 
-  <button class="copy" onclick="pasteFromClipboard()">📋 Paste From Clipboard</button>
-  <button class="copy" onclick="copyGridText()">Copy Grid Text</button>
-  <button class="copy" onclick="clearBoard()">Clear Board</button>
-  <button class="copy" onclick="loadSampleGate1()">Sample Gate 1</button>
-  <button class="solve" onclick="solveBoard()">Solve</button>
+  <div class="hint">
+    Tap a cell to choose the paste start. Number tool prompts for manual entry.
+    Tap Block, Bubble, or Shaft again to remove them.
+  </div>
 
-  <div class="small">Tap a cell to choose paste start. Number tool prompts for manual entry. Tap special tiles again to remove them.</div>
-</div>
+  <div id="report" class="report">Grid editor restored. Paste should start from the last cell you tapped.</div>
 
-<div id="grid" class="grid"></div>
+  <div class="grid-wrap">
+    <div id="grid" class="grid"></div>
+  </div>
 
-<div id="report" class="report">No solve yet.</div>
-
-<div class="canvas-wrap">
-  <canvas id="boardCanvas" width="900" height="1200"></canvas>
 </div>
 
 <script>
 const ROWS = 20;
 const COLS = 7;
-const LOGO_SRC = "file_00000000e35071fda5e92d9996ac3621.png";
 
 let grid = [];
 let tool = "number";
 let lastSelected = { r: 0, c: 0 };
-let solution = { redPath: [], bluePaths: [], report: "No solve yet." };
 
-function init() {
+function setReport(msg){
+  document.getElementById("report").textContent = msg;
+}
+
+function init(){
   const g = document.getElementById("grid");
   g.innerHTML = "";
   grid = [];
 
-  for (let r = 0; r < ROWS; r++) {
+  for(let r=0;r<ROWS;r++){
     grid[r] = [];
-    for (let c = 0; c < COLS; c++) {
+    for(let c=0;c<COLS;c++){
       grid[r][c] = "";
 
       const d = document.createElement("div");
       d.className = "cell";
       d.dataset.r = r;
       d.dataset.c = c;
-      d.onclick = () => clickCell(r, c);
+      d.onclick = () => clickCell(r,c);
 
       g.appendChild(d);
     }
   }
 
   render();
-  renderCanvas();
 }
 
-function setTool(t) {
+function setTool(t){
   tool = t;
 }
 
-function clickCell(r, c) {
+function clickCell(r,c){
   lastSelected = { r, c };
 
-  if (tool === "number") {
+  if(tool === "number"){
     const current = typeof grid[r][c] === "number" ? String(grid[r][c]) : "";
-    const val = prompt("Enter number (blank to clear):", current);
-    if (val === null) {
+    const val = prompt("Enter number (blank clears):", current);
+    if(val === null){
       render();
       return;
     }
     const trimmed = val.trim();
-    if (trimmed === "") {
+    if(trimmed === ""){
       grid[r][c] = "";
-    } else if (!isNaN(trimmed) && Number(trimmed) > 0) {
+    } else if(!isNaN(trimmed) && Number(trimmed) > 0){
       grid[r][c] = Number(trimmed);
     }
-  } else if (tool === "block") {
+  }
+
+  if(tool === "block"){
     grid[r][c] = grid[r][c] === "X" ? "" : "X";
-  } else if (tool === "bubble") {
+  }
+
+  if(tool === "bubble"){
     grid[r][c] = grid[r][c] === "B" ? "" : "B";
-  } else if (tool === "empty") {
+  }
+
+  if(tool === "empty"){
     grid[r][c] = "";
-  } else if (tool === "shaft") {
+  }
+
+  if(tool === "shaft"){
     const removing = grid[r][c] === "S";
-    for (let dr = 0; dr < 3; dr++) {
-      for (let dc = 0; dc < 2; dc++) {
-        if (grid[r + dr] && grid[r + dr][c + dc] !== undefined) {
-          grid[r + dr][c + dc] = removing ? "" : "S";
+
+    for(let dr=0;dr<3;dr++){
+      for(let dc=0;dc<2;dc++){
+        if(grid[r+dr] && grid[r+dr][c+dc] !== undefined){
+          grid[r+dr][c+dc] = removing ? "" : "S";
         }
       }
     }
   }
 
-  solution = { redPath: [], bluePaths: [], report: "Board changed. Solve again." };
   render();
-  renderCanvas();
 }
 
-async function pasteFromClipboard() {
-  try {
+async function pasteFromClipboard(){
+  try{
     const text = await navigator.clipboard.readText();
     applyText(text);
-  } catch (e) {
-    alert("Clipboard blocked. Copy again, tap the starting cell, then try Paste From Clipboard.");
+  } catch(e){
+    alert("Clipboard blocked. Copy again, tap the starting cell, then tap Paste From Clipboard.");
   }
 }
 
-function applyText(text) {
-  if (!text || !text.trim()) return;
+function applyText(text){
+  if(!text || !text.trim()) return;
 
   const rows = text.trim().split("\n");
   const startR = lastSelected.r;
   const startC = lastSelected.c;
 
-  rows.forEach((row, ri) => {
+  rows.forEach((row,ri)=>{
     const cols = row.split(/\t|,/);
-    cols.forEach((v, ci) => {
+    cols.forEach((v,ci)=>{
       const r = startR + ri;
       const c = startC + ci;
-      if (!grid[r] || grid[r][c] === undefined) return;
+
+      if(!grid[r] || grid[r][c] === undefined) return;
 
       const val = String(v).trim();
-      if (!val) return;
+      if(!val) return;
 
-      if (!isNaN(val)) {
+      if(!isNaN(val)){
         grid[r][c] = Number(val);
-      } else if (val.toUpperCase() === "X") {
+      } else if(val.toUpperCase() === "X"){
         grid[r][c] = "X";
-      } else if (val.toUpperCase() === "B") {
+      } else if(val.toUpperCase() === "B"){
         grid[r][c] = "B";
-      } else if (val.toUpperCase() === "S" || val.toUpperCase() === "SHAFT") {
-        for (let dr = 0; dr < 3; dr++) {
-          for (let dc = 0; dc < 2; dc++) {
-            if (grid[r + dr] && grid[r + dr][c + dc] !== undefined) {
-              grid[r + dr][c + dc] = "S";
+      } else if(val.toUpperCase() === "S" || val.toUpperCase() === "SHAFT"){
+        for(let dr=0;dr<3;dr++){
+          for(let dc=0;dc<2;dc++){
+            if(grid[r+dr] && grid[r+dr][c+dc] !== undefined){
+              grid[r+dr][c+dc] = "S";
             }
           }
         }
@@ -263,40 +321,34 @@ function applyText(text) {
     });
   });
 
-  solution = { redPath: [], bluePaths: [], report: "Board changed. Solve again." };
   render();
-  renderCanvas();
+  setReport(`Pasted from row ${startR + 1}, col ${startC + 1}.`);
 }
 
-function copyGridText() {
+function copyGridText(){
   const text = grid.map(row =>
-    row.map(v => {
-      if (v === "") return "";
-      return String(v);
-    }).join("\t")
+    row.map(v => v === "" ? "" : String(v)).join("\t")
   ).join("\n");
 
-  navigator.clipboard.writeText(text).then(() => {
-    alert("Grid text copied.");
-  }).catch(() => {
-    alert("Could not copy grid text.");
+  navigator.clipboard.writeText(text).then(()=>{
+    setReport("Grid text copied.");
+  }).catch(()=>{
+    setReport("Could not copy grid text.");
   });
 }
 
-function clearBoard() {
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
+function clearBoard(){
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
       grid[r][c] = "";
     }
   }
-  solution = { redPath: [], bluePaths: [], report: "Board cleared." };
   render();
-  renderCanvas();
+  setReport("Board cleared.");
 }
 
-function loadSampleGate1() {
+function loadSampleGate1(){
   clearBoard();
-  document.getElementById("gateType").value = "standard";
 
   const sample = [
     [8,9,11,9,12,8,9],
@@ -312,19 +364,18 @@ function loadSampleGate1() {
     [1,2,"","","",3,""]
   ];
 
-  for (let r = 0; r < sample.length; r++) {
-    for (let c = 0; c < COLS; c++) {
+  for(let r=0;r<sample.length;r++){
+    for(let c=0;c<COLS;c++){
       grid[r][c] = sample[r][c] === undefined ? "" : sample[r][c];
     }
   }
 
-  solution = { redPath: [], bluePaths: [], report: "Sample Gate 1 loaded. Solve." };
   render();
-  renderCanvas();
+  setReport("Sample Gate 1 loaded.");
 }
 
-function render() {
-  document.querySelectorAll(".cell").forEach(cell => {
+function render(){
+  document.querySelectorAll(".cell").forEach(cell=>{
     const r = Number(cell.dataset.r);
     const c = Number(cell.dataset.c);
     const val = grid[r][c];
@@ -332,467 +383,25 @@ function render() {
     cell.className = "cell";
     cell.innerText = "";
 
-    if (r === lastSelected.r && c === lastSelected.c) {
+    if(r === lastSelected.r && c === lastSelected.c){
       cell.classList.add("selected");
     }
 
-    if (val === "X") {
+    if(val === "X"){
       cell.classList.add("block");
-    } else if (val === "B") {
+    } else if(val === "B"){
       cell.classList.add("bubble");
       cell.innerText = "B";
-    } else if (val === "S") {
+    } else if(val === "S"){
       cell.classList.add("shaft");
       cell.innerText = "S";
-    } else if (val !== "") {
+    } else if(val !== ""){
       cell.innerText = String(val);
     }
   });
-
-  document.getElementById("report").textContent = solution.report;
 }
 
-function renderCanvas() {
-  const canvas = document.getElementById("boardCanvas");
-  const ctx = canvas.getContext("2d");
-
-  const cellSize = 90;
-  const pad = 20;
-  const titleH = 220;
-
-  let usedRows = [];
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      if (grid[r][c] !== "") {
-        usedRows.push(r);
-        break;
-      }
-    }
-  }
-
-  const minRow = usedRows.length ? Math.min(...usedRows) : 0;
-  const maxRow = usedRows.length ? Math.min(ROWS - 1, Math.max(...usedRows) + 1) : 4;
-  const visibleRows = Math.max(4, maxRow - minRow + 1);
-
-  canvas.width = COLS * cellSize + pad * 2;
-  canvas.height = visibleRows * cellSize + titleH + 90;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const logo = new Image();
-  logo.onload = () => {
-    const maxW = 420;
-    const maxH = 160;
-    const ratio = Math.min(maxW / logo.width, maxH / logo.height, 1);
-    const w = logo.width * ratio;
-    const h = logo.height * ratio;
-    const x = (canvas.width - w) / 2;
-    const y = 8;
-    ctx.drawImage(logo, x, y, w, h);
-
-    ctx.fillStyle = "#111";
-    ctx.font = "700 42px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("ZM PATHFINDER", canvas.width / 2, 190);
-
-    drawBoard(ctx, cellSize, pad, titleH, minRow, maxRow);
-  };
-  logo.src = LOGO_SRC;
-
-  if (logo.complete) {
-    ctx.fillStyle = "#111";
-    ctx.font = "700 42px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("ZM PATHFINDER", canvas.width / 2, 190);
-    drawBoard(ctx, cellSize, pad, titleH, minRow, maxRow);
-  }
-}
-
-function drawBoard(ctx, cellSize, pad, titleH, minRow, maxRow) {
-  const rowOffset = minRow;
-
-  for (let r = minRow; r <= maxRow; r++) {
-    for (let c = 0; c < COLS; c++) {
-      const x = pad + c * cellSize;
-      const y = titleH + (r - rowOffset) * cellSize;
-      const val = grid[r][c];
-
-      if (val === "S") continue;
-
-      if (val === "X") {
-        ctx.fillStyle = "#000";
-        ctx.fillRect(x, y, cellSize, cellSize);
-        ctx.strokeStyle = "#bbb";
-        ctx.strokeRect(x, y, cellSize, cellSize);
-      } else if (val === "B") {
-        ctx.fillStyle = "#7dd3fc";
-        ctx.fillRect(x, y, cellSize, cellSize);
-        ctx.strokeStyle = "#3cb8cf";
-        ctx.strokeRect(x, y, cellSize, cellSize);
-        ctx.fillStyle = "#111";
-        ctx.font = "700 28px sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("B", x + cellSize / 2, y + cellSize / 2);
-      } else {
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(x, y, cellSize, cellSize);
-        ctx.strokeStyle = "#ccc";
-        ctx.strokeRect(x, y, cellSize, cellSize);
-
-        if (val !== "") {
-          ctx.fillStyle = "#111";
-          ctx.font = "700 28px sans-serif";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(String(val), x + cellSize / 2, y + cellSize / 2);
-        }
-      }
-    }
-  }
-
-  const shaftClusters = findShaftClusters();
-  for (const cluster of shaftClusters) {
-    const rows = cluster.map(([r]) => r);
-    const cols = cluster.map(([, c]) => c);
-    const minR = Math.min(...rows);
-    const maxR = Math.max(...rows);
-    const minC = Math.min(...cols);
-    const maxC = Math.max(...cols);
-
-    if (maxR < minRow || minR > maxRow) continue;
-
-    const x = pad + minC * cellSize;
-    const y = titleH + (minR - rowOffset) * cellSize;
-    const w = (maxC - minC + 1) * cellSize;
-    const h = (maxR - minR + 1) * cellSize;
-
-    ctx.fillStyle = "#7CFC00";
-    ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = "#0a8f00";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(x, y, w, h);
-    ctx.fillStyle = "#111";
-    ctx.font = "700 24px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("Shaft", x + w / 2, y + h / 2);
-  }
-
-  for (const path of solution.bluePaths) {
-    drawPath(ctx, path, "#2563eb", 10, rowOffset, cellSize, pad, titleH);
-  }
-  drawPath(ctx, solution.redPath, "#ef4444", 12, rowOffset, cellSize, pad, titleH);
-
-  const ly = ctx.canvas.height - 28;
-
-  ctx.lineWidth = 18;
-  ctx.strokeStyle = "#000";
-  ctx.beginPath();
-  ctx.moveTo(32, ly);
-  ctx.lineTo(112, ly);
-  ctx.stroke();
-
-  ctx.lineWidth = 12;
-  ctx.strokeStyle = "#ef4444";
-  ctx.beginPath();
-  ctx.moveTo(32, ly);
-  ctx.lineTo(112, ly);
-  ctx.stroke();
-
-  ctx.fillStyle = "#111";
-  ctx.font = "700 18px sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText("1st Strongest Z", 124, ly + 6);
-
-  ctx.lineWidth = 18;
-  ctx.strokeStyle = "#000";
-  ctx.beginPath();
-  ctx.moveTo(360, ly);
-  ctx.lineTo(440, ly);
-  ctx.stroke();
-
-  ctx.lineWidth = 12;
-  ctx.strokeStyle = "#2563eb";
-  ctx.beginPath();
-  ctx.moveTo(360, ly);
-  ctx.lineTo(440, ly);
-  ctx.stroke();
-
-  ctx.fillStyle = "#111";
-  ctx.fillText("2nd Strongest Z", 452, ly + 6);
-}
-
-function drawPath(ctx, path, color, width, rowOffset, cellSize, pad, titleH) {
-  if (!path || path.length < 2) return;
-
-  function center(pt) {
-    return {
-      x: pad + pt[1] * cellSize + cellSize / 2,
-      y: titleH + (pt[0] - rowOffset) * cellSize + cellSize / 2
-    };
-  }
-
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-
-  ctx.lineWidth = width + 6;
-  ctx.strokeStyle = "#000";
-  ctx.beginPath();
-  let p = center(path[0]);
-  ctx.moveTo(p.x, p.y);
-  for (let i = 1; i < path.length; i++) {
-    p = center(path[i]);
-    ctx.lineTo(p.x, p.y);
-  }
-  ctx.stroke();
-
-  ctx.lineWidth = width;
-  ctx.strokeStyle = color;
-  ctx.beginPath();
-  p = center(path[0]);
-  ctx.moveTo(p.x, p.y);
-  for (let i = 1; i < path.length; i++) {
-    p = center(path[i]);
-    ctx.lineTo(p.x, p.y);
-  }
-  ctx.stroke();
-}
-
-/* ---------------- SOLVER ---------------- */
-
-function solveBoard() {
-  try {
-    const gateType = document.getElementById("gateType").value;
-    const result = computeSolution(gateType);
-    solution = result;
-    render();
-    renderCanvas();
-  } catch (e) {
-    solution = { redPath: [], bluePaths: [], report: "ERROR:\n" + e.message };
-    render();
-    renderCanvas();
-  }
-}
-
-function computeSolution(gateType) {
-  const starts = candidateStartCells();
-  if (!starts.length) throw new Error("No valid start cells one row below the lowest used map row.");
-
-  const gateGoals = gateAttackCells(gateType);
-  if (!gateGoals.length) throw new Error("No valid gate attack cells.");
-
-  const bubbles = findBubbles();
-  const shaftClusters = findShaftClusters();
-
-  const redResult = solveRed(starts, gateGoals, bubbles);
-  const redFree = new Set(redResult.redPath.map(pt => key(pt[0], pt[1])));
-
-  const remainingBubbles = bubbles.filter(
-    b => !redResult.redHandled.has(key(b[0], b[1]))
-  );
-
-  const blue = solveBlueIndependent(
-    starts.concat(redResult.redPath),
-    redFree,
-    shaftClusters,
-    remainingBubbles
-  );
-
-  const report = [
-    `gate_type: ${gateType}`,
-    `start_row: ${usedRowsInfo().startRow + 1}`,
-    `red_mode: ${redResult.mode}`,
-    `red_cost: ${formatCost(redResult.redCost)}`,
-    `red_steps: ${redResult.redPath.length}`,
-    `red_bubbles: ${redResult.redHandled.size ? [...redResult.redHandled].join(" | ") : "none"}`,
-    `blue_cost: ${formatCost(blue.blueCost)}`,
-    `blue_paths: ${blue.bluePaths.length}`,
-    `remaining_bubbles: ${remainingBubbles.length}`,
-    `unresolved_blue_jobs: ${blue.unresolvedJobs}`,
-    `total_cost: ${formatCost(redResult.redCost + blue.blueCost)}`
-  ].join("\n");
-
-  return {
-    redPath: redResult.redPath,
-    bluePaths: blue.bluePaths,
-    report
-  };
-}
-
-function formatCost(n) {
-  if (!isFinite(n)) return "INF";
-  return Math.round(n * 100) / 100;
-}
-
-function usedRowsInfo() {
-  let minRow = ROWS;
-  let maxRow = -1;
-
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      if (grid[r][c] !== "") {
-        minRow = Math.min(minRow, r);
-        maxRow = Math.max(maxRow, r);
-      }
-    }
-  }
-
-  if (maxRow === -1) return { minRow: 0, maxRow: 0, startRow: 1 };
-  const startRow = Math.min(maxRow + 1, ROWS - 1);
-  return { minRow, maxRow, startRow };
-}
-
-function key(r, c) {
-  return `${r},${c}`;
-}
-
-function parseKey(k) {
-  return k.split(",").map(Number);
-}
-
-function neighbors(r, c) {
-  return [
-    [r - 1, c],
-    [r + 1, c],
-    [r, c - 1],
-    [r, c + 1]
-  ].filter(([rr, cc]) => rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS);
-}
-
-function isTraversableCell(r, c) {
-  const v = grid[r][c];
-  return v !== "X" && v !== "S";
-}
-
-function cellCost(r, c) {
-  const v = grid[r][c];
-  if (v === "" || v === "B") return 0;
-  if (typeof v === "number") return numberCost(v);
-  return Infinity;
-}
-
-function numberCost(n) {
-  if (n <= 0) return Infinity;
-  if (n <= 10) {
-    return Math.pow(2, n);
-  }
-  return Math.pow(2, 10) * Math.pow(1.6, n - 10);
-}
-
-function candidateStartCells() {
-  const info = usedRowsInfo();
-  const starts = [];
-  for (let c = 0; c < COLS; c++) {
-    if (isTraversableCell(info.startRow, c)) starts.push([info.startRow, c]);
-  }
-  return starts;
-}
-
-function gateAttackCells(gateType) {
-  const cols = gateType === "end" ? [2, 3, 4] : [1, 2, 3, 4, 5];
-  const out = [];
-  for (const c of cols) {
-    if (isTraversableCell(0, c)) out.push([0, c]);
-  }
-  return out;
-}
-
-function findBubbles() {
-  const out = [];
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      if (grid[r][c] === "B") out.push([r, c]);
-    }
-  }
-  return out;
-}
-
-function findShaftClusters() {
-  const seen = new Set();
-  const clusters = [];
-
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      if (grid[r][c] !== "S") continue;
-      const startKey = key(r, c);
-      if (seen.has(startKey)) continue;
-
-      const stack = [[r, c]];
-      const cells = [];
-
-      while (stack.length) {
-        const [rr, cc] = stack.pop();
-        const k = key(rr, cc);
-        if (seen.has(k)) continue;
-        if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
-        if (grid[rr][cc] !== "S") continue;
-
-        seen.add(k);
-        cells.push([rr, cc]);
-        stack.push([rr - 1, cc], [rr + 1, cc], [rr, cc - 1], [rr, cc + 1]);
-      }
-
-      clusters.push(cells);
-    }
-  }
-
-  return clusters;
-}
-
-function shaftAttackPoints(cluster) {
-  const clusterSet = new Set(cluster.map(([r, c]) => key(r, c)));
-  const points = [];
-
-  for (const [r, c] of cluster) {
-    for (const [rr, cc] of neighbors(r, c)) {
-      if (clusterSet.has(key(rr, cc))) continue;
-      if (typeof grid[rr][cc] === "number" && isTraversableCell(rr, cc)) {
-        points.push([rr, cc]);
-      }
-    }
-  }
-
-  const uniq = [];
-  const seen = new Set();
-  for (const p of points) {
-    const k = key(p[0], p[1]);
-    if (!seen.has(k)) {
-      seen.add(k);
-      uniq.push(p);
-    }
-  }
-  return uniq;
-}
-
-function adjacentShaftCell(cluster, attackPoint) {
-  const [r, c] = attackPoint;
-  const set = new Set(cluster.map(([rr, cc]) => key(rr, cc)));
-  for (const [rr, cc] of neighbors(r, c)) {
-    if (set.has(key(rr, cc))) return [rr, cc];
-  }
-  return null;
-}
-
-function dijkstra(startNodes, goalNodes, extraFree = new Set()) {
-  const goalSet = new Set(goalNodes.map(([r, c]) => key(r, c)));
-  const dist = new Map();
-  const steps = new Map();
-  const prev = new Map();
-  const queue = [];
-
-  for (const [r, c] of startNodes) {
-    const k = key(r, c);
-    dist.set(k, 0);
-    steps.set(k, 0);
-    queue.push({ r, c, cost: 0, len: 0 });
-  }
-
-  while (queue.length) {
-    queue.sort((a, b) => a.cost !== b.cost ? a.cost - b.cost : a.len - b.len);
-    const cur = queue.shift();
-    const ck = key(cur.r, 
+init();
+</script>
+</body>
+</html>
