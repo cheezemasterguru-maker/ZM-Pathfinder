@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V4 loaded");
+  console.log("ZM Solver V4.1 loaded");
 
-  const SOLVER_VERSION = "V4";
+  const SOLVER_VERSION = "V4.1";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -498,6 +498,21 @@
     return deduped.slice(0, 36);
   }
 
+  function getLowestShaftPreferenceBonus(route, entry, cluster, routeKind, isLowestShaft) {
+    if (!route || !entry || !cluster || !isLowestShaft) return 0;
+
+    const bottom = Math.max(...cluster.map(([r]) => r));
+    const entryDepth = entry[0];
+    const lowerIsBetter = entryDepth / Math.max(1, bottom);
+
+    let bonus = lowerIsBetter * 5.0;
+
+    // Small extra nudge if the route begins from bottom starts instead of relying on reused network.
+    if (routeKind === "base") bonus += 1.25;
+
+    return bonus;
+  }
+
   function pickBestShaftRouteOption(options) {
     if (!options.length) return null;
     options.sort((a, b) => {
@@ -516,6 +531,7 @@
     let unresolved = 0;
     let dependencyCost = 0;
     let assistBonus = 0;
+    let lowerShaftBonus = 0;
 
     const reusable = new Set([...pathSet(redCandidate.path)]);
     let cumulativeStarts = dedupeCells(starts.concat(redCandidate.path));
@@ -530,6 +546,7 @@
       }
 
       const routeOptions = [];
+      const isLowestShaft = i === 0;
 
       const routeA = dijkstra({
         grid,
@@ -543,7 +560,7 @@
         const finalA = entryA ? appendEntryStep(routeA.path, entryA) : routeA.path;
 
         let depA = 0;
-        if (i === 0) {
+        if (isLowestShaft) {
           const directBottom = dijkstra({
             grid,
             starts,
@@ -558,6 +575,7 @@
         }
 
         const assistA = countAdjacentSharedOpens(redCandidate.path, finalA) * 0.35;
+        const lowerBonusA = getLowestShaftPreferenceBonus(routeA, entryA, cluster, "cumulative", isLowestShaft);
 
         routeOptions.push({
           kind: "cumulative",
@@ -566,7 +584,8 @@
           entry: entryA,
           dependency: depA,
           assist: assistA,
-          totalScore: routeA.cost + depA - assistA
+          lowerBonus: lowerBonusA,
+          totalScore: routeA.cost + depA - assistA - lowerBonusA
         });
       }
 
@@ -581,6 +600,7 @@
         const entryB = info.entryMap.get(`${routeB.goal[0]},${routeB.goal[1]}`);
         const finalB = entryB ? appendEntryStep(routeB.path, entryB) : routeB.path;
         const assistB = countAdjacentSharedOpens(redCandidate.path, finalB) * 0.35;
+        const lowerBonusB = getLowestShaftPreferenceBonus(routeB, entryB, cluster, "base", isLowestShaft);
 
         routeOptions.push({
           kind: "base",
@@ -589,7 +609,8 @@
           entry: entryB,
           dependency: 0,
           assist: assistB,
-          totalScore: routeB.cost - assistB
+          lowerBonus: lowerBonusB,
+          totalScore: routeB.cost - assistB - lowerBonusB
         });
       }
 
@@ -607,6 +628,7 @@
       blueCost += chosen.route.cost;
       dependencyCost += chosen.dependency;
       assistBonus += chosen.assist;
+      lowerShaftBonus += chosen.lowerBonus || 0;
 
       for (const [r, c] of chosen.finalPath) {
         reusable.add(`${r},${c}`);
@@ -659,7 +681,8 @@
       blueCost,
       unresolved,
       dependencyCost,
-      assistBonus
+      assistBonus,
+      lowerShaftBonus
     };
   }
 
@@ -676,6 +699,7 @@
         `${idx + 1}. mode=${cand.redMode} variant=${cand.redVariant} ` +
         `red=${roundCost(cand.redCost)} blue=${roundCost(cand.blueCost)} ` +
         `dep=${roundCost(cand.dependencyCost)} assist=${roundCost(cand.assistBonus)} ` +
+        `lower_bonus=${roundCost(cand.lowerShaftBonus)} ` +
         `effective=${roundCost(cand.effectiveTotal)} unresolved=${cand.unresolvedTargets}`
       );
     });
@@ -733,7 +757,8 @@
         redCandidate.redCost +
         blueEval.blueCost +
         blueEval.dependencyCost -
-        blueEval.assistBonus;
+        blueEval.assistBonus -
+        blueEval.lowerShaftBonus;
 
       const candidate = {
         redMode: redCandidate.mode,
@@ -749,6 +774,7 @@
         unresolvedTargets: blueEval.unresolved,
         dependencyCost: blueEval.dependencyCost,
         assistBonus: blueEval.assistBonus,
+        lowerShaftBonus: blueEval.lowerShaftBonus,
         effectiveTotal
       };
 
@@ -801,6 +827,7 @@
       effectiveTotal: roundCost(best.effectiveTotal),
       dependencyCost: roundCost(best.dependencyCost),
       assistBonus: roundCost(best.assistBonus),
+      lowerShaftBonus: roundCost(best.lowerShaftBonus),
       shaftClusters: shaftClustersOrdered,
       shaftEntryDots: best.shaftEntryDots,
       attackPoints: best.attackPoints,
@@ -817,6 +844,7 @@
         `blue_cost: ${roundCost(best.blueCost)}\n` +
         `dependency_cost: ${roundCost(best.dependencyCost)}\n` +
         `assist_bonus: ${roundCost(best.assistBonus)}\n` +
+        `lower_shaft_bonus: ${roundCost(best.lowerShaftBonus)}\n` +
         `bubble_count: ${bubbles.length}\n` +
         `shaft_count: ${shaftClustersOrdered.length}\n` +
         `red_candidate_count: ${redCandidates.length}\n` +
