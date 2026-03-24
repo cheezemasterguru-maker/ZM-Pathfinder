@@ -29,9 +29,9 @@
     }
 
     .page{
-      max-width:860px;
+      max-width:820px;
       margin:0 auto;
-      padding:14px 10px 24px;
+      padding:12px 8px 24px;
     }
 
     .card{
@@ -46,36 +46,36 @@
       display:grid;
       justify-items:center;
       gap:8px;
-      margin-bottom:12px;
+      margin-bottom:10px;
     }
 
     .logo{
       display:block;
       width:100%;
-      max-width:340px;
+      max-width:300px;
       height:auto;
       object-fit:contain;
     }
 
     h1{
       margin:0;
-      font-size:38px;
+      font-size:34px;
       line-height:1;
       font-weight:800;
-      letter-spacing:-.5px;
+      letter-spacing:-.4px;
       text-align:center;
     }
 
     .controls-grid{
       display:grid;
       grid-template-columns:1fr 1fr;
-      gap:12px;
+      gap:10px;
       margin-top:8px;
     }
 
     .field label{
       display:block;
-      font-size:15px;
+      font-size:14px;
       font-weight:700;
       margin-bottom:6px;
       color:var(--text);
@@ -88,27 +88,23 @@
       border:none;
       outline:none;
       border-radius:14px;
-      padding:12px 14px;
+      padding:10px 12px;
       background:#1f2540;
       color:var(--text);
-      font-size:15px;
+      font-size:14px;
       border:1px solid #36406a;
-    }
-
-    .field input[readonly]{
-      color:#dde6ff;
     }
 
     .section-title{
       margin:14px 0 8px;
-      font-size:22px;
+      font-size:20px;
       font-weight:800;
       text-align:left;
     }
 
     .help{
       color:var(--muted);
-      font-size:14px;
+      font-size:13px;
       line-height:1.4;
       text-align:left;
       margin-bottom:10px;
@@ -117,26 +113,26 @@
     .btn-grid{
       display:grid;
       grid-template-columns:repeat(3, 1fr);
-      gap:10px;
+      gap:8px;
       margin-top:12px;
     }
 
     .tool-grid{
       display:grid;
       grid-template-columns:repeat(3, 1fr);
-      gap:10px;
+      gap:8px;
       margin-top:8px;
       max-width:620px;
     }
 
     button{
       border:none;
-      border-radius:16px;
-      padding:10px 8px;
-      font-size:15px;
+      border-radius:14px;
+      padding:9px 6px;
+      font-size:14px;
       font-weight:800;
       cursor:pointer;
-      min-height:56px;
+      min-height:50px;
       transition:transform .05s ease;
     }
 
@@ -156,12 +152,12 @@
 
     .report{
       margin-top:12px;
-      padding:14px 16px;
+      padding:12px 14px;
       background:#131a30;
       border:1px solid #2a355f;
       border-radius:16px;
       font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size:14px;
+      font-size:13px;
       white-space:pre-wrap;
       color:#f3f6ff;
     }
@@ -176,7 +172,7 @@
       top:8px;
       z-index:10;
       background:linear-gradient(180deg, rgba(23,27,46,1) 0%, rgba(23,27,46,1) 82%, rgba(23,27,46,0) 100%);
-      padding-bottom:12px;
+      padding-bottom:10px;
       border-radius:18px 18px 0 0;
     }
 
@@ -187,23 +183,23 @@
 
     .grid{
       display:grid;
-      grid-template-columns:repeat(7, 1fr);
+      grid-template-columns:repeat(7, minmax(0, 1fr));
       gap:2px;
-      max-width:620px;
+      max-width:560px;
       margin:0 auto;
       background:#0b1020;
-      min-height:980px;
+      min-height:820px;
     }
 
     .cell{
-      min-height:48px;
+      min-height:40px;
       aspect-ratio:1/1;
       background:var(--empty);
       color:#111;
       display:flex;
       align-items:center;
       justify-content:center;
-      font-size:16px;
+      font-size:14px;
       font-weight:800;
       user-select:none;
       -webkit-user-select:none;
@@ -213,7 +209,7 @@
     }
 
     .cell.selected{
-      box-shadow:inset 0 0 0 4px var(--select);
+      box-shadow:inset 0 0 0 3px var(--select);
     }
 
     .cell.block{
@@ -231,29 +227,36 @@
       color:#111;
     }
 
+    .inline-number{
+      display:flex;
+      gap:8px;
+      align-items:end;
+      margin-top:8px;
+    }
+
+    .inline-number .field{
+      flex:1;
+    }
+
+    .inline-number button{
+      min-height:42px;
+      padding:8px 12px;
+      white-space:nowrap;
+    }
+
     @media (max-width:700px){
-      .page{ padding:12px 8px 20px; }
-      .controls-grid{ grid-template-columns:1fr 1fr; gap:10px; }
-      h1{ font-size:34px; }
-      .logo{ max-width:300px; }
-      .field label{ font-size:14px; }
-      .field input,.field select{ font-size:14px; padding:10px 12px; }
-      .section-title{ font-size:20px; }
-      .help{ font-size:13px; }
+      .page{ padding:10px 6px 18px; }
+      h1{ font-size:30px; }
+      .logo{ max-width:270px; }
+      .controls-grid{ grid-template-columns:1fr 1fr; gap:8px; }
+      .field label{ font-size:13px; }
+      .field input,.field select{ font-size:13px; padding:9px 10px; }
+      .section-title{ font-size:18px; }
+      .help{ font-size:12px; }
       .btn-grid,.tool-grid{ gap:8px; }
-      button{
-        min-height:52px;
-        font-size:14px;
-        border-radius:14px;
-        padding:9px 6px;
-      }
-      .cell{
-        min-height:46px;
-        font-size:15px;
-      }
-      .grid{
-        min-height:940px;
-      }
+      button{ min-height:48px; font-size:13px; padding:8px 6px; }
+      .grid{ max-width:100%; min-height:780px; }
+      .cell{ min-height:38px; font-size:13px; }
     }
   </style>
 </head>
@@ -277,15 +280,14 @@
             <option value="end">End — 3 attack points</option>
           </select>
         </div>
+      </div>
 
+      <div class="inline-number">
         <div class="field">
-          <label for="selectedCellDisplay">Paste start</label>
-          <input id="selectedCellDisplay" type="text" value="Row 1, Col 1" readonly>
+          <label for="numberInput">Number entry</label>
+          <input id="numberInput" type="number" min="1" placeholder="Tap a cell, then enter a number">
         </div>
-        <div class="field">
-          <label for="selectedModeDisplay">Input mode</label>
-          <input id="selectedModeDisplay" type="text" value="Tap a cell, then use Paste From Clipboard" readonly>
-        </div>
+        <button class="btn-action" onclick="applyNumberToSelected()">Apply Number</button>
       </div>
 
       <div class="section-title">How input works</div>
@@ -307,7 +309,7 @@
 
         <button class="btn-action" onclick="pasteFromClipboard()">Paste From Clipboard</button>
         <button class="btn-action" onclick="clearSelection()">Clear Selection</button>
-        <button class="btn-action" onclick="setReport('Tap a cell, then paste from clipboard.')">Paste Help</button>
+        <button class="btn-action" onclick="clearNumberInput()">Clear Number</button>
       </div>
 
       <div class="section-title">Visual placement tools</div>
@@ -319,7 +321,7 @@
         <button id="tool-empty" class="btn-empty" onclick="setTool('empty')">Empty</button>
       </div>
 
-      <div id="report" class="report">Professional layout restored. Paste is wired in. Sample Grid is available. Solver not wired into this layout yet.</div>
+      <div id="report" class="report">UI cleaned up. Paste is wired in. Sample Grid is available. Solver not wired into this layout yet.</div>
     </div>
 
     <div class="card editor-card">
@@ -348,11 +350,6 @@
       document.getElementById("report").textContent = msg;
     }
 
-    function updateSelectedDisplay(){
-      document.getElementById("selectedCellDisplay").value =
-        `Row ${lastSelected.r + 1}, Col ${lastSelected.c + 1}`;
-    }
-
     function init(){
       const g = document.getElementById("grid");
       g.innerHTML = "";
@@ -373,7 +370,6 @@
         }
       }
 
-      updateSelectedDisplay();
       render();
     }
 
@@ -391,29 +387,17 @@
 
     function clearSelection(){
       lastSelected = { r: 0, c: 0 };
-      updateSelectedDisplay();
       render();
       setReport("Selection reset to Row 1, Col 1.");
     }
 
+    function clearNumberInput(){
+      document.getElementById("numberInput").value = "";
+      setReport("Number entry cleared.");
+    }
+
     function clickCell(r, c){
       lastSelected = { r, c };
-      updateSelectedDisplay();
-
-      if(tool === "number"){
-        const current = typeof grid[r][c] === "number" ? String(grid[r][c]) : "";
-        const val = prompt("Enter number (blank clears):", current);
-        if(val === null){
-          render();
-          return;
-        }
-        const trimmed = val.trim();
-        if(trimmed === ""){
-          grid[r][c] = "";
-        } else if(!isNaN(trimmed) && Number(trimmed) > 0){
-          grid[r][c] = Number(trimmed);
-        }
-      }
 
       if(tool === "block"){
         grid[r][c] = grid[r][c] === "X" ? "" : "X";
@@ -439,6 +423,21 @@
       }
 
       render();
+    }
+
+    function applyNumberToSelected(){
+      const input = document.getElementById("numberInput");
+      const raw = input.value.trim();
+      if(raw === ""){
+        grid[lastSelected.r][lastSelected.c] = "";
+      } else if(!isNaN(raw) && Number(raw) > 0){
+        grid[lastSelected.r][lastSelected.c] = Number(raw);
+      } else {
+        setReport("Enter a valid positive number.");
+        return;
+      }
+      render();
+      setReport(`Number applied at Row ${lastSelected.r + 1}, Col ${lastSelected.c + 1}.`);
     }
 
     async function pasteFromClipboard(){
