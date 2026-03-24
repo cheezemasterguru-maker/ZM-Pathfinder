@@ -1,4 +1,8 @@
 (function () {
+  console.log("ZM Solver V2 loaded");
+
+  const SOLVER_VERSION = "V2";
+
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
     if (n <= 10) return Math.pow(2, n);
@@ -319,6 +323,14 @@
     return options[0];
   }
 
+  function pathTouchesAnyStart(path, starts) {
+    const startSet = new Set(starts.map(([r, c]) => `${r},${c}`));
+    for (const [r, c] of path || []) {
+      if (startSet.has(`${r},${c}`)) return true;
+    }
+    return false;
+  }
+
   function evaluateOrderedBlueForRedCandidate(grid, starts, redCandidate, shaftClustersOrdered, bubbles) {
     const bluePaths = [];
     const shaftEntryDots = [];
@@ -342,7 +354,6 @@
 
       const routeOptions = [];
 
-      // Option A: use all currently available cumulative starts (may depend on red / prior blue)
       const routeA = dijkstra({
         grid,
         starts: cumulativeStarts,
@@ -354,9 +365,6 @@
         const entryA = info.entryMap.get(`${routeA.goal[0]},${routeA.goal[1]}`);
         const finalA = entryA ? appendEntryStep(routeA.path, entryA) : routeA.path;
 
-        // dependency cost:
-        // if lowest shaft is not approached from base starts and a direct base path is competitive,
-        // penalize "waiting around" for red/upper access
         let depA = 0;
         if (i === 0) {
           const directBottom = dijkstra({
@@ -385,7 +393,6 @@
         });
       }
 
-      // Option B: fresh base-start route, no dependency on red arrival timing
       const routeB = dijkstra({
         grid,
         starts,
@@ -479,14 +486,6 @@
     };
   }
 
-  function pathTouchesAnyStart(path, starts) {
-    const startSet = new Set(starts.map(([r, c]) => `${r},${c}`));
-    for (const [r, c] of path || []) {
-      if (startSet.has(`${r},${c}`)) return true;
-    }
-    return false;
-  }
-
   function solveGrid({ grid, gateType = "standard" }) {
     const rows = grid.length;
     const cols = grid[0].length;
@@ -495,7 +494,7 @@
     if (!starts.length) {
       return {
         ok: false,
-        message: "No valid start cells one row below the lowest used row.",
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid start cells one row below the lowest used row.`,
         startRow,
       };
     }
@@ -504,7 +503,7 @@
     if (!gateGoals.length) {
       return {
         ok: false,
-        message: "No valid gate attack cells.",
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid gate attack cells.`,
         startRow,
       };
     }
@@ -517,7 +516,7 @@
     if (!redCandidates.length) {
       return {
         ok: false,
-        message: "No valid red path to gate.",
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid red path to gate.`,
         startRow,
       };
     }
@@ -588,6 +587,7 @@
       cols,
       gateType,
       startRow,
+      solverVersion: SOLVER_VERSION,
       redMode: best.redMode,
       redBubble: best.redBubble,
       redPath: best.redPath,
@@ -604,6 +604,7 @@
       bubbles,
       unresolvedTargets: best.unresolvedTargets,
       message:
+        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
         "solver_status: solved\n" +
         `red_mode: ${best.redMode}\n` +
         `red_cost: ${roundCost(best.redCost)}\n` +
@@ -613,11 +614,13 @@
         `bubble_count: ${bubbles.length}\n` +
         `shaft_count: ${shaftClustersOrdered.length}\n` +
         `unresolved_targets: ${best.unresolvedTargets}\n` +
+        `total_cost: ${roundCost(best.redCost + best.blueCost)}\n` +
         `effective_total: ${roundCost(best.effectiveTotal)}`
     };
   }
 
   window.ZMPathfinderSolver = {
+    solverVersion: SOLVER_VERSION,
     numberCost,
     solveGrid
   };
