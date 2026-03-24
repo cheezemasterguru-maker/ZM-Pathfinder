@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V4.1 loaded");
+  console.log("ZM Solver V4.2 loaded");
 
-  const SOLVER_VERSION = "V4.1";
+  const SOLVER_VERSION = "V4.2";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -506,11 +506,86 @@
     const lowerIsBetter = entryDepth / Math.max(1, bottom);
 
     let bonus = lowerIsBetter * 5.0;
-
-    // Small extra nudge if the route begins from bottom starts instead of relying on reused network.
     if (routeKind === "base") bonus += 1.25;
 
     return bonus;
+  }
+
+  function getBlueLocalRouteStrength(grid, starts, reusable, attacks) {
+    const route = dijkstra({
+      grid,
+      starts,
+      goals: attacks,
+      freeCells: reusable
+    });
+    if (!route) return Infinity;
+    return route.cost;
+  }
+
+  function redBacktrackPenalty(path) {
+    if (!path || path.length < 3) return 0;
+
+    let penalty = 0;
+
+    for (let i = 1; i < path.length - 1; i++) {
+      const [r0, c0] = path[i - 1];
+      const [r1, c1] = path[i];
+      const [r2, c2] = path[i + 1];
+
+      const dr1 = r1 - r0;
+      const dc1 = c1 - c0;
+      const dr2 = r2 - r1;
+      const dc2 = c2 - c1;
+
+      const turned = dr1 !== dr2 || dc1 !== dc2;
+      const wentUp = dr2 < 0;
+      const wentDown = dr2 > 0;
+      const wentSideways = dc2 !== 0;
+
+      if (turned && wentSideways) penalty += 0.8;
+      if (turned && wentDown) penalty += 2.2;
+      if (turned && wentUp) penalty -= 0.15;
+    }
+
+    const seen = new Set();
+    for (const [r, c] of path) {
+      const key = `${r},${c}`;
+      if (seen.has(key)) penalty += 4.0;
+      seen.add(key);
+    }
+
+    return Math.max(0, penalty);
+  }
+
+  function redLoopAssistPenalty(redPath, bluePaths, shaftAttackInfos, grid, starts) {
+    if (!redPath || !redPath.length || !bluePaths || !bluePaths.length) return 0;
+
+    let penalty = 0;
+    const redSet = new Set(redPath.map(([r, c]) => `${r},${c}`));
+
+    for (let i = 0; i < bluePaths.length && i < shaftAttackInfos.length; i++) {
+      const bluePath = bluePaths[i];
+      const info = shaftAttackInfos[i];
+      if (!bluePath || !bluePath.length || !info || !info.attacks || !info.attacks.length) continue;
+
+      const blueStandalone = dijkstra({
+        grid,
+        starts,
+        goals: info.attacks,
+        freeCells: new Set()
+      });
+
+      if (!blueStandalone) continue;
+
+      const blueActualTouchesRed = bluePath.some(([r, c]) => redSet.has(`${r},${c}`));
+      const blueHasCleanLocal = blueStandalone.cost < 50000;
+
+      if (blueActualTouchesRed && blueHasCleanLocal) {
+        penalty += 3.5;
+      }
+    }
+
+    return penalty;
   }
 
   function pickBestShaftRouteOption(options) {
@@ -527,6 +602,7 @@
     const bluePaths = [];
     const shaftEntryDots = [];
     const attackPoints = [];
+    const shaftAttackInfos = [];
     let blueCost = 0;
     let unresolved = 0;
     let dependencyCost = 0;
@@ -539,6 +615,7 @@
     for (let i = 0; i < shaftClustersOrdered.length; i++) {
       const cluster = shaftClustersOrdered[i];
       const info = getShaftAttackInfo(grid, cluster);
+      shaftAttackInfos.push(info);
 
       if (!info.attacks.length) {
         unresolved++;
@@ -574,7 +651,13 @@
           }
         }
 
-        const assistA = countAdjacentSharedOpens(redCandidate.path, finalA) * 0.35;
+        const baseLocalBlue = getBlueLocalRouteStrength(grid, starts, new Set(), info.attacks);
+        let assistA = countAdjacentSharedOpens(redCandidate.path, finalA) * 0.35;
+
+        if (baseLocalBlue < 50000) {
+          assistA *= 0.25;
+        }
+
         const lowerBonusA = getLowestShaftPreferenceBonus(routeA, entryA, cluster, "cumulative", isLowestShaft);
 
         routeOptions.push({
@@ -599,7 +682,14 @@
       if (routeB) {
         const entryB = info.entryMap.get(`${routeB.goal[0]},${routeB.goal[1]}`);
         const finalB = entryB ? appendEntryStep(routeB.path, entryB) : routeB.path;
-        const assistB = countAdjacentSharedOpens(redCandidate.path, finalB) * 0.35;
+
+        const baseLocalBlue = getBlueLocalRouteStrength(grid, starts, new Set(), info.attacks);
+        let assistB = countAdjacentSharedOpens(redCandidate.path, finalB) * 0.35;
+
+        if (baseLocalBlue < 50000) {
+          assistB *= 0.25;
+        }
+
         const lowerBonusB = getLowestShaftPreferenceBonus(routeB, entryB, cluster, "base", isLowestShaft);
 
         routeOptions.push({
@@ -674,6 +764,9 @@
       }
     }
 
+    const redLoopPenalty = redBacktrackPenalty(redCandidate.path);
+    const overAssistPenalty = redLoopAssistPenalty(redCandidate.path, bluePaths, shaftAttackInfos, grid, starts);
+
     return {
       bluePaths,
       shaftEntryDots,
@@ -682,7 +775,9 @@
       unresolved,
       dependencyCost,
       assistBonus,
-      lowerShaftBonus
+      lowerShaftBonus,
+      redLoopPenalty,
+      overAssistPenalty
     };
   }
 
@@ -700,6 +795,7 @@
         `red=${roundCost(cand.redCost)} blue=${roundCost(cand.blueCost)} ` +
         `dep=${roundCost(cand.dependencyCost)} assist=${roundCost(cand.assistBonus)} ` +
         `lower_bonus=${roundCost(cand.lowerShaftBonus)} ` +
+        `loop_pen=${roundCost(cand.redLoopPenalty)} over_assist=${roundCost(cand.overAssistPenalty)} ` +
         `effective=${roundCost(cand.effectiveTotal)} unresolved=${cand.unresolvedTargets}`
       );
     });
@@ -758,7 +854,9 @@
         blueEval.blueCost +
         blueEval.dependencyCost -
         blueEval.assistBonus -
-        blueEval.lowerShaftBonus;
+        blueEval.lowerShaftBonus +
+        blueEval.redLoopPenalty +
+        blueEval.overAssistPenalty;
 
       const candidate = {
         redMode: redCandidate.mode,
@@ -775,6 +873,8 @@
         dependencyCost: blueEval.dependencyCost,
         assistBonus: blueEval.assistBonus,
         lowerShaftBonus: blueEval.lowerShaftBonus,
+        redLoopPenalty: blueEval.redLoopPenalty,
+        overAssistPenalty: blueEval.overAssistPenalty,
         effectiveTotal
       };
 
@@ -828,6 +928,8 @@
       dependencyCost: roundCost(best.dependencyCost),
       assistBonus: roundCost(best.assistBonus),
       lowerShaftBonus: roundCost(best.lowerShaftBonus),
+      redLoopPenalty: roundCost(best.redLoopPenalty),
+      overAssistPenalty: roundCost(best.overAssistPenalty),
       shaftClusters: shaftClustersOrdered,
       shaftEntryDots: best.shaftEntryDots,
       attackPoints: best.attackPoints,
@@ -845,6 +947,8 @@
         `dependency_cost: ${roundCost(best.dependencyCost)}\n` +
         `assist_bonus: ${roundCost(best.assistBonus)}\n` +
         `lower_shaft_bonus: ${roundCost(best.lowerShaftBonus)}\n` +
+        `red_loop_penalty: ${roundCost(best.redLoopPenalty)}\n` +
+        `over_assist_penalty: ${roundCost(best.overAssistPenalty)}\n` +
         `bubble_count: ${bubbles.length}\n` +
         `shaft_count: ${shaftClustersOrdered.length}\n` +
         `red_candidate_count: ${redCandidates.length}\n` +
