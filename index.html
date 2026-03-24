@@ -483,47 +483,49 @@
       }
     }
 
-    function applyText(text){
-      if(!text) return;
+function applyText(text){
+  if(!text) return;
 
-      const data = parseClipboard(text);
-      const startR = lastSelected.r;
-      const startC = lastSelected.c;
+  const data = parseClipboard(text);
+  const startR = lastSelected.r;
+  const startC = lastSelected.c;
 
-      for(let ri = 0; ri < data.length; ri++){
-        for(let ci = 0; ci < data[ri].length; ci++){
-          const r = startR + ri;
-          const c = startC + ci;
-          if(!grid[r] || grid[r][c] === undefined) continue;
+  for(let ri = 0; ri < data.length; ri++){
+    for(let ci = 0; ci < data[ri].length; ci++){
+      const r = startR + ri;
+      const c = startC + ci;
+      if(!grid[r] || grid[r][c] === undefined) continue;
 
-          const raw = data[ri][ci];
-          const val = String(raw ?? "");
+      const raw = data[ri][ci];
+      const val = String(raw ?? "");
 
-          if(val === ""){
-            grid[r][c] = "";
-          } else if(!isNaN(val)){
-            grid[r][c] = Number(val);
-          } else if(val.toUpperCase() === "X"){
-            grid[r][c] = "X";
-          } else if(val.toUpperCase() === "B"){
-            grid[r][c] = "B";
-          } else if(val.toUpperCase() === "S" || val.toUpperCase() === "SHAFT"){
-            for(let dr = 0; dr < 3; dr++){
-              for(let dc = 0; dc < 2; dc++){
-                if(grid[r + dr] && grid[r + dr][c + dc] !== undefined){
-                  grid[r + dr][c + dc] = "S";
-                }
-              }
+      // CRITICAL FIX:
+      // preserve existing board content when pasted cell is blank
+      if(val === ""){
+        continue;
+      } else if(!isNaN(val)){
+        grid[r][c] = Number(val);
+      } else if(val.toUpperCase() === "X"){
+        grid[r][c] = "X";
+      } else if(val.toUpperCase() === "B"){
+        grid[r][c] = "B";
+      } else if(val.toUpperCase() === "S" || val.toUpperCase() === "SHAFT"){
+        for(let dr = 0; dr < 3; dr++){
+          for(let dc = 0; dc < 2; dc++){
+            if(grid[r + dr] && grid[r + dr][c + dc] !== undefined){
+              grid[r + dr][c + dc] = "S";
             }
           }
         }
       }
-
-      resetSolve();
-      render();
-      renderPreview();
-      setReport(`Pasted into board starting at Row ${startR + 1}, Col ${startC + 1}.`);
     }
+  }
+
+  resetSolve();
+  render();
+  renderPreview();
+  setReport(`Pasted into board starting at Row ${startR + 1}, Col ${startC + 1}.`);
+}
 
     function clearBoard(){
       for(let r = 0; r < ROWS; r++){
