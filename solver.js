@@ -157,7 +157,7 @@
           cc = p[1];
         }
         path.reverse();
-        return { path, cost: cur.cost, goal: [cur.r, cur.c] };
+        return { path, cost: cur.cost, goal: [cur.r, cur.c], len: cur.len };
       }
 
       const neighbors = [
@@ -217,9 +217,16 @@
     return [...path, entryCell];
   }
 
-  function getPathEndpoints(path) {
-    if (!path || !path.length) return [];
-    return [path[path.length - 1]];
+  function dedupeCells(cells) {
+    const seen = new Set();
+    const out = [];
+    for (const [r, c] of cells) {
+      const key = `${r},${c}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push([r, c]);
+    }
+    return out;
   }
 
   function sortShaftClustersBottomToTop(clusters) {
@@ -231,6 +238,32 @@
       const bTop = Math.min(...b.map(([r]) => r));
       return bTop - aTop;
     });
+  }
+
+  function getPathEndpoints(path) {
+    if (!path || !path.length) return [];
+    return [path[path.length - 1]];
+  }
+
+  function countAdjacentSharedOpens(redPath, bluePath) {
+    if (!redPath || !bluePath) return 0;
+    const redSet = new Set(redPath.map(([r, c]) => `${r},${c}`));
+    let score = 0;
+    for (const [r, c] of bluePath) {
+      const neighbors = [
+        [r + 1, c],
+        [r - 1, c],
+        [r, c + 1],
+        [r, c - 1],
+      ];
+      for (const [rr, cc] of neighbors) {
+        if (redSet.has(`${rr},${cc}`)) {
+          score++;
+          break;
+        }
+      }
+    }
+    return score;
   }
 
   function buildRedCandidates(grid, starts, gateGoals, bubbles) {
@@ -276,53 +309,130 @@
     });
   }
 
+  function pickBestShaftRouteOption(options) {
+    if (!options.length) return null;
+    options.sort((a, b) => {
+      if (a.totalScore !== b.totalScore) return a.totalScore - b.totalScore;
+      if (a.route.cost !== b.route.cost) return a.route.cost - b.route.cost;
+      return a.route.len - b.route.len;
+    });
+    return options[0];
+  }
+
   function evaluateOrderedBlueForRedCandidate(grid, starts, redCandidate, shaftClustersOrdered, bubbles) {
     const bluePaths = [];
     const shaftEntryDots = [];
     const attackPoints = [];
     let blueCost = 0;
     let unresolved = 0;
+    let dependencyCost = 0;
+    let assistBonus = 0;
 
     const reusable = new Set([...pathSet(redCandidate.path)]);
-    let frontierStarts = starts.concat(redCandidate.path);
+    let cumulativeStarts = dedupeCells(starts.concat(redCandidate.path));
 
-    for (const cluster of shaftClustersOrdered) {
+    for (let i = 0; i < shaftClustersOrdered.length; i++) {
+      const cluster = shaftClustersOrdered[i];
       const info = getShaftAttackInfo(grid, cluster);
+
       if (!info.attacks.length) {
         unresolved++;
         continue;
       }
 
-      const shaftRoute = dijkstra({
+      const routeOptions = [];
+
+      // Option A: use all currently available cumulative starts (may depend on red / prior blue)
+      const routeA = dijkstra({
         grid,
-        starts: frontierStarts,
+        starts: cumulativeStarts,
         goals: info.attacks,
         freeCells: reusable,
       });
 
-      if (!shaftRoute) {
+      if (routeA) {
+        const entryA = info.entryMap.get(`${routeA.goal[0]},${routeA.goal[1]}`);
+        const finalA = entryA ? appendEntryStep(routeA.path, entryA) : routeA.path;
+
+        // dependency cost:
+        // if lowest shaft is not approached from base starts and a direct base path is competitive,
+        // penalize "waiting around" for red/upper access
+        let depA = 0;
+        if (i === 0) {
+          const directBottom = dijkstra({
+            grid,
+            starts,
+            goals: info.attacks,
+            freeCells: new Set()
+          });
+          if (directBottom) {
+            const gap = routeA.cost - directBottom.cost;
+            if (gap > 0) depA += gap;
+            if (!pathTouchesAnyStart(routeA.path, starts)) depA += 0.75;
+          }
+        }
+
+        const assistA = countAdjacentSharedOpens(redCandidate.path, finalA) * 0.15;
+
+        routeOptions.push({
+          kind: "cumulative",
+          route: routeA,
+          finalPath: finalA,
+          entry: entryA,
+          dependency: depA,
+          assist: assistA,
+          totalScore: routeA.cost + depA - assistA
+        });
+      }
+
+      // Option B: fresh base-start route, no dependency on red arrival timing
+      const routeB = dijkstra({
+        grid,
+        starts,
+        goals: info.attacks,
+        freeCells: reusable,
+      });
+
+      if (routeB) {
+        const entryB = info.entryMap.get(`${routeB.goal[0]},${routeB.goal[1]}`);
+        const finalB = entryB ? appendEntryStep(routeB.path, entryB) : routeB.path;
+        const assistB = countAdjacentSharedOpens(redCandidate.path, finalB) * 0.15;
+
+        routeOptions.push({
+          kind: "base",
+          route: routeB,
+          finalPath: finalB,
+          entry: entryB,
+          dependency: 0,
+          assist: assistB,
+          totalScore: routeB.cost - assistB
+        });
+      }
+
+      const chosen = pickBestShaftRouteOption(routeOptions);
+
+      if (!chosen) {
         unresolved++;
         continue;
       }
 
-      const entry = info.entryMap.get(`${shaftRoute.goal[0]},${shaftRoute.goal[1]}`);
-      const finalPath = entry ? appendEntryStep(shaftRoute.path, entry) : shaftRoute.path;
+      bluePaths.push(chosen.finalPath);
+      attackPoints.push(chosen.route.goal);
+      if (chosen.entry) shaftEntryDots.push(chosen.entry);
 
-      bluePaths.push(finalPath);
-      attackPoints.push(shaftRoute.goal);
-      if (entry) shaftEntryDots.push(entry);
+      blueCost += chosen.route.cost;
+      dependencyCost += chosen.dependency;
+      assistBonus += chosen.assist;
 
-      blueCost += shaftRoute.cost;
-
-      for (const [r, c] of finalPath) {
+      for (const [r, c] of chosen.finalPath) {
         reusable.add(`${r},${c}`);
       }
 
-      frontierStarts = frontierStarts
-        .concat(finalPath)
-        .concat(getPathEndpoints(finalPath));
-
-      frontierStarts = dedupeCells(frontierStarts);
+      cumulativeStarts = dedupeCells(
+        cumulativeStarts
+          .concat(chosen.finalPath)
+          .concat(getPathEndpoints(chosen.finalPath))
+      );
     }
 
     const redBubbleKey = redCandidate.redBubble
@@ -335,7 +445,7 @@
 
       const bubbleRoute = dijkstra({
         grid,
-        starts: frontierStarts,
+        starts: cumulativeStarts,
         goals: [bubble],
         freeCells: reusable,
       });
@@ -348,11 +458,11 @@
           reusable.add(`${r},${c}`);
         }
 
-        frontierStarts = frontierStarts
-          .concat(bubbleRoute.path)
-          .concat(getPathEndpoints(bubbleRoute.path));
-
-        frontierStarts = dedupeCells(frontierStarts);
+        cumulativeStarts = dedupeCells(
+          cumulativeStarts
+            .concat(bubbleRoute.path)
+            .concat(getPathEndpoints(bubbleRoute.path))
+        );
       } else {
         unresolved++;
       }
@@ -363,20 +473,18 @@
       shaftEntryDots,
       attackPoints,
       blueCost,
-      unresolved
+      unresolved,
+      dependencyCost,
+      assistBonus
     };
   }
 
-  function dedupeCells(cells) {
-    const seen = new Set();
-    const out = [];
-    for (const [r, c] of cells) {
-      const key = `${r},${c}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push([r, c]);
+  function pathTouchesAnyStart(path, starts) {
+    const startSet = new Set(starts.map(([r, c]) => `${r},${c}`));
+    for (const [r, c] of path || []) {
+      if (startSet.has(`${r},${c}`)) return true;
     }
-    return out;
+    return false;
   }
 
   function solveGrid({ grid, gateType = "standard" }) {
@@ -425,7 +533,11 @@
         bubbles
       );
 
-      const totalCost = redCandidate.redCost + blueEval.blueCost;
+      const effectiveTotal =
+        redCandidate.redCost +
+        blueEval.blueCost +
+        blueEval.dependencyCost -
+        blueEval.assistBonus;
 
       const candidate = {
         redMode: redCandidate.mode,
@@ -438,7 +550,9 @@
         shaftEntryDots: blueEval.shaftEntryDots,
         attackPoints: blueEval.attackPoints,
         unresolvedTargets: blueEval.unresolved,
-        totalCost
+        dependencyCost: blueEval.dependencyCost,
+        assistBonus: blueEval.assistBonus,
+        effectiveTotal
       };
 
       if (!best) {
@@ -453,7 +567,7 @@
 
       if (
         candidate.unresolvedTargets === best.unresolvedTargets &&
-        candidate.totalCost < best.totalCost
+        candidate.effectiveTotal < best.effectiveTotal
       ) {
         best = candidate;
         continue;
@@ -461,7 +575,7 @@
 
       if (
         candidate.unresolvedTargets === best.unresolvedTargets &&
-        candidate.totalCost === best.totalCost &&
+        candidate.effectiveTotal === best.effectiveTotal &&
         candidate.redCost < best.redCost
       ) {
         best = candidate;
@@ -480,7 +594,10 @@
       redCost: roundCost(best.redCost),
       bluePaths: best.bluePaths,
       blueCost: roundCost(best.blueCost),
-      totalCost: roundCost(best.totalCost),
+      totalCost: roundCost(best.redCost + best.blueCost),
+      effectiveTotal: roundCost(best.effectiveTotal),
+      dependencyCost: roundCost(best.dependencyCost),
+      assistBonus: roundCost(best.assistBonus),
       shaftClusters: shaftClustersOrdered,
       shaftEntryDots: best.shaftEntryDots,
       attackPoints: best.attackPoints,
@@ -491,10 +608,12 @@
         `red_mode: ${best.redMode}\n` +
         `red_cost: ${roundCost(best.redCost)}\n` +
         `blue_cost: ${roundCost(best.blueCost)}\n` +
+        `dependency_cost: ${roundCost(best.dependencyCost)}\n` +
+        `assist_bonus: ${roundCost(best.assistBonus)}\n` +
         `bubble_count: ${bubbles.length}\n` +
         `shaft_count: ${shaftClustersOrdered.length}\n` +
         `unresolved_targets: ${best.unresolvedTargets}\n` +
-        `total_cost: ${roundCost(best.totalCost)}`
+        `effective_total: ${roundCost(best.effectiveTotal)}`
     };
   }
 
