@@ -176,10 +176,9 @@
 
     .grid-wrap{
       overflow:auto;
-      padding-bottom:4px;
+      padding:4px 0;
     }
 
-    /* This is the critical part that keeps the grid visible */
     #grid{
       display:grid;
       grid-template-columns:repeat(7, minmax(0, 1fr));
@@ -375,16 +374,14 @@
     function init(){
       const g = document.getElementById("grid");
       g.innerHTML = "";
-      grid = [];
+      grid = Array.from({ length: ROWS }, () => Array(COLS).fill(""));
 
       for(let r = 0; r < ROWS; r++){
-        grid[r] = [];
         for(let c = 0; c < COLS; c++){
-          grid[r][c] = "";
           const d = document.createElement("div");
           d.className = "cell";
-          d.dataset.r = String(r);
-          d.dataset.c = String(c);
+          d.dataset.r = r;
+          d.dataset.c = c;
           d.onclick = () => clickCell(r, c);
           g.appendChild(d);
         }
@@ -412,13 +409,9 @@
 
       if(tool === "block"){
         grid[r][c] = grid[r][c] === "X" ? "" : "X";
-      }
-
-      if(tool === "bubble"){
+      } else if(tool === "bubble"){
         grid[r][c] = grid[r][c] === "B" ? "" : "B";
-      }
-
-      if(tool === "shaft"){
+      } else if(tool === "shaft"){
         const removing = grid[r][c] === "S";
         for(let dr = 0; dr < 3; dr++){
           for(let dc = 0; dc < 2; dc++){
@@ -447,7 +440,6 @@
       input.className = "cell-editor";
       input.value = typeof grid[r][c] === "number" ? String(grid[r][c]) : "";
       target.appendChild(input);
-
       input.focus();
       input.select();
 
@@ -576,17 +568,14 @@
 
     function cellWeight(r, c){
       const v = grid[r][c];
-      if (typeof v === "number") return numberCost(v);
-      return 0;
+      return typeof v === "number" ? numberCost(v) : 0;
     }
 
     function getLowestUsedRow(){
       let max = -1;
       for(let r = 0; r < ROWS; r++){
         for(let c = 0; c < COLS; c++){
-          if(grid[r][c] !== ""){
-            max = Math.max(max, r);
-          }
+          if(grid[r][c] !== "") max = Math.max(max, r);
         }
       }
       return max;
@@ -687,13 +676,11 @@
       while(open.length){
         open.sort((a,b) => a.cost !== b.cost ? a.cost - b.cost : a.len - b.len);
         const cur = open.shift();
-
         if(cur.cost !== dist[cur.r][cur.c] || cur.len !== steps[cur.r][cur.c]) continue;
 
         if(goalSet.has(`${cur.r},${cur.c}`)){
           const path = [];
-          let rr = cur.r;
-          let cc = cur.c;
+          let rr = cur.r, cc = cur.c;
           while(rr !== null && cc !== null){
             path.push([rr,cc]);
             const p = prev[rr][cc];
@@ -702,64 +689,4 @@
             cc = p[1];
           }
           path.reverse();
-          return { path, cost: cur.cost, goal:[cur.r,cur.c] };
-        }
-
-        const neigh = [[cur.r+1,cur.c],[cur.r-1,cur.c],[cur.r,cur.c+1],[cur.r,cur.c-1]];
-        for(const [nr,nc] of neigh){
-          if(!isWalkable(nr,nc)) continue;
-          const add = freeCells.has(`${nr},${nc}`) ? 0 : cellWeight(nr,nc);
-          const newCost = cur.cost + add;
-          const newLen = cur.len + 1;
-
-          if(newCost < dist[nr][nc] || (newCost === dist[nr][nc] && newLen < steps[nr][nc])){
-            dist[nr][nc] = newCost;
-            steps[nr][nc] = newLen;
-            prev[nr][nc] = [cur.r,cur.c];
-            open.push({r:nr,c:nc,cost:newCost,len:newLen});
-          }
-        }
-      }
-
-      return null;
-    }
-
-    function pathSet(path){
-      const set = new Set();
-      for(const [r,c] of path) set.add(`${r},${c}`);
-      return set;
-    }
-
-    function mergePaths(a, b){
-      if(!a || !a.length) return b ? [...b] : [];
-      if(!b || !b.length) return [...a];
-      return [...a, ...b.slice(1)];
-    }
-
-    function uniquePath(path){
-      const out = [];
-      for(const [r,c] of path){
-        if(!out.length || out[out.length-1][0] !== r || out[out.length-1][1] !== c){
-          out.push([r,c]);
-        }
-      }
-      return out;
-    }
-
-    function solveBoard(){
-      const starts = getStartCells();
-      if(!starts.length){
-        setReport("No valid start cells one row below the lowest used row.");
-        return;
-      }
-
-      const gateGoals = getGateGoals();
-      if(!gateGoals.length){
-        setReport("No valid gate attack cells.");
-        return;
-      }
-
-      const bubbles = getBubbles();
-      const shaftClusters = getShaftClusters();
-
-      let bes
+          return { path, cost: cur.cost, goal:[cur.r,cur.c
