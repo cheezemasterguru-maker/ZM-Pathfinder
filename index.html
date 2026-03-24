@@ -320,6 +320,28 @@
       box-shadow:0 20px 50px rgba(0,0,0,.45);
     }
 
+    .modal-box{
+      position:relative;
+    }
+
+    .modal-close{
+      position:absolute;
+      top:10px;
+      right:10px;
+      width:36px;
+      height:36px;
+      border:none;
+      border-radius:999px;
+      background:#2a3560;
+      color:#fff;
+      font-size:22px;
+      font-weight:800;
+      line-height:1;
+      cursor:pointer;
+      min-height:36px;
+      padding:0;
+    }
+
     .modal h2{
       margin:0 0 8px;
       font-size:24px;
@@ -501,7 +523,7 @@
   </div>
 
   <div id="loginOverlay" class="overlay show">
-    <div class="modal">
+    <div class="modal modal-box" onclick="event.stopPropagation()">
       <h2>Beta Tester Login</h2>
       <p>Enter your beta tester ID to unlock the solver.</p>
 
@@ -522,8 +544,10 @@
     </div>
   </div>
 
-  <div id="addTesterOverlay" class="overlay">
-    <div class="modal">
+  <div id="addTesterOverlay" class="overlay" onclick="closeAddTesterModal()">
+    <div class="modal modal-box" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeAddTesterModal()" aria-label="Close">×</button>
+
       <h2>Add Beta Tester</h2>
       <p>Only the hard-coded admin account can add testers.</p>
 
@@ -550,7 +574,6 @@
       </div>
 
       <div id="addTesterStatus" class="status-text"></div>
-
       <div class="tester-list" id="testerList"></div>
     </div>
   </div>
@@ -577,6 +600,10 @@
       message: "No solve yet."
     };
 
+    function normalizeId(value){
+      return String(value || "").trim();
+    }
+
     function setReport(msg){
       document.getElementById("report").textContent = msg;
     }
@@ -600,7 +627,7 @@
         testers = [];
       }
 
-      const hasAdmin = testers.some(t => String(t.id) === ADMIN_ID);
+      const hasAdmin = testers.some(t => normalizeId(t.id) === normalizeId(ADMIN_ID));
       if(!hasAdmin){
         testers.unshift({
           name: ADMIN_NAME,
@@ -635,7 +662,8 @@
 
     function findTesterById(id){
       const testers = getStoredTesters();
-      return testers.find(t => String(t.id) === String(id)) || null;
+      const wanted = normalizeId(id);
+      return testers.find(t => normalizeId(t.id) === wanted) || null;
     }
 
     function updateUserUI(){
@@ -686,7 +714,7 @@
     }
 
     function loginTester(){
-      const id = document.getElementById("loginTesterId").value.trim();
+      const id = normalizeId(document.getElementById("loginTesterId").value);
       if(!id){
         setLoginStatus("Enter a tester ID.");
         return;
@@ -728,6 +756,7 @@
 
     function closeAddTesterModal(){
       document.getElementById("addTesterOverlay").classList.remove("show");
+      setAddTesterStatus("");
     }
 
     function renderTesterList(){
@@ -768,18 +797,18 @@
 
     function removeBetaTester(id){
       if(!currentTester || !currentTester.isAdmin) return;
-      const testers = getStoredTesters().filter(t => String(t.id) !== String(id));
+      const testers = getStoredTesters().filter(t => normalizeId(t.id) !== normalizeId(id));
       saveStoredTesters(testers);
       renderTesterList();
       setAddTesterStatus("Tester removed.", true);
     }
 
     function addBetaTester(){
-      const adminId = document.getElementById("adminIdInput").value.trim();
-      const name = document.getElementById("newTesterName").value.trim();
-      const id = document.getElementById("newTesterId").value.trim();
+      const adminId = normalizeId(document.getElementById("adminIdInput").value);
+      const name = String(document.getElementById("newTesterName").value || "").trim();
+      const id = normalizeId(document.getElementById("newTesterId").value);
 
-      if(adminId !== ADMIN_ID){
+      if(adminId !== normalizeId(ADMIN_ID)){
         setAddTesterStatus("Invalid admin ID.");
         return;
       }
@@ -790,7 +819,7 @@
       }
 
       const testers = getStoredTesters();
-      const exists = testers.some(t => String(t.id) === String(id));
+      const exists = testers.some(t => normalizeId(t.id) === id);
 
       if(exists){
         setAddTesterStatus("Tester ID already exists.");
