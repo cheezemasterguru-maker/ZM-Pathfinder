@@ -8,7 +8,6 @@
     :root{
       --bg:#0b1020;
       --panel:#171b2e;
-      --panel2:#1f2540;
       --line:#313857;
       --text:#eef2ff;
       --muted:#b8c2e3;
@@ -16,7 +15,7 @@
       --action:#2a3560;
       --bubble:#8fd3f7;
       --shaft:#98f44d;
-      --empty:#d7d9df;
+      --empty:#ececef;
       --select:#f59e0b;
     }
 
@@ -50,20 +49,10 @@
       margin-bottom:12px;
     }
 
-    .logo-shell{
-      width:min(100%, 360px);
-      background:#0b1020;
-      border:1px solid #2a3356;
-      border-radius:24px;
-      padding:14px;
-      display:grid;
-      place-items:center;
-    }
-
     .logo{
       display:block;
       width:100%;
-      max-width:290px;
+      max-width:340px;
       height:auto;
       object-fit:contain;
     }
@@ -94,14 +83,13 @@
     }
 
     .field input,
-    .field select,
-    .paste-box{
+    .field select{
       width:100%;
       border:none;
       outline:none;
       border-radius:14px;
       padding:12px 14px;
-      background:var(--panel2);
+      background:#1f2540;
       color:var(--text);
       font-size:15px;
       border:1px solid #36406a;
@@ -124,16 +112,6 @@
       line-height:1.4;
       text-align:left;
       margin-bottom:10px;
-    }
-
-    .kbd{
-      display:inline-block;
-      padding:2px 8px;
-      border-radius:10px;
-      border:1px solid #6170a8;
-      background:#151c34;
-      color:#f3f6ff;
-      font-size:13px;
     }
 
     .btn-grid{
@@ -162,9 +140,7 @@
       transition:transform .05s ease;
     }
 
-    button:active{
-      transform:scale(.99);
-    }
+    button:active{ transform:scale(.99); }
 
     .btn-white{background:#fff;color:#111;}
     .btn-black{background:#000;color:#fff;border:1px solid #444b66;}
@@ -216,12 +192,13 @@
       max-width:620px;
       margin:0 auto;
       background:#0b1020;
+      min-height:980px;
     }
 
     .cell{
       min-height:48px;
       aspect-ratio:1/1;
-      background:#ececef;
+      background:var(--empty);
       color:#111;
       display:flex;
       align-items:center;
@@ -255,62 +232,27 @@
     }
 
     @media (max-width:700px){
-      .page{
-        padding:12px 8px 20px;
-      }
-
-      .controls-grid{
-        grid-template-columns:1fr 1fr;
-        gap:10px;
-      }
-
-      h1{
-        font-size:34px;
-      }
-
-      .logo-shell{
-        width:min(100%, 330px);
-        padding:12px;
-      }
-
-      .logo{
-        max-width:270px;
-      }
-
-      .field label{
-        font-size:14px;
-      }
-
-      .field input,
-      .field select,
-      .paste-box{
-        font-size:14px;
-        padding:10px 12px;
-      }
-
-      .section-title{
-        font-size:20px;
-      }
-
-      .help{
-        font-size:13px;
-      }
-
-      .btn-grid,
-      .tool-grid{
-        gap:8px;
-      }
-
+      .page{ padding:12px 8px 20px; }
+      .controls-grid{ grid-template-columns:1fr 1fr; gap:10px; }
+      h1{ font-size:34px; }
+      .logo{ max-width:300px; }
+      .field label{ font-size:14px; }
+      .field input,.field select{ font-size:14px; padding:10px 12px; }
+      .section-title{ font-size:20px; }
+      .help{ font-size:13px; }
+      .btn-grid,.tool-grid{ gap:8px; }
       button{
         min-height:52px;
         font-size:14px;
         border-radius:14px;
         padding:9px 6px;
       }
-
       .cell{
         min-height:46px;
         font-size:15px;
+      }
+      .grid{
+        min-height:940px;
       }
     }
   </style>
@@ -319,9 +261,7 @@
   <div class="page">
     <div class="card">
       <div class="hero">
-        <div class="logo-shell">
-          <img src="file_00000000e35071fda5e92d9996ac3621.png" class="logo" alt="ZM Pathfinder Logo">
-        </div>
+        <img src="file_00000000e35071fda5e92d9996ac3621.png" class="logo" alt="ZM Pathfinder Logo">
         <h1>ZM Pathfinder</h1>
       </div>
 
@@ -343,8 +283,8 @@
           <input id="selectedCellDisplay" type="text" value="Row 1, Col 1" readonly>
         </div>
         <div class="field">
-          <label for="pasteBox">Paste Numbers Into Selected Cell</label>
-          <textarea id="pasteBox" class="paste-box" rows="3" placeholder="Paste copied number cells here..."></textarea>
+          <label for="selectedModeDisplay">Input mode</label>
+          <input id="selectedModeDisplay" type="text" value="Tap a cell, then use Paste From Clipboard" readonly>
         </div>
       </div>
 
@@ -352,22 +292,22 @@
       <div class="help">
         1. Tap a cell in the board.<br>
         2. Copy a number range from Sheets / Excel.<br>
-        3. Tap <span class="kbd">Paste From Clipboard</span> or use <span class="kbd">Paste Into Board</span> from the box.<br>
+        3. Tap <b>Paste From Clipboard</b> to place it starting from the selected cell.<br>
         4. Use the visual tools for Block, Bubble, Shaft, and Empty.
       </div>
 
       <div class="btn-grid">
         <button class="btn-action" onclick="clearBoard()">Clear Board</button>
-        <button class="btn-solve" onclick="setReport('Solver not wired into this merged layout yet.')">Solve</button>
+        <button class="btn-solve" onclick="setReport('Solver not wired into this layout yet.')">Solve</button>
         <button class="btn-action" onclick="downloadPlaceholder()">Download PNG</button>
 
-        <button class="btn-action" onclick="loadSampleGate1()">Sample Gate 1</button>
+        <button class="btn-action" onclick="loadSampleGrid()">Sample Grid</button>
         <button class="btn-action" onclick="blankBoard()">Blank Board</button>
         <button class="btn-action" onclick="copyGridText()">Copy Grid Text</button>
 
-        <button class="btn-solve" onclick="applyPasteBox()">Paste Into Board</button>
-        <button class="btn-action" onclick="clearPasteBox()">Clear Paste</button>
         <button class="btn-action" onclick="pasteFromClipboard()">Paste From Clipboard</button>
+        <button class="btn-action" onclick="clearSelection()">Clear Selection</button>
+        <button class="btn-action" onclick="setReport('Tap a cell, then paste from clipboard.')">Paste Help</button>
       </div>
 
       <div class="section-title">Visual placement tools</div>
@@ -379,7 +319,7 @@
         <button id="tool-empty" class="btn-empty" onclick="setTool('empty')">Empty</button>
       </div>
 
-      <div id="report" class="report">Layout restored. Grid paste is wired in. Solver not wired into this merged layout yet.</div>
+      <div id="report" class="report">Professional layout restored. Paste is wired in. Sample Grid is available. Solver not wired into this layout yet.</div>
     </div>
 
     <div class="card editor-card">
@@ -449,6 +389,13 @@
       document.getElementById(`tool-${nextTool}`).classList.add("tool-active");
     }
 
+    function clearSelection(){
+      lastSelected = { r: 0, c: 0 };
+      updateSelectedDisplay();
+      render();
+      setReport("Selection reset to Row 1, Col 1.");
+    }
+
     function clickCell(r, c){
       lastSelected = { r, c };
       updateSelectedDisplay();
@@ -501,15 +448,6 @@
       } catch(e){
         alert("Clipboard blocked. Copy again, tap the starting cell, then tap Paste From Clipboard.");
       }
-    }
-
-    function applyPasteBox(){
-      applyText(document.getElementById("pasteBox").value);
-    }
-
-    function clearPasteBox(){
-      document.getElementById("pasteBox").value = "";
-      setReport("Paste box cleared.");
     }
 
     function applyText(text){
@@ -580,7 +518,7 @@
       setReport("Blank board loaded.");
     }
 
-    function loadSampleGate1(){
+    function loadSampleGrid(){
       clearBoard();
       document.getElementById("gateType").value = "standard";
       document.getElementById("titleInput").value = "Gate 1";
@@ -606,15 +544,18 @@
       }
 
       render();
-      setReport("Sample Gate 1 loaded.");
+      setReport("Sample Grid loaded.");
     }
 
     function downloadPlaceholder(){
-      setReport("PNG download is not wired into this merged layout yet.");
+      setReport("PNG download is not wired into this layout yet.");
     }
 
     function render(){
-      document.querySelectorAll(".cell").forEach(cell => {
+      const cells = document.querySelectorAll(".cell");
+      if (!cells.length) return;
+
+      cells.forEach(cell => {
         const r = Number(cell.dataset.r);
         const c = Number(cell.dataset.c);
         const val = grid[r][c];
@@ -636,3 +577,11 @@
           cell.textContent = "S";
         } else if(val !== ""){
           cell.textContent = String(val);
+        }
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
