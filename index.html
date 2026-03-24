@@ -5,274 +5,213 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ZM Pathfinder</title>
   <style>
-    :root {
-      --bg: #0f1220;
-      --panel: #171b2e;
-      --panel-2: #1f2540;
-      --text: #f2f5ff;
-      --muted: #aeb8d4;
-      --line: #313857;
-      --red: #ef4444;
-      --blue: #2563eb;
-      --cyan: #7fe7ff;
-      --neon: #63ff3a;
-      --select: #f59e0b;
-      --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      --ui-cell: 46px;
+    :root{
+      --bg:#0f1220;
+      --panel:#171b2e;
+      --panel2:#1f2540;
+      --text:#f2f5ff;
+      --muted:#aeb8d4;
+      --line:#313857;
+      --red:#ef4444;
+      --blue:#2563eb;
+      --cyan:#7fe7ff;
+      --neon:#7df14a;
+      --select:#f59e0b;
+      --uiCell:46px;
+      --font:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
     }
 
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:var(--font);
+      background:var(--bg);
+      color:var(--text);
     }
 
-    .app {
-      max-width: 1650px;
-      margin: 0 auto;
-      padding: 18px;
-      display: grid;
-      grid-template-columns: 440px 1fr;
-      gap: 18px;
+    .app{
+      max-width:1680px;
+      margin:0 auto;
+      padding:18px;
+      display:grid;
+      grid-template-columns:430px 1fr;
+      gap:18px;
     }
 
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 8px 24px rgba(0,0,0,.24);
+    .card{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:16px;
+      box-shadow:0 8px 24px rgba(0,0,0,.24);
     }
 
-    h1, h2 {
-      margin: 0 0 12px;
+    h1,h2{margin:0 0 12px}
+    h1{font-size:34px;text-align:center}
+    h2{font-size:18px}
+
+    .controls{display:grid;gap:12px}
+    .row{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+    .row3{display:grid;gap:10px;grid-template-columns:1fr 1fr 1fr}
+
+    input,select,textarea,button{
+      width:100%;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:var(--panel2);
+      color:var(--text);
+      padding:10px 12px;
+      font:inherit;
     }
 
-    h1 {
-      font-size: 34px;
-      text-align: center;
+    textarea{
+      min-height:110px;
+      resize:vertical;
+      line-height:1.35;
+      white-space:pre;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     }
 
-    h2 {
-      font-size: 18px;
+    button{cursor:pointer;font-weight:700}
+    button.primary{background:#2448d8;border-color:#3358e8}
+    button.secondary{background:#26304f}
+
+    .hint,.status,.small{color:var(--muted);line-height:1.45}
+    .small{font-size:12px}
+    .status{min-height:22px;white-space:pre-wrap}
+
+    .hero{
+      display:grid;
+      justify-items:center;
+      gap:10px;
+      margin-bottom:4px;
     }
 
-    .controls {
-      display: grid;
-      gap: 12px;
+    .hero-logo{
+      width:100%;
+      max-width:390px;
+      display:block;
+      object-fit:contain;
     }
 
-    .row {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: 1fr 1fr;
+    .tool-grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
     }
 
-    .row3 {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: 1fr 1fr 1fr;
+    .tool{
+      min-height:56px;
+      border-radius:14px;
+      border:2px solid var(--line);
+      display:grid;
+      place-items:center;
+      font-weight:800;
+      text-align:center;
+      padding:6px;
+      user-select:none;
     }
 
-    input, select, button {
-      width: 100%;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: var(--panel-2);
-      color: var(--text);
-      padding: 10px 12px;
-      font: inherit;
+    .tool.active{
+      border-color:#8ab4ff;
+      box-shadow:0 0 0 2px rgba(138,180,255,.15) inset;
     }
 
-    button {
-      cursor: pointer;
-      font-weight: 700;
+    .tool.number{background:#fff;color:#111}
+    .tool.block{background:#000;color:#fff}
+    .tool.bubble{background:var(--cyan);color:#111}
+    .tool.shaft{background:var(--neon);color:#111}
+    .tool.empty{background:#d8dee9;color:#111}
+
+    .workspace{display:grid;gap:18px}
+
+    .grid-wrap,
+    .preview-wrap{
+      overflow:auto;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:#0c1020;
+      padding:14px;
     }
 
-    button.primary {
-      background: #2448d8;
-      border-color: #3358e8;
+    .grid-board{
+      display:grid;
+      grid-template-columns:repeat(7,46px);
+      grid-auto-rows:46px;
+      gap:2px;
+      background:#9aa4b2;
+      width:fit-content;
+      min-width:fit-content;
+      margin:0 auto;
+      border-radius:8px;
+      padding:2px;
     }
 
-    button.secondary {
-      background: #26304f;
+    .cell{
+      width:46px;
+      height:46px;
+      display:grid;
+      place-items:center;
+      font-weight:800;
+      font-size:16px;
+      border:none;
+      padding:0;
+      margin:0;
+      position:relative;
+      overflow:hidden;
+      text-align:center;
+      touch-action:manipulation;
     }
 
-    .hint, .status, .small {
-      color: var(--muted);
-      line-height: 1.45;
+    .cell.empty{background:#f3f4f6;color:#111}
+    .cell.number{background:#fff;color:#111}
+    .cell.block{background:#000;color:#fff}
+    .cell.bubble{background:var(--cyan);color:#111}
+    .cell.shaft{background:var(--neon);color:#111}
+    .cell.selected::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border:3px solid var(--select);
+      pointer-events:none;
     }
 
-    .small { font-size: 12px; }
-    .status { min-height: 22px; white-space: pre-wrap; }
-
-    .hero {
-      display: grid;
-      justify-items: center;
-      gap: 10px;
-      margin-bottom: 4px;
+    canvas{
+      display:block;
+      background:white;
+      border-radius:10px;
+      margin:0 auto;
+      max-width:100%;
+      height:auto;
     }
 
-    .hero-logo {
-      width: 100%;
-      max-width: 380px;
-      display: block;
-      object-fit: contain;
+    .kbd{
+      display:inline-block;
+      padding:1px 6px;
+      border:1px solid #667;
+      border-radius:8px;
+      background:#11162a;
+      font-size:12px;
+      color:#dbe6ff;
     }
 
-    .tool-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-    }
-
-    .tool {
-      min-height: 56px;
-      border-radius: 14px;
-      border: 2px solid var(--line);
-      display: grid;
-      place-items: center;
-      font-weight: 800;
-      text-align: center;
-      padding: 6px;
-      user-select: none;
-    }
-
-    .tool.active {
-      border-color: #8ab4ff;
-      box-shadow: 0 0 0 2px rgba(138,180,255,.15) inset;
-    }
-
-    .tool.number { background: #fff; color: #111; }
-    .tool.block { background: #000; color: #fff; }
-    .tool.bubble { background: var(--cyan); color: #111; }
-    .tool.shaft { background: var(--neon); color: #111; }
-    .tool.empty { background: #d8dee9; color: #111; }
-
-    .workspace {
-      display: grid;
-      gap: 18px;
-    }
-
-    .grid-wrap {
-      overflow: auto;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: #0c1020;
-      padding: 14px;
-      min-height: 420px;
-    }
-
-    .grid-board {
-      display: grid;
-      grid-template-columns: repeat(7, 46px);
-      grid-auto-rows: 46px;
-      gap: 2px;
-      background: #9aa4b2;
-      width: fit-content;
-      min-width: fit-content;
-      margin: 0 auto;
-      border-radius: 8px;
-      padding: 2px;
-    }
-
-    #gridBoard {
-      min-height: calc((46px * 20) + (2px * 19) + 4px);
-    }
-
-    .cell {
-      width: 46px;
-      height: 46px;
-      display: grid;
-      place-items: center;
-      font-weight: 800;
-      font-size: 16px;
-      border: none;
-      padding: 0;
-      margin: 0;
-      border-radius: 0;
-      position: relative;
-      overflow: hidden;
-      text-align: center;
-      touch-action: manipulation;
-    }
-
-    .cell.empty { background: #f3f4f6; color: #111; }
-    .cell.number { background: #fff; color: #111; }
-    .cell.block { background: #000; color: #fff; }
-    .cell.bubble { background: var(--cyan); color: #111; }
-    .cell.shaft { background: var(--neon); color: #111; }
-
-    .cell.selected::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border: 3px solid var(--select);
-      pointer-events: none;
-    }
-
-    .preview-wrap {
-      overflow: auto;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: #0c1020;
-      padding: 14px;
-      min-height: 420px;
-    }
-
-    canvas {
-      display: block;
-      background: white;
-      border-radius: 10px;
-      margin: 0 auto;
-      max-width: 100%;
-      height: auto;
-    }
-
-    .kbd {
-      display: inline-block;
-      padding: 1px 6px;
-      border: 1px solid #667;
-      border-radius: 8px;
-      background: #11162a;
-      font-size: 12px;
-      color: #dbe6ff;
-    }
-
-    #pasteBridge {
-      position: fixed;
-      left: -9999px;
-      top: -9999px;
-      opacity: 0;
-      pointer-events: none;
-      width: 1px;
-      height: 1px;
-    }
-
-    @media (max-width: 1100px) {
-      .app {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width:1100px){
+      .app{grid-template-columns:1fr}
     }
   </style>
 </head>
 <body>
-  <textarea id="pasteBridge" aria-hidden="true"></textarea>
-
   <div class="app">
     <div class="card controls">
       <div class="hero">
-        <img class="hero-logo" src="file_00000000e35071fda5e92d9996ac3621.png" alt="ZM Pathfinder Logo" />
+        <img class="hero-logo" src="file_00000000e35071fda5e92d9996ac3621.png" alt="ZM Pathfinder Logo">
         <h1>ZM Pathfinder</h1>
       </div>
 
       <div class="row">
         <label>
           Title
-          <input id="titleInput" value="Gate 1" />
+          <input id="titleInput" value="Gate 1">
         </label>
         <label>
           Gate type
@@ -286,36 +225,35 @@
       <div class="row">
         <label>
           Number tool value
-          <input id="numberValueInput" type="number" min="1" value="1" />
+          <input id="numberValueInput" type="number" min="1" value="1">
         </label>
         <label>
           Selected cell
-          <input id="selectedCellDisplay" value="Row 1, Col 1" readonly />
+          <input id="selectedCellDisplay" value="Row 1, Col 1" readonly>
         </label>
       </div>
 
       <div>
         <h2>How input works</h2>
         <div class="hint">
-          Tap a grid cell first. Then tap <span class="kbd">Paste Into Grid</span> and use your phone’s paste command. Numbers paste directly into the grid starting from the selected cell. Use the visual tools for Block, Bubble, Shaft, and Empty.
+          Tap a grid cell first. Paste copied number ranges into the visible paste box on the right, then tap <span class="kbd">Apply Paste</span>. Use the visual tools for Block, Bubble, Shaft, and Empty. Tap the same special tile again to remove it.
         </div>
       </div>
 
       <div class="row3">
-        <button id="pasteModeBtn" class="primary">Paste Into Grid</button>
         <button id="clearBtn" class="secondary">Clear Board</button>
+        <button id="solveBtn" class="primary">Solve</button>
         <button id="downloadBtn" class="secondary">Download PNG</button>
       </div>
 
       <div class="row3">
-        <button id="solveBtn" class="primary">Solve</button>
         <button id="sampleGate1Btn" class="secondary">Sample Gate 1</button>
         <button id="copyBoardBtn" class="secondary">Copy Grid Text</button>
+        <button id="clearPathsBtn" class="secondary">Clear Paths</button>
       </div>
 
       <div>
         <h2>Visual placement tools</h2>
-        <div class="hint">Tap the same special tile again to remove it.</div>
         <div class="tool-grid">
           <button class="tool number active" data-tool="number">Number</button>
           <button class="tool block" data-tool="block">Block</button>
@@ -330,13 +268,11 @@
         <div class="hint">
           • Board is always 7 columns × 20 rows.<br>
           • Paths start one blank row below the lowest used map cell.<br>
-          • Red = gate priority only.<br>
-          • Blue = shaft priority and reuses red only when it lowers weighted cost.<br>
-          • Bubbles are mandatory overall and may be assigned to red or blue based on lowest total weighted cost.<br>
           • Movement is orthogonal only.<br>
-          • Shafts are touch-only and rendered as merged 2×3 blocks.<br>
-          • Empty cells are free traversal. Black cells are blocked.<br>
-          • Normal gates and graveyards use 5 attack points. End gates use 3.
+          • Normal gates / graveyards use 5 attack points. End gates use 3.<br>
+          • Blue may reuse red path at zero added weighted cost.<br>
+          • Empty cells are free. Black cells are blocked. Shafts are touch-only 2×3 regions.<br>
+          • Bubble ownership is chosen by cheaper total weighted route, but this version is still a heuristic and may still need tuning on edge cases.
         </div>
       </div>
 
@@ -346,9 +282,19 @@
     <div class="workspace">
       <div class="card">
         <h2>Editable Board</h2>
-        <div class="small">Tap a cell to select it. Then paste numbers directly into the board or use the visual tools.</div>
+        <div class="small">Tap a cell to select it. Use the grid tools or the paste box directly below.</div>
         <div class="grid-wrap">
           <div id="gridBoard" class="grid-board" aria-label="Editable 7 by 20 board"></div>
+        </div>
+
+        <div style="margin-top:14px">
+          <div class="small" style="margin-bottom:8px">Paste values starting from the selected cell:</div>
+          <textarea id="pasteArea" placeholder="Paste copied number cells here..."></textarea>
+          <div class="row3" style="margin-top:10px">
+            <button id="applyPasteBtn" class="primary">Apply Paste</button>
+            <button id="clearPasteBtn" class="secondary">Clear Paste Box</button>
+            <button id="focusPasteBtn" class="secondary">Focus Paste Box</button>
+          </div>
         </div>
       </div>
 
@@ -395,7 +341,7 @@
     const gridBoard = document.getElementById("gridBoard");
     const canvas = document.getElementById("boardCanvas");
     const ctx = canvas.getContext("2d");
-    const pasteBridge = document.getElementById("pasteBridge");
+    const pasteArea = document.getElementById("pasteArea");
 
     let activeTool = TOOL.NUMBER;
     let selectedRow = 0;
@@ -528,9 +474,9 @@
     function toggleSpecialTile(r, c, type) {
       if (model.grid[r][c].type === type) {
         model.grid[r][c] = { type: TYPE.EMPTY };
-        return;
+      } else {
+        model.grid[r][c] = { type };
       }
-      model.grid[r][c] = { type };
     }
 
     function shaftAreaMatches(r, c) {
@@ -595,6 +541,11 @@
     }
 
     function pasteIntoBoard(text) {
+      if (!text.trim()) {
+        setStatus("Paste box is empty.");
+        return;
+      }
+
       const rows = parsePastedNumbers(text);
       let placed = 0;
 
@@ -621,33 +572,6 @@
       renderPreview();
       setStatus(`Pasted values starting at Row ${selectedRow + 1}, Col ${selectedCol + 1}. Updated ${placed} cells.`);
     }
-
-    function focusPasteBridge() {
-      pasteBridge.value = "";
-      pasteBridge.focus();
-      pasteBridge.select();
-      setStatus(`Ready to paste into Row ${selectedRow + 1}, Col ${selectedCol + 1}. Use your phone's paste command now.`);
-    }
-
-    document.getElementById("pasteModeBtn").addEventListener("click", focusPasteBridge);
-
-    pasteBridge.addEventListener("paste", (evt) => {
-      const text = evt.clipboardData?.getData("text/plain");
-      if (!text) return;
-      evt.preventDefault();
-      pasteIntoBoard(text);
-      pasteBridge.blur();
-    });
-
-    document.addEventListener("paste", (evt) => {
-      if (document.activeElement === pasteBridge) return;
-      const active = document.activeElement;
-      if (active && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)) return;
-      const text = evt.clipboardData?.getData("text/plain");
-      if (!text) return;
-      evt.preventDefault();
-      pasteIntoBoard(text);
-    });
 
     function usedRowsInfo() {
       let minRow = ROWS;
@@ -780,6 +704,7 @@
           const nextLen = cur.len + 1;
           const oldCost = dist.get(nk);
           const oldLen = steps.get(nk);
+
           const better =
             oldCost === undefined ||
             nextCost < oldCost ||
@@ -822,10 +747,6 @@
     function assignBubbleHandling(grid, starts, gateGoals, bubbles) {
       const directRed = dijkstra(grid, starts, gateGoals);
       if (!directRed) throw new Error("No valid red path.");
-
-      if (!bubbles.length) {
-        return { redPath: uniquePath(directRed), redHandled: new Set() };
-      }
 
       let best = {
         cost: pathCost(grid, directRed),
@@ -1088,6 +1009,13 @@
       setStatus("Board cleared.");
     }
 
+    function clearPathsOnly() {
+      model.redPath = [];
+      model.bluePaths = [];
+      renderPreview();
+      setStatus("Paths cleared.");
+    }
+
     function solve() {
       try {
         model.title = titleInput.value.trim() || "Gate";
@@ -1159,12 +1087,23 @@
     document.getElementById("downloadBtn").addEventListener("click", downloadPNG);
     document.getElementById("sampleGate1Btn").addEventListener("click", loadSampleGate1);
     document.getElementById("copyBoardBtn").addEventListener("click", copyBoardText);
+    document.getElementById("clearPathsBtn").addEventListener("click", clearPathsOnly);
+
+    document.getElementById("applyPasteBtn").addEventListener("click", () => pasteIntoBoard(pasteArea.value));
+    document.getElementById("clearPasteBtn").addEventListener("click", () => {
+      pasteArea.value = "";
+      setStatus("Paste box cleared.");
+    });
+    document.getElementById("focusPasteBtn").addEventListener("click", () => {
+      pasteArea.focus();
+      setStatus(`Paste box focused for Row ${selectedRow + 1}, Col ${selectedCol + 1}. Paste there, then tap Apply Paste.`);
+    });
 
     model.grid = makeBlankGrid();
     buildBoardUI();
     updateSelectedCellDisplay();
     renderPreview();
-    setStatus("Board ready. Tap a cell, then use Paste Into Grid to paste numbers directly into the board. Tap the same special tile again to remove it.");
+    setStatus("Board ready. Tap a cell, paste into the visible paste box, then tap Apply Paste.");
   </script>
 </body>
 </html>
