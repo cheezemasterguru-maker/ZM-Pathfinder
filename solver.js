@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V4.3 loaded");
+  console.log("ZM Solver V4.4 loaded");
 
-  const SOLVER_VERSION = "V4.3";
+  const SOLVER_VERSION = "V4.4";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -804,27 +804,6 @@
     };
   }
 
-  function buildDebugLines(evaluatedCandidates, limit = 8) {
-    const sorted = [...evaluatedCandidates].sort((a, b) => {
-      if (a.unresolvedTargets !== b.unresolvedTargets) return a.unresolvedTargets - b.unresolvedTargets;
-      return a.effectiveTotal - b.effectiveTotal;
-    });
-
-    const lines = [];
-    lines.push("top_candidates:");
-    sorted.slice(0, limit).forEach((cand, idx) => {
-      lines.push(
-        `${idx + 1}. mode=${cand.redMode} variant=${cand.redVariant} ` +
-        `red=${roundCost(cand.redCost)} blue=${roundCost(cand.blueCost)} ` +
-        `dep=${roundCost(cand.dependencyCost)} assist=${roundCost(cand.assistBonus)} ` +
-        `lower_bonus=${roundCost(cand.lowerShaftBonus)} bubble_bonus=${roundCost(cand.bubbleBonus)} ` +
-        `loop_pen=${roundCost(cand.redLoopPenalty)} over_assist=${roundCost(cand.overAssistPenalty)} ` +
-        `effective=${roundCost(cand.effectiveTotal)} unresolved=${cand.unresolvedTargets}`
-      );
-    });
-    return lines;
-  }
-
   function solveGrid({ grid, gateType = "standard" }) {
     const rows = grid.length;
     const cols = grid[0].length;
@@ -861,7 +840,6 @@
     }
 
     let best = null;
-    const evaluatedCandidates = [];
 
     for (const redCandidate of redCandidates) {
       const blueEval = evaluateOrderedBlueForRedCandidate(
@@ -903,8 +881,6 @@
         effectiveTotal
       };
 
-      evaluatedCandidates.push(candidate);
-
       if (!best) {
         best = candidate;
         continue;
@@ -931,8 +907,6 @@
         best = candidate;
       }
     }
-
-    const debugLines = buildDebugLines(evaluatedCandidates, 10);
 
     return {
       ok: true,
@@ -962,7 +936,6 @@
       bubbles,
       unresolvedTargets: best.unresolvedTargets,
       redCandidateCount: redCandidates.length,
-      debugCandidates: debugLines,
       message:
         `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
         "solver_status: solved\n" +
@@ -981,8 +954,7 @@
         `red_candidate_count: ${redCandidates.length}\n` +
         `unresolved_targets: ${best.unresolvedTargets}\n` +
         `total_cost: ${roundCost(best.redCost + best.blueCost)}\n` +
-        `effective_total: ${roundCost(best.effectiveTotal)}\n\n` +
-        debugLines.join("\n")
+        `effective_total: ${roundCost(best.effectiveTotal)}`
     };
   }
 
