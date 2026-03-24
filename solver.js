@@ -1,4 +1,3 @@
-
 (function () {
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -110,7 +109,7 @@
           const key = `${rr},${cc}`;
           if (!entryMap.has(key)) {
             attacks.push([rr, cc]);
-            entryMap.set(key, [r, c]); // one tile inside shaft
+            entryMap.set(key, [r, c]);
           }
         }
       }
@@ -207,6 +206,13 @@
     return out;
   }
 
+  function appendEntryStep(path, entryCell) {
+    if (!path || !path.length || !entryCell) return path || [];
+    const last = path[path.length - 1];
+    if (last[0] === entryCell[0] && last[1] === entryCell[1]) return path;
+    return [...path, entryCell];
+  }
+
   function roundCost(n) {
     return Math.round(n * 100) / 100;
   }
@@ -292,12 +298,17 @@
         continue;
       }
 
-      bluePaths.push(shaftRoute.path);
-      blueCost += shaftRoute.cost;
       attackPoints.push(shaftRoute.goal);
 
       const entry = info.entryMap.get(`${shaftRoute.goal[0]},${shaftRoute.goal[1]}`);
-      if (entry) shaftEntryDots.push(entry);
+      if (entry) {
+        shaftEntryDots.push(entry);
+        bluePaths.push(appendEntryStep(shaftRoute.path, entry));
+      } else {
+        bluePaths.push(shaftRoute.path);
+      }
+
+      blueCost += shaftRoute.cost;
     }
 
     const redBubbleKey = redBubble ? `${redBubble[0]},${redBubble[1]}` : null;
