@@ -23,6 +23,7 @@
     }
 
     *{box-sizing:border-box}
+
     body{
       margin:0;
       background:var(--bg);
@@ -304,16 +305,16 @@
       </div>
 
       <div class="btn-grid">
-        <button class="btn-action" onclick="clearBoard()">Clear Board</button>
-        <button class="btn-solve" onclick="solveBoard()">Solve</button>
-        <button class="btn-action" onclick="downloadPNG()">Download PNG</button>
+        <button class="btn-action" id="clearBoardBtn">Clear Board</button>
+        <button class="btn-solve" id="solveBtn">Solve</button>
+        <button class="btn-action" id="downloadBtn">Download PNG</button>
 
-        <button class="btn-action" onclick="loadSampleGrid()">Sample Grid</button>
-        <button class="btn-action" onclick="pasteFromClipboard()">Paste From Clipboard</button>
-        <button class="btn-action" onclick="setReport('Tap a cell, then paste from clipboard.')">Paste Help</button>
+        <button class="btn-action" id="sampleBtn">Sample Grid</button>
+        <button class="btn-action" id="pasteBtn">Paste From Clipboard</button>
+        <button class="btn-action" id="pasteHelpBtn">Paste Help</button>
       </div>
 
-      <div id="report" class="report">Grid restored. Solver integrated. Load Sample Grid and tap Solve.</div>
+      <div id="report" class="report">2-file version loaded. Grid editor and solver are separated.</div>
     </div>
 
     <div class="card editor-card">
@@ -324,10 +325,10 @@
         </div>
 
         <div class="tool-grid">
-          <button id="tool-number" class="btn-white tool-active" onclick="setTool('number')">Number</button>
-          <button id="tool-block" class="btn-black" onclick="setTool('block')">Block</button>
-          <button id="tool-bubble" class="btn-bubble" onclick="setTool('bubble')">Bubble</button>
-          <button id="tool-shaft" class="btn-shaft" onclick="setTool('shaft')">Shaft</button>
+          <button id="tool-number" class="btn-white tool-active">Number</button>
+          <button id="tool-block" class="btn-black">Block</button>
+          <button id="tool-bubble" class="btn-bubble">Bubble</button>
+          <button id="tool-shaft" class="btn-shaft">Shaft</button>
         </div>
       </div>
 
@@ -344,6 +345,7 @@
     </div>
   </div>
 
+  <script src="solver.js"></script>
   <script>
     const ROWS = 20;
     const COLS = 7;
@@ -351,44 +353,20 @@
     let grid = [];
     let tool = "number";
     let lastSelected = { r: 0, c: 0 };
-    let solveState = {
-      redPath: [],
-      bluePaths: [],
-      shaftEntryDots: [],
-      solved: false
-    };
+    let solveState = ZMSolver.createEmptySolveState();
+
+    const reportEl = document.getElementById("report");
+    const gridEl = document.getElementById("grid");
+    const titleInput = document.getElementById("titleInput");
+    const gateTypeEl = document.getElementById("gateType");
+    const previewCanvas = document.getElementById("previewCanvas");
 
     function setReport(msg){
-      document.getElementById("report").textContent = msg;
+      reportEl.textContent = msg;
     }
 
     function resetSolve(){
-      solveState = {
-        redPath: [],
-        bluePaths: [],
-        shaftEntryDots: [],
-        solved: false
-      };
-    }
-
-    function init(){
-      const g = document.getElementById("grid");
-      g.innerHTML = "";
-      grid = Array.from({ length: ROWS }, () => Array(COLS).fill(""));
-
-      for(let r = 0; r < ROWS; r++){
-        for(let c = 0; c < COLS; c++){
-          const d = document.createElement("div");
-          d.className = "cell";
-          d.dataset.r = r;
-          d.dataset.c = c;
-          d.onclick = () => clickCell(r, c);
-          g.appendChild(d);
-        }
-      }
-
-      render();
-      renderPreview();
+      solveState = ZMSolver.createEmptySolveState();
     }
 
     function setTool(nextTool){
@@ -397,6 +375,22 @@
         document.getElementById(`tool-${id}`).classList.remove("tool-active");
       });
       document.getElementById(`tool-${nextTool}`).classList.add("tool-active");
+    }
+
+    function buildGrid(){
+      gridEl.innerHTML = "";
+      grid = Array.from({ length: ROWS }, () => Array(COLS).fill(""));
+
+      for(let r = 0; r < ROWS; r++){
+        for(let c = 0; c < COLS; c++){
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.dataset.r = r;
+          cell.dataset.c = c;
+          cell.addEventListener("click", () => clickCell(r, c));
+          gridEl.appendChild(cell);
+        }
+      }
     }
 
     function clickCell(r, c){
@@ -423,12 +417,12 @@
       }
 
       resetSolve();
-      render();
+      renderGrid();
       renderPreview();
     }
 
     function activateInlineNumberEditor(r, c){
-      render();
+      renderGrid();
 
       const target = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
       if(!target) return;
@@ -440,10 +434,11 @@
       input.className = "cell-editor";
       input.value = typeof grid[r][c] === "number" ? String(grid[r][c]) : "";
       target.appendChild(input);
+
       input.focus();
       input.select();
 
-      input.onblur = () => {
+      input.addEventListener("blur", () => {
         const raw = input.value.trim();
         if(raw === ""){
           grid[r][c] = "";
@@ -451,20 +446,20 @@
           grid[r][c] = Number(raw);
         }
         resetSolve();
-        render();
+        renderGrid();
         renderPreview();
-      };
+      });
 
-      input.onkeydown = (e) => {
+      input.addEventListener("keydown", (e) => {
         if(e.key === "Enter") input.blur();
-      };
+      });
     }
 
     async function pasteFromClipboard(){
       try{
         const text = await navigator.clipboard.readText();
         applyText(text);
-      } catch(e){
+      } catch (err){
         setReport("Clipboard access was blocked by the browser. Copy again, tap a cell, then retry Paste From Clipboard.");
       }
     }
@@ -506,7 +501,7 @@
       });
 
       resetSolve();
-      render();
+      renderGrid();
       renderPreview();
       setReport(`Pasted into board starting at Row ${startR + 1}, Col ${startC + 1}.`);
     }
@@ -518,15 +513,15 @@
         }
       }
       resetSolve();
-      render();
+      renderGrid();
       renderPreview();
       setReport("Board cleared.");
     }
 
     function loadSampleGrid(){
       clearBoard();
-      document.getElementById("gateType").value = "standard";
-      document.getElementById("titleInput").value = "Gate 1";
+      gateTypeEl.value = "standard";
+      titleInput.value = "Gate 1";
 
       const sample = [
         [8,9,11,9,12,8,9],
@@ -549,144 +544,117 @@
       }
 
       resetSolve();
-      render();
+      renderGrid();
       renderPreview();
       setReport("Sample Grid loaded.");
     }
 
-    function numberCost(n){
-      if (!Number.isFinite(n) || n <= 0) return 0;
-      if (n <= 10) return Math.pow(2, n);
-      return Math.pow(2, 10) * Math.pow(1.6, n - 10);
+    function solveBoard(){
+      const result = ZMSolver.solve({
+        grid,
+        rows: ROWS,
+        cols: COLS,
+        gateType: gateTypeEl.value
+      });
+
+      if(!result.ok){
+        setReport(result.message);
+        solveState = ZMSolver.createEmptySolveState();
+        renderPreview();
+        return;
+      }
+
+      solveState = result.solveState;
+      setReport(result.report);
+      renderPreview();
     }
 
-    function isWalkable(r, c){
-      if (r < 0 || c < 0 || r >= ROWS || c >= COLS) return false;
-      const v = grid[r][c];
-      return v !== "X" && v !== "S";
-    }
+    function renderGrid(){
+      const cells = document.querySelectorAll("#grid .cell");
+      cells.forEach(cell => {
+        const r = Number(cell.dataset.r);
+        const c = Number(cell.dataset.c);
+        const val = grid[r][c];
 
-    function cellWeight(r, c){
-      const v = grid[r][c];
-      return typeof v === "number" ? numberCost(v) : 0;
-    }
+        cell.className = "cell";
+        cell.textContent = "";
 
-    function getLowestUsedRow(){
-      let max = -1;
-      for(let r = 0; r < ROWS; r++){
-        for(let c = 0; c < COLS; c++){
-          if(grid[r][c] !== "") max = Math.max(max, r);
+        if(r === lastSelected.r && c === lastSelected.c){
+          cell.classList.add("selected");
         }
-      }
-      return max;
-    }
 
-    function getStartCells(){
-      const lowest = getLowestUsedRow();
-      const row = Math.min(ROWS - 1, Math.max(0, lowest + 1));
-      const starts = [];
-      for(let c = 0; c < COLS; c++){
-        if(isWalkable(row, c)) starts.push([row, c]);
-      }
-      return starts;
-    }
-
-    function getGateGoals(){
-      const gateType = document.getElementById("gateType").value;
-      const cols = gateType === "end" ? [2,3,4] : [1,2,3,4,5];
-      return cols.map(c => [0, c]).filter(([r,c]) => isWalkable(r,c));
-    }
-
-    function getBubbles(){
-      const out = [];
-      for(let r = 0; r < ROWS; r++){
-        for(let c = 0; c < COLS; c++){
-          if(grid[r][c] === "B") out.push([r,c]);
+        if(val === "X"){
+          cell.classList.add("block");
+        } else if(val === "B"){
+          cell.classList.add("bubble");
+          cell.textContent = "B";
+        } else if(val === "S"){
+          cell.classList.add("shaft");
+          cell.textContent = "S";
+        } else if(typeof val === "number"){
+          cell.textContent = String(val);
         }
-      }
-      return out;
+      });
     }
 
-    function getShaftClusters(){
-      const seen = new Set();
-      const clusters = [];
+    function renderPreview(){
+      const ctx = previewCanvas.getContext("2d");
+      const title = (titleInput.value || "Gate").toUpperCase();
 
-      for(let r = 0; r < ROWS; r++){
-        for(let c = 0; c < COLS; c++){
-          if(grid[r][c] !== "S") continue;
-          const key = `${r},${c}`;
-          if(seen.has(key)) continue;
-
-          const stack = [[r,c]];
-          const cluster = [];
-
-          while(stack.length){
-            const [rr,cc] = stack.pop();
-            const k = `${rr},${cc}`;
-            if(rr < 0 || cc < 0 || rr >= ROWS || cc >= COLS) continue;
-            if(grid[rr][cc] !== "S" || seen.has(k)) continue;
-            seen.add(k);
-            cluster.push([rr,cc]);
-            stack.push([rr+1,cc],[rr-1,cc],[rr,cc+1],[rr,cc-1]);
-          }
-
-          clusters.push(cluster);
-        }
-      }
-
-      return clusters;
+      ZMSolver.renderPreview({
+        canvas: previewCanvas,
+        ctx,
+        grid,
+        rows: ROWS,
+        cols: COLS,
+        solveState,
+        title,
+        logoSrc: "file_00000000e35071fda5e92d9996ac3621.png"
+      });
     }
 
-    function shaftAttackInfo(cluster){
-      const clusterSet = new Set(cluster.map(([r,c]) => `${r},${c}`));
-      const attacks = [];
-      const entryMap = new Map();
-
-      for(const [r,c] of cluster){
-        const neigh = [[r+1,c],[r-1,c],[r,c+1],[r,c-1]];
-        for(const [rr,cc] of neigh){
-          if(rr < 0 || cc < 0 || rr >= ROWS || cc >= COLS) continue;
-          if(clusterSet.has(`${rr},${cc}`)) continue;
-          if(typeof grid[rr][cc] === "number"){
-            const k = `${rr},${cc}`;
-            if(!entryMap.has(k)){
-              attacks.push([rr,cc]);
-              entryMap.set(k, [r,c]);
-            }
-          }
-        }
-      }
-
-      return { attacks, entryMap };
+    function downloadPNG(){
+      renderPreview();
+      setTimeout(() => {
+        const url = previewCanvas.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${(titleInput.value || "zm-pathfinder").replace(/\s+/g, "-").toLowerCase()}.png`;
+        a.click();
+      }, 120);
     }
 
-    function dijkstra(starts, goals, freeCells = new Set()){
-      const goalSet = new Set(goals.map(([r,c]) => `${r},${c}`));
-      const dist = Array.from({length: ROWS}, () => Array(COLS).fill(Infinity));
-      const prev = Array.from({length: ROWS}, () => Array(COLS).fill(null));
-      const steps = Array.from({length: ROWS}, () => Array(COLS).fill(Infinity));
-      const open = [];
+    function wireEvents(){
+      document.getElementById("tool-number").addEventListener("click", () => setTool("number"));
+      document.getElementById("tool-block").addEventListener("click", () => setTool("block"));
+      document.getElementById("tool-bubble").addEventListener("click", () => setTool("bubble"));
+      document.getElementById("tool-shaft").addEventListener("click", () => setTool("shaft"));
 
-      for(const [r,c] of starts){
-        dist[r][c] = 0;
-        steps[r][c] = 0;
-        open.push({r,c,cost:0,len:0});
-      }
+      document.getElementById("clearBoardBtn").addEventListener("click", clearBoard);
+      document.getElementById("solveBtn").addEventListener("click", solveBoard);
+      document.getElementById("downloadBtn").addEventListener("click", downloadPNG);
+      document.getElementById("sampleBtn").addEventListener("click", loadSampleGrid);
+      document.getElementById("pasteBtn").addEventListener("click", pasteFromClipboard);
+      document.getElementById("pasteHelpBtn").addEventListener("click", () => {
+        setReport("Tap a cell, then paste from clipboard.");
+      });
 
-      while(open.length){
-        open.sort((a,b) => a.cost !== b.cost ? a.cost - b.cost : a.len - b.len);
-        const cur = open.shift();
-        if(cur.cost !== dist[cur.r][cur.c] || cur.len !== steps[cur.r][cur.c]) continue;
+      titleInput.addEventListener("input", renderPreview);
+      gateTypeEl.addEventListener("change", () => {
+        resetSolve();
+        renderPreview();
+      });
+    }
 
-        if(goalSet.has(`${cur.r},${cur.c}`)){
-          const path = [];
-          let rr = cur.r, cc = cur.c;
-          while(rr !== null && cc !== null){
-            path.push([rr,cc]);
-            const p = prev[rr][cc];
-            if(!p) break;
-            rr = p[0];
-            cc = p[1];
-          }
-          path.reverse();
-          return { path, cost: cur.cost, goal:[cur.r,cur.c
+    function init(){
+      buildGrid();
+      wireEvents();
+      renderGrid();
+      renderPreview();
+      setReport("2-file version loaded. Grid editor and solver are separated.");
+    }
+
+    window.addEventListener("load", init);
+  </script>
+</body>
+</html>
