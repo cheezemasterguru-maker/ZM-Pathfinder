@@ -1,736 +1,234 @@
-<!doctype html>
+d[r][c] = { typ
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZM Pathfinder</title>
-  <style>
-    :root {
-      --bg: #0f1220;
-      --panel: #171b2e;
-      --panel2: #1f2540;
-      --text: #f2f5ff;
-      --muted: #aeb8d4;
-      --line: #313857;
-      --cyan: #7fe7ff;
-      --neon: #7df14a;
-      --select: #f59e0b;
-      --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      --ui-cell: 46px;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ZM Pathfinder</title>
 
-    * { box-sizing: border-box; }
+<style>
+:root {
+  --bg: #0b1020;
+  --card: #151c34;
+  --text: #e8ecff;
+  --accent: #3b5cff;
+  --cyan: #7dd3fc;
+  --neon: #7CFC00;
+}
 
-    body {
-      margin: 0;
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
-    }
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  text-align: center;
+}
 
-    .app {
-      max-width: 1700px;
-      margin: 0 auto;
-      padding: 18px;
-      display: grid;
-      grid-template-columns: 400px 1fr;
-      gap: 18px;
-    }
+.logo {
+  width: 100%;
+  max-width: 500px;
+  margin: 10px auto;
+  display: block;
+}
 
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 8px 24px rgba(0,0,0,.24);
-    }
+h1 {
+  margin: 5px 0 15px;
+}
 
-    h1, h2 {
-      margin: 0 0 12px;
-    }
+.container {
+  padding: 10px;
+}
 
-    h1 {
-      font-size: 34px;
-      text-align: center;
-    }
+.tools {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  padding: 10px;
+  z-index: 10;
+}
 
-    h2 {
-      font-size: 18px;
-    }
+button {
+  margin: 5px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  font-weight: bold;
+}
 
-    .controls {
-      display: grid;
-      gap: 12px;
-    }
+.btn-number { background: #fff; color: #000; }
+.btn-block { background: #000; color: #fff; }
+.btn-bubble { background: var(--cyan); }
+.btn-shaft { background: var(--neon); }
+.btn-empty { background: #ccc; }
 
-    .row {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: 1fr 1fr;
-    }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin: 10px auto;
+  max-width: 500px;
+}
 
-    .row3 {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: 1fr 1fr 1fr;
-    }
+.cell {
+  background: #ddd;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  user-select: none;
+}
 
-    input, select, button {
-      width: 100%;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: var(--panel2);
-      color: var(--text);
-      padding: 10px 12px;
-      font: inherit;
-    }
-
-    button {
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    button.primary {
-      background: #2448d8;
-      border-color: #3358e8;
-    }
-
-    button.secondary {
-      background: #26304f;
-    }
-
-    .hint, .status, .small {
-      color: var(--muted);
-      line-height: 1.45;
-    }
-
-    .small {
-      font-size: 12px;
-    }
-
-    .status {
-      min-height: 22px;
-      white-space: pre-wrap;
-    }
-
-    .hero {
-      display: grid;
-      justify-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
-    }
-
-    .hero-logo {
-      width: 100%;
-      max-width: 390px;
-      display: block;
-      object-fit: contain;
-    }
-
-    .workspace {
-      display: grid;
-      gap: 18px;
-    }
-
-    .sticky-tools {
-      position: sticky;
-      top: 8px;
-      z-index: 20;
-      background: linear-gradient(180deg, var(--panel) 0%, var(--panel) 88%, rgba(23,27,46,0) 100%);
-      padding-bottom: 10px;
-      margin-bottom: 8px;
-    }
-
-    .tool-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 10px;
-    }
-
-    .tool {
-      min-height: 54px;
-      border-radius: 14px;
-      border: 2px solid var(--line);
-      display: grid;
-      place-items: center;
-      font-weight: 800;
-      text-align: center;
-      padding: 6px;
-      user-select: none;
-    }
-
-    .tool.active {
-      border-color: #8ab4ff;
-      box-shadow: 0 0 0 2px rgba(138,180,255,.15) inset;
-    }
-
-    .tool.number { background: #fff; color: #111; }
-    .tool.block { background: #000; color: #fff; }
-    .tool.bubble { background: var(--cyan); color: #111; }
-    .tool.shaft { background: var(--neon); color: #111; }
-    .tool.empty { background: #d8dee9; color: #111; }
-
-    .board-wrap,
-    .preview-wrap {
-      overflow: auto;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: #0c1020;
-      padding: 14px;
-    }
-
-    .board-table {
-      border-collapse: separate;
-      border-spacing: 2px;
-      background: #9aa4b2;
-      margin: 0 auto;
-      padding: 2px;
-      border-radius: 8px;
-    }
-
-    .board-table td {
-      padding: 0;
-      margin: 0;
-      width: var(--ui-cell);
-      height: var(--ui-cell);
-    }
-
-    .grid-input {
-      width: var(--ui-cell);
-      min-width: var(--ui-cell);
-      max-width: var(--ui-cell);
-      height: var(--ui-cell);
-      min-height: var(--ui-cell);
-      max-height: var(--ui-cell);
-      border: none;
-      border-radius: 0;
-      outline: none;
-      padding: 0;
-      margin: 0;
-      font-weight: 800;
-      font-size: 16px;
-      text-align: center;
-      background: #f3f4f6;
-      color: #111;
-      appearance: none;
-      -webkit-appearance: none;
-    }
-
-    .grid-input.empty { background: #f3f4f6; color: #111; }
-    .grid-input.number { background: #fff; color: #111; }
-    .grid-input.block { background: #000; color: #fff; }
-    .grid-input.bubble { background: var(--cyan); color: #111; }
-    .grid-input.shaft { background: var(--neon); color: #111; }
-
-    .grid-input.selected {
-      box-shadow: inset 0 0 0 3px var(--select);
-    }
-
-    canvas {
-      display: block;
-      background: #fff;
-      border-radius: 10px;
-      margin: 0 auto;
-      max-width: 100%;
-      height: auto;
-    }
-
-    .note-box {
-      display: grid;
-      gap: 8px;
-      background: #11162a;
-      border: 1px solid #29314c;
-      border-radius: 12px;
-      padding: 12px;
-    }
-
-    @media (max-width: 1100px) {
-      .app {
-        grid-template-columns: 1fr;
-      }
-
-      .tool-grid {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-  </style>
+.block { background: #000; color: #fff; }
+.bubble { background: var(--cyan); }
+.shaft { background: var(--neon); }
+</style>
 </head>
+
 <body>
-  <div class="app">
-    <div class="card controls">
-      <div class="hero">
-        <img class="hero-logo" src="file_00000000e35071fda5e92d9996ac3621.png" alt="ZM Pathfinder Logo">
-        <h1>ZM Pathfinder</h1>
-      </div>
 
-      <div class="row">
-        <label>
-          Title
-          <input id="titleInput" value="Gate 1">
-        </label>
-        <label>
-          Gate type
-          <select id="gateType">
-            <option value="standard">Standard (regular gates / graveyard — 5 attack points)</option>
-            <option value="end">End (end gate — 3 attack points)</option>
-          </select>
-        </label>
-      </div>
+<img src="file_00000000e35071fda5e92d9996ac3621.png" class="logo"/>
 
-      <div class="row">
-        <label>
-          Number tool value
-          <input id="numberValueInput" type="number" min="1" value="1">
-        </label>
-        <label>
-          Selected cell
-          <input id="selectedCellDisplay" value="Row 1, Col 1" readonly>
-        </label>
-      </div>
+<h1>ZM Pathfinder</h1>
 
-      <div class="note-box">
-        <strong>Grid-only rebuild</strong>
-        <div class="small">
-          This version is for stabilizing the editor only. Solver behavior is not being changed here.
-        </div>
-      </div>
+<div class="container">
 
-      <div>
-        <h2>Grid behavior</h2>
-        <div class="hint">
-          Tap a cell first. Then paste a copied range from Sheets/Excel directly into the grid. Tabs and line breaks are distributed from the selected cell. Use the tools above the grid for Block, Bubble, Shaft, and Empty.
-        </div>
-      </div>
+<div class="tools">
+  <button class="btn-number" onclick="setTool('number')">Number</button>
+  <button class="btn-block" onclick="setTool('block')">Block</button>
+  <button class="btn-bubble" onclick="setTool('bubble')">Bubble</button>
+  <button class="btn-shaft" onclick="setTool('shaft')">Shaft 2x3</button>
+  <button class="btn-empty" onclick="setTool('empty')">Empty</button>
+</div>
 
-      <div class="row3">
-        <button id="clearBtn" class="secondary">Clear Board</button>
-        <button id="copyBoardBtn" class="secondary">Copy Grid Text</button>
-        <button id="sampleGate1Btn" class="secondary">Sample Gate 1</button>
-      </div>
+<div id="grid" class="grid"></div>
 
-      <div class="status" id="status"></div>
-    </div>
+</div>
 
-    <div class="workspace">
-      <div class="card">
-        <div class="sticky-tools">
-          <h2>Editable Board</h2>
-          <div class="small" style="margin-bottom:10px">
-            Sticky tools stay here so you do not need to scroll back and forth.
-          </div>
-          <div class="tool-grid">
-            <button class="tool number active" data-tool="number">Number</button>
-            <button class="tool block" data-tool="block">Block</button>
-            <button class="tool bubble" data-tool="bubble">Bubble</button>
-            <button class="tool shaft" data-tool="shaft">Shaft 2×3</button>
-            <button class="tool empty" data-tool="empty">Empty</button>
-          </div>
-        </div>
+<script>
+const ROWS = 20;
+const COLS = 7;
 
-        <div class="board-wrap">
-          <table id="boardTable" class="board-table" aria-label="Editable 7 by 20 board"></table>
-        </div>
-      </div>
+let grid = [];
+let tool = "number";
+let selectedCell = null;
 
-      <div class="card">
-        <h2>Preview</h2>
-        <div class="small">Simple board-state preview while the editor is being stabilized.</div>
-        <div class="preview-wrap">
-          <canvas id="boardCanvas" width="900" height="1200"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
+// BUILD GRID
+function initGrid() {
+  const container = document.getElementById("grid");
+  container.innerHTML = "";
 
-  <script>
-    const COLS = 7;
-    const ROWS = 20;
+  grid = [];
 
-    const TYPE = {
-      EMPTY: "empty",
-      NUMBER: "number",
-      BLOCK: "block",
-      BUBBLE: "bubble",
-      SHAFT: "shaft"
-    };
+  for (let r = 0; r < ROWS; r++) {
+    grid[r] = [];
 
-    const TOOL = {
-      NUMBER: "number",
-      BLOCK: "block",
-      BUBBLE: "bubble",
-      SHAFT: "shaft",
-      EMPTY: "empty"
-    };
+    for (let c = 0; c < COLS; c++) {
+      grid[r][c] = "";
 
-    const statusEl = document.getElementById("status");
-    const selectedCellDisplay = document.getElementById("selectedCellDisplay");
-    const numberValueInput = document.getElementById("numberValueInput");
-    const boardTable = document.getElementById("boardTable");
-    const canvas = document.getElementById("boardCanvas");
-    const ctx = canvas.getContext("2d");
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.r = r;
+      cell.dataset.c = c;
 
-    let activeTool = TOOL.NUMBER;
-    let selectedRow = 0;
-    let selectedCol = 0;
+      cell.onclick = () => handleCellClick(r, c);
+      cell.onpaste = (e) => handlePaste(e, r, c);
 
-    let grid = Array.from({ length: ROWS }, () =>
-      Array.from({ length: COLS }, () => ({ type: TYPE.EMPTY }))
-    );
-
-    function setStatus(msg) {
-      statusEl.textContent = msg;
+      container.appendChild(cell);
     }
+  }
+}
 
-    function updateSelectedCellDisplay() {
-      selectedCellDisplay.value = `Row ${selectedRow + 1}, Col ${selectedCol + 1}`;
-    }
+// TOOL SELECT
+function setTool(t) {
+  tool = t;
+}
 
-    function serializeCell(cell) {
-      switch (cell.type) {
-        case TYPE.EMPTY: return "";
-        case TYPE.NUMBER: return String(cell.value);
-        case TYPE.BLOCK: return "X";
-        case TYPE.BUBBLE: return "B";
-        case TYPE.SHAFT: return "Shaft";
-        default: return "";
-      }
-    }
+// CLICK CELL
+function handleCellClick(r, c) {
+  selectedCell = { r, c };
 
-    function displayCell(cell) {
-      switch (cell.type) {
-        case TYPE.EMPTY: return "";
-        case TYPE.NUMBER: return String(cell.value);
-        case TYPE.BLOCK: return "";
-        case TYPE.BUBBLE: return "B";
-        case TYPE.SHAFT: return "S";
-        default: return "";
-      }
-    }
-
-    function parseTypedValue(text) {
-      const raw = String(text || "").trim();
-      if (!raw) return { type: TYPE.EMPTY };
-
-      if (/^\d+$/.test(raw)) {
-        const n = Number(raw);
-        if (Number.isFinite(n) && n > 0) return { type: TYPE.NUMBER, value: n };
-      }
-
-      const upper = raw.toUpperCase();
-      if (upper === "X" || upper === "BLOCK") return { type: TYPE.BLOCK };
-      if (upper === "B" || upper === "BUBBLE") return { type: TYPE.BUBBLE };
-      if (upper === "S" || upper === "SHAFT") return { type: TYPE.SHAFT };
-
-      return null;
-    }
-
-    function renderBoardUI() {
-      const inputs = boardTable.querySelectorAll(".grid-input");
-      inputs.forEach(node => {
-        const r = Number(node.dataset.r);
-        const c = Number(node.dataset.c);
-        const cell = grid[r][c];
-        node.className = `grid-input ${cell.type}`;
-        node.value = displayCell(cell);
-        if (r === selectedRow && c === selectedCol) {
-          node.classList.add("selected");
-        }
-      });
-    }
-
-    function selectCell(r, c, focus = false) {
-      selectedRow = r;
-      selectedCol = c;
-      updateSelectedCellDisplay();
-      renderBoardUI();
-      if (focus) {
-        const node = boardTable.querySelector(`[data-r="${r}"][data-c="${c}"]`);
-        if (node) node.focus();
-      }
-    }
-
-    function inBounds(r, c) {
-      return r >= 0 && r < ROWS && c >= 0 && c < COLS;
-    }
-
-    function toggleSpecialTile(r, c, type) {
-      if (grid[r][c].type === type) {
-        grid[r][c] = { type: TYPE.EMPTY };
-      } else {
-        grid[r][c] = { type };
-      }
-    }
-
-    function shaftAreaMatches(r, c) {
-      for (let rr = r; rr < r + 3; rr++) {
-        for (let cc = c; cc < c + 2; cc++) {
-          if (!inBounds(rr, cc) || grid[rr][cc].type !== TYPE.SHAFT) return false;
-        }
-      }
-      return true;
-    }
-
-    function clearShaftArea(r, c) {
-      for (let rr = r; rr < r + 3; rr++) {
-        for (let cc = c; cc < c + 2; cc++) {
-          if (inBounds(rr, cc)) grid[rr][cc] = { type: TYPE.EMPTY };
+  if (tool === "block") {
+    grid[r][c] = grid[r][c] === "X" ? "" : "X";
+  }
+  else if (tool === "bubble") {
+    grid[r][c] = grid[r][c] === "B" ? "" : "B";
+  }
+  else if (tool === "empty") {
+    grid[r][c] = "";
+  }
+  else if (tool === "shaft") {
+    for (let dr = 0; dr < 3; dr++) {
+      for (let dc = 0; dc < 2; dc++) {
+        if (grid[r+dr] && grid[r+dr][c+dc] !== undefined) {
+          grid[r+dr][c+dc] = "S";
         }
       }
     }
+  }
 
-    function applyToolAt(r, c) {
-      if (!inBounds(r, c)) return;
+  render();
+}
 
-      if (activeTool === TOOL.NUMBER) {
-        const n = Number(numberValueInput.value || 1);
-        if (!Number.isFinite(n) || n < 1) return;
-        if (grid[r][c].type === TYPE.NUMBER && grid[r][c].value === n) {
-          grid[r][c] = { type: TYPE.EMPTY };
-        } else {
-          grid[r][c] = { type: TYPE.NUMBER, value: n };
-        }
-      } else if (activeTool === TOOL.BLOCK) {
-        toggleSpecialTile(r, c, TYPE.BLOCK);
-      } else if (activeTool === TOOL.BUBBLE) {
-        toggleSpecialTile(r, c, TYPE.BUBBLE);
-      } else if (activeTool === TOOL.EMPTY) {
-        grid[r][c] = { type: TYPE.EMPTY };
-      } else if (activeTool === TOOL.SHAFT) {
-        if (shaftAreaMatches(r, c)) {
-          clearShaftArea(r, c);
-        } else {
-          for (let rr = r; rr < r + 3; rr++) {
-            for (let cc = c; cc < c + 2; cc++) {
-              if (inBounds(rr, cc)) grid[rr][cc] = { type: TYPE.SHAFT };
-            }
-          }
-        }
+// PASTE DIRECTLY INTO GRID
+function handlePaste(e, startR, startC) {
+  e.preventDefault();
+
+  const text = e.clipboardData.getData("text");
+  const rows = text.trim().split("\n");
+
+  rows.forEach((row, rIndex) => {
+    const cols = row.split(/\t|,/);
+
+    cols.forEach((val, cIndex) => {
+      const r = startR + rIndex;
+      const c = startC + cIndex;
+
+      if (grid[r] && grid[r][c] !== undefined) {
+        const v = val.trim();
+
+        if (!v) return;
+
+        if (!isNaN(v)) grid[r][c] = Number(v);
+        else if (v.toUpperCase() === "B") grid[r][c] = "B";
+        else if (v.toUpperCase() === "X") grid[r][c] = "X";
       }
+    });
+  });
 
-      renderBoardUI();
-      renderSimplePreview();
+  render();
+}
+
+// RENDER GRID
+function render() {
+  const cells = document.querySelectorAll(".cell");
+
+  cells.forEach(cell => {
+    const r = cell.dataset.r;
+    const c = cell.dataset.c;
+
+    const val = grid[r][c];
+
+    cell.className = "cell";
+    cell.textContent = "";
+
+    if (val === "X") {
+      cell.classList.add("block");
+    } else if (val === "B") {
+      cell.classList.add("bubble");
+      cell.textContent = "B";
+    } else if (val === "S") {
+      cell.classList.add("shaft");
+      cell.textContent = "S";
+    } else if (val !== "") {
+      cell.textContent = val;
     }
+  });
+}
 
-    function parseRangeText(text) {
-      const lines = text.replace(/\r/g, "").split("\n").filter(line => line.length > 0);
-      return lines.map(line => {
-        if (line.includes("\t")) return line.split("\t");
-        if (line.includes(",")) return line.split(",").map(x => x.trim());
-        return line.trim().split(/\s+/);
-      });
-    }
+// INIT
+initGrid();
+</script>
 
-    function pasteIntoBoard(text, startR = selectedRow, startC = selectedCol) {
-      if (!text.trim()) {
-        setStatus("Clipboard was empty.");
-        return;
-      }
-
-      const rows = parseRangeText(text);
-      let placed = 0;
-
-      for (let rOff = 0; rOff < rows.length; rOff++) {
-        for (let cOff = 0; cOff < rows[rOff].length; cOff++) {
-          const r = startR + rOff;
-          const c = startC + cOff;
-          if (!inBounds(r, c)) continue;
-
-          const raw = String(rows[rOff][cOff] ?? "").trim();
-          if (!raw) continue;
-
-          const parsed = parseTypedValue(raw);
-          if (!parsed) continue;
-
-          if (parsed.type === TYPE.SHAFT) {
-            for (let rr = r; rr < r + 3; rr++) {
-              for (let cc = c; cc < c + 2; cc++) {
-                if (inBounds(rr, cc)) grid[rr][cc] = { type: TYPE.SHAFT };
-              }
-            }
-          } else {
-            grid[r][c] = parsed;
-          }
-
-          placed++;
-        }
-      }
-
-      selectCell(startR, startC, false);
-      renderBoardUI();
-      renderSimplePreview();
-      setStatus(`Pasted range starting at Row ${startR + 1}, Col ${startC + 1}. Updated ${placed} cells.`);
-    }
-
-    function buildBoardUI() {
-      boardTable.innerHTML = "";
-
-      for (let r = 0; r < ROWS; r++) {
-        const tr = document.createElement("tr");
-
-        for (let c = 0; c < COLS; c++) {
-          const td = document.createElement("td");
-          const input = document.createElement("input");
-
-          input.type = "text";
-          input.className = "grid-input empty";
-          input.dataset.r = r;
-          input.dataset.c = c;
-          input.inputMode = "numeric";
-          input.autocomplete = "off";
-          input.autocapitalize = "off";
-          input.spellcheck = false;
-
-          input.addEventListener("focus", () => {
-            selectCell(r, c, false);
-          });
-
-          input.addEventListener("click", () => {
-            selectCell(r, c, false);
-            if (activeTool !== TOOL.NUMBER) {
-              applyToolAt(r, c);
-            }
-          });
-
-          input.addEventListener("input", () => {
-            if (activeTool !== TOOL.NUMBER) {
-              renderBoardUI();
-              return;
-            }
-
-            const parsed = parseTypedValue(input.value);
-            if (parsed) {
-              grid[r][c] = parsed;
-              renderBoardUI();
-              renderSimplePreview();
-            }
-          });
-
-          input.addEventListener("keydown", (e) => {
-            if (activeTool !== TOOL.NUMBER && e.key.length === 1) {
-              e.preventDefault();
-              return;
-            }
-
-            if (e.key === "Backspace" || e.key === "Delete") {
-              grid[r][c] = { type: TYPE.EMPTY };
-              setTimeout(() => {
-                renderBoardUI();
-                renderSimplePreview();
-              }, 0);
-            }
-          });
-
-          input.addEventListener("paste", (e) => {
-            e.preventDefault();
-            const text = e.clipboardData?.getData("text/plain") || "";
-            pasteIntoBoard(text, r, c);
-          });
-
-          td.appendChild(input);
-          tr.appendChild(td);
-        }
-
-        boardTable.appendChild(tr);
-      }
-
-      renderBoardUI();
-    }
-
-    function renderSimplePreview() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = "#111";
-      ctx.font = "700 24px system-ui";
-      ctx.textAlign = "center";
-      ctx.fillText("GRID PREVIEW ONLY", canvas.width / 2, 40);
-
-      const cellSize = 40;
-      const startX = 40;
-      const startY = 70;
-
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          const x = startX + c * cellSize;
-          const y = startY + r * cellSize;
-          const cell = grid[r][c];
-
-          if (cell.type === TYPE.BLOCK) {
-            ctx.fillStyle = "#000";
-          } else if (cell.type === TYPE.BUBBLE) {
-            ctx.fillStyle = "#7fe7ff";
-          } else if (cell.type === TYPE.SHAFT) {
-            ctx.fillStyle = "#7df14a";
-          } else {
-            ctx.fillStyle = "#fff";
-          }
-
-          ctx.fillRect(x, y, cellSize, cellSize);
-          ctx.strokeStyle = "#999";
-          ctx.strokeRect(x, y, cellSize, cellSize);
-
-          if (cell.type === TYPE.NUMBER) {
-            ctx.fillStyle = "#111";
-            ctx.font = "700 16px system-ui";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(String(cell.value), x + cellSize / 2, y + cellSize / 2);
-          } else if (cell.type === TYPE.BUBBLE) {
-            ctx.fillStyle = "#111";
-            ctx.font = "700 16px system-ui";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("B", x + cellSize / 2, y + cellSize / 2);
-          } else if (cell.type === TYPE.SHAFT) {
-            ctx.fillStyle = "#111";
-            ctx.font = "700 12px system-ui";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("S", x + cellSize / 2, y + cellSize / 2);
-          }
-        }
-      }
-    }
-
-    function clearBoard() {
-      grid = Array.from({ length: ROWS }, () =>
-        Array.from({ length: COLS }, () => ({ type: TYPE.EMPTY }))
-      );
-      renderBoardUI();
-      renderSimplePreview();
-      setStatus("Board cleared.");
-    }
-
-    function copyBoardText() {
-      const text = grid.map(row => row.map(serializeCell).join("\t")).join("\n");
-      navigator.clipboard.writeText(text).then(() => {
-        setStatus("Grid text copied to clipboard.");
-      }).catch(() => {
-        setStatus("Could not copy automatically.");
-      });
-    }
-
-    function loadSampleGate1() {
-      clearBoard();
-
-      const sample = [
-        [8,9,11,9,12,8,9],
-        [10,"X",8,"X",7,11,7],
-        [8,7,9,6,9,6,"X"],
-        ["X",8,6,8,"B","S","S"],
-        ["X",6,7,6,5,"S","S"],
-        ["X",5,4,5,"X","S","S"],
-        ["X",4,5,4,5,4,6],
-        ["S","S",4,5,4,"X",5],
-        ["S","S",3,4,3,5,4],
-        ["S","S",2,"",2,4,3],
-        [1,2,"","","",3,""]
-      ];
-
-      for (let r = 0; r < sample.length; r++) {
-        for (let c = 0; c < COLS; c++) {
-          const v = sample[r][c];
-          if (v === "X") grid[r][c] = { type: TYPE.BLOCK };
-          else if (v === "B") grid[r][c] = { type: TYPE.BUBBLE };
-          else if (v === "S") grid[r][c] = { typ
+</body>
+</html>
