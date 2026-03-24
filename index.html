@@ -8,6 +8,7 @@
     :root{
       --bg:#0b1020;
       --panel:#171b2e;
+      --panel2:#1f2540;
       --line:#313857;
       --text:#eef2ff;
       --muted:#b8c2e3;
@@ -92,7 +93,7 @@
       outline:none;
       border-radius:14px;
       padding:10px 12px;
-      background:#1f2540;
+      background:var(--panel2);
       color:var(--text);
       font-size:14px;
       border:1px solid #36406a;
@@ -317,7 +318,7 @@
         <button class="btn-action" onclick="setReport('Tap a cell, then paste from clipboard.')">Paste Help</button>
       </div>
 
-      <div id="report" class="report">Solver integrated. Load Sample Grid and tap Solve.</div>
+      <div id="report" class="report">Grid restored. Solver integrated. Load Sample Grid and tap Solve.</div>
     </div>
 
     <div class="card editor-card">
@@ -366,30 +367,6 @@
       document.getElementById("report").textContent = msg;
     }
 
-    function init(){
-      const g = document.getElementById("grid");
-      g.innerHTML = "";
-      grid = [];
-
-      for(let r = 0; r < ROWS; r++){
-        grid[r] = [];
-        for(let c = 0; c < COLS; c++){
-          grid[r][c] = "";
-
-          const d = document.createElement("div");
-          d.className = "cell";
-          d.dataset.r = r;
-          d.dataset.c = c;
-          d.onclick = () => clickCell(r, c);
-
-          g.appendChild(d);
-        }
-      }
-
-      render();
-      renderPreview();
-    }
-
     function resetSolve(){
       solveState = {
         redPath: [],
@@ -399,12 +376,33 @@
       };
     }
 
+    function init(){
+      const g = document.getElementById("grid");
+      g.innerHTML = "";
+      grid = [];
+
+      for(let r = 0; r < ROWS; r++){
+        grid[r] = [];
+        for(let c = 0; c < COLS; c++){
+          grid[r][c] = "";
+          const d = document.createElement("div");
+          d.className = "cell";
+          d.dataset.r = String(r);
+          d.dataset.c = String(c);
+          d.addEventListener("click", () => clickCell(r, c));
+          g.appendChild(d);
+        }
+      }
+
+      render();
+      renderPreview();
+    }
+
     function setTool(nextTool){
       tool = nextTool;
-      document.getElementById("tool-number").classList.remove("tool-active");
-      document.getElementById("tool-block").classList.remove("tool-active");
-      document.getElementById("tool-bubble").classList.remove("tool-active");
-      document.getElementById("tool-shaft").classList.remove("tool-active");
+      ["number","block","bubble","shaft"].forEach(id => {
+        document.getElementById(`tool-${id}`).classList.remove("tool-active");
+      });
       document.getElementById(`tool-${nextTool}`).classList.add("tool-active");
     }
 
@@ -497,7 +495,6 @@
         cols.forEach((raw, ci) => {
           const r = startR + ri;
           const c = startC + ci;
-
           if(!grid[r] || grid[r][c] === undefined) return;
 
           const val = String(raw).trim();
@@ -571,7 +568,7 @@
     }
 
     function numberCost(n){
-      if (n <= 0 || !Number.isFinite(n)) return 0;
+      if (!Number.isFinite(n) || n <= 0) return 0;
       if (n <= 10) return Math.pow(2, n);
       return Math.pow(2, 10) * Math.pow(1.6, n - 10);
     }
@@ -617,13 +614,13 @@
     }
 
     function getBubbles(){
-      const bubbles = [];
+      const out = [];
       for(let r = 0; r < ROWS; r++){
         for(let c = 0; c < COLS; c++){
-          if(grid[r][c] === "B") bubbles.push([r,c]);
+          if(grid[r][c] === "B") out.push([r,c]);
         }
       }
-      return bubbles;
+      return out;
     }
 
     function getShaftClusters(){
@@ -746,9 +743,7 @@
 
     function uniquePath(path){
       const out = [];
-      const seen = new Set();
       for(const [r,c] of path){
-        const k = `${r},${c},${out.length}`;
         if(!out.length || out[out.length-1][0] !== r || out[out.length-1][1] !== c){
           out.push([r,c]);
         }
@@ -759,4 +754,339 @@
     function solveBoard(){
       const starts = getStartCells();
       if(!starts.length){
-        setReport("No valid start cells one row be
+        setReport("No valid start cells one row below the lowest used row.");
+        return;
+      }
+
+      const gateGoals = getGateGoals();
+      if(!gateGoals.length){
+        setReport("No valid gate attack cells.");
+        return;
+      }
+
+      const bubbles = getBubbles();
+      const shaftClusters = getShaftClusters();
+
+      let bestRed = dijkstra(starts, gateGoals);
+      let redMode = "direct";
+      let redBubble = null;
+
+      for(const bubble of bubbles){
+        const a = dijkstra(starts, [bubble]);
+        const b = dijkstra([bubble], gateGoals);
+        if(a && b){
+          const total = a.cost + b.cost;
+          if(!bestRed || total < bestRed.cost){
+            bestRed = {
+              path: uniquePath(mergePaths(a.path, b.path)),
+              cost: total
+            };
+            redMode = "via bubble";
+            redBubble = bubble;
+          }
+        }
+      }
+
+      if(!bestRed){
+        setReport("No valid red path to gate.");
+        return;
+      }
+
+      const freeRed = pathSet(bestRed.path);
+      const redBubbleSet = new Set();
+      if(redBubble) redBubbleSet.add(`${redBubble[0]},${redBubble[1]}`);
+
+      const bluePaths = [];
+      const shaftEntryDots = [];
+      let blueCost = 0;
+      let unresolved = 0;
+
+      for(const cluster of shaftClusters){
+        const info = shaftAttackInfo(cluster);
+        if(!info.attacks.length){
+          unresolved++;
+          continue;
+        }
+
+        const path = dijkstra(starts.concat(bestRed.path), info.attacks, freeRed);
+        if(!path){
+          unresolved++;
+          continue;
+        }
+
+        bluePaths.push(path.path);
+        blueCost += path.cost;
+
+        const entry = info.entryMap.get(`${path.goal[0]},${path.goal[1]}`);
+        if(entry) shaftEntryDots.push(entry);
+      }
+
+      for(const bubble of bubbles){
+        const key = `${bubble[0]},${bubble[1]}`;
+        if(redBubbleSet.has(key)) continue;
+        const bp = dijkstra(starts.concat(bestRed.path), [bubble], freeRed);
+        if(bp){
+          bluePaths.push(bp.path);
+          blueCost += bp.cost;
+        } else {
+          unresolved++;
+        }
+      }
+
+      solveState = {
+        redPath: bestRed.path,
+        bluePaths,
+        shaftEntryDots,
+        solved: true
+      };
+
+      setReport(
+`solver_status: solved
+red_mode: ${redMode}
+red_cost: ${roundCost(bestRed.cost)}
+blue_cost: ${roundCost(blueCost)}
+bubble_count: ${bubbles.length}
+shaft_count: ${shaftClusters.length}
+unresolved_targets: ${unresolved}
+total_cost: ${roundCost(bestRed.cost + blueCost)}`
+      );
+
+      renderPreview();
+    }
+
+    function roundCost(n){
+      return Math.round(n * 100) / 100;
+    }
+
+    function renderPreview(){
+      const canvas = document.getElementById("previewCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const cell = 86;
+      const pad = 22;
+      const topPad = 170;
+
+      const usedRows = [];
+      for(let r = 0; r < ROWS; r++){
+        for(let c = 0; c < COLS; c++){
+          if(grid[r][c] !== ""){
+            usedRows.push(r);
+            break;
+          }
+        }
+      }
+
+      const minRow = usedRows.length ? Math.min(...usedRows) : 0;
+      const maxFilled = usedRows.length ? Math.max(...usedRows) : 4;
+      const maxRow = Math.min(ROWS - 1, maxFilled + 1);
+      const visibleRows = Math.max(6, maxRow - minRow + 1);
+
+      canvas.width = pad * 2 + cell * COLS;
+      canvas.height = topPad + visibleRows * cell + 120;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const logo = new Image();
+      logo.onload = () => {
+        const maxW = 280;
+        const maxH = 100;
+        const ratio = Math.min(maxW / logo.width, maxH / logo.height, 1);
+        const w = logo.width * ratio;
+        const h = logo.height * ratio;
+        ctx.drawImage(logo, (canvas.width - w) / 2, 10, w, h);
+
+        ctx.fillStyle = "#111";
+        ctx.font = "700 34px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText((document.getElementById("titleInput").value || "Gate").toUpperCase(), canvas.width / 2, 140);
+
+        drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow);
+      };
+      logo.src = "file_00000000e35071fda5e92d9996ac3621.png";
+
+      if (logo.complete) {
+        ctx.fillStyle = "#111";
+        ctx.font = "700 34px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText((document.getElementById("titleInput").value || "Gate").toUpperCase(), canvas.width / 2, 140);
+        drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow);
+      }
+    }
+
+    function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
+      const rowOffset = minRow;
+
+      for(let r = minRow; r <= maxRow; r++){
+        for(let c = 0; c < COLS; c++){
+          const x = pad + c * cell;
+          const y = topPad + (r - rowOffset) * cell;
+          const val = grid[r][c];
+
+          if(val === "S") continue;
+
+          if(val === "X"){
+            ctx.fillStyle = "#000";
+          } else if(val === "B"){
+            ctx.fillStyle = "#8fd3f7";
+          } else {
+            ctx.fillStyle = "#ececef";
+          }
+
+          ctx.fillRect(x, y, cell, cell);
+          ctx.strokeStyle = "#171b2e";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x, y, cell, cell);
+
+          if(val === "B"){
+            ctx.fillStyle = "#111";
+            ctx.font = "700 28px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("B", x + cell/2, y + cell/2);
+          } else if(typeof val === "number"){
+            ctx.fillStyle = "#111";
+            ctx.font = "700 28px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(String(val), x + cell/2, y + cell/2);
+          }
+        }
+      }
+
+      const shafts = getShaftClusters();
+      for(const cluster of shafts){
+        const rows = cluster.map(v => v[0]);
+        const cols = cluster.map(v => v[1]);
+        const minR = Math.min(...rows);
+        const maxR = Math.max(...rows);
+        const minC = Math.min(...cols);
+        const maxC = Math.max(...cols);
+
+        if(maxR < minRow || minR > maxRow) continue;
+
+        const x = pad + minC * cell;
+        const y = topPad + (minR - rowOffset) * cell;
+        const w = (maxC - minC + 1) * cell;
+        const h = (maxR - minR + 1) * cell;
+
+        ctx.fillStyle = "#98f44d";
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = "#171b2e";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, w, h);
+
+        ctx.fillStyle = "#111";
+        ctx.font = "700 26px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("Shaft", x + w/2, y + h/2);
+      }
+
+      for(const path of solveState.bluePaths){
+        drawPath(ctx, path, "#2563eb", 10, cell, pad, topPad, rowOffset);
+      }
+      drawPath(ctx, solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset);
+
+      for(const [r,c] of solveState.shaftEntryDots){
+        const x = pad + c * cell + cell/2;
+        const y = topPad + (r - rowOffset) * cell + cell/2;
+        ctx.fillStyle = "#2563eb";
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const ly = ctx.canvas.height - 35;
+
+      ctx.lineCap = "round";
+      ctx.lineWidth = 16;
+      ctx.strokeStyle = "#000";
+      ctx.beginPath();
+      ctx.moveTo(36, ly);
+      ctx.lineTo(112, ly);
+      ctx.stroke();
+
+      ctx.lineWidth = 10;
+      ctx.strokeStyle = "#ef4444";
+      ctx.beginPath();
+      ctx.moveTo(36, ly);
+      ctx.lineTo(112, ly);
+      ctx.stroke();
+
+      ctx.fillStyle = "#111";
+      ctx.font = "700 18px Arial";
+      ctx.textAlign = "left";
+      ctx.fillText("1st Strongest Z", 126, ly + 6);
+
+      ctx.lineWidth = 16;
+      ctx.strokeStyle = "#000";
+      ctx.beginPath();
+      ctx.moveTo(370, ly);
+      ctx.lineTo(446, ly);
+      ctx.stroke();
+
+      ctx.lineWidth = 10;
+      ctx.strokeStyle = "#2563eb";
+      ctx.beginPath();
+      ctx.moveTo(370, ly);
+      ctx.lineTo(446, ly);
+      ctx.stroke();
+
+      ctx.fillStyle = "#111";
+      ctx.fillText("2nd Strongest Z", 460, ly + 6);
+    }
+
+    function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
+      if(!path || path.length < 2) return;
+
+      function center(pt){
+        return {
+          x: pad + pt[1] * cell + cell / 2,
+          y: topPad + (pt[0] - rowOffset) * cell + cell / 2
+        };
+      }
+
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      ctx.lineWidth = width + 5;
+      ctx.strokeStyle = "#000";
+      ctx.beginPath();
+      let p = center(path[0]);
+      ctx.moveTo(p.x, p.y);
+      for(let i = 1; i < path.length; i++){
+        p = center(path[i]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+
+      ctx.lineWidth = width;
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      p = center(path[0]);
+      ctx.moveTo(p.x, p.y);
+      for(let i = 1; i < path.length; i++){
+        p = center(path[i]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    }
+
+    function downloadPNG(){
+      renderPreview();
+      setTimeout(() => {
+        const canvas = document.getElementById("previewCanvas");
+        const url = canvas.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${(document.getElementById("titleInput").value || "zm-pathfinder").replace(/\s+/g, "-").toLowerCase()}.png`;
+        a.click();
+      }, 120);
+    }
+
+    init();
+  </script>
+</body>
+</html>
