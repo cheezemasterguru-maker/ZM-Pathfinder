@@ -1,109 +1,86 @@
-d[r][c] = { typ
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ZM Pathfinder</title>
 
 <style>
-:root {
-  --bg: #0b1020;
-  --card: #151c34;
-  --text: #e8ecff;
-  --accent: #3b5cff;
-  --cyan: #7dd3fc;
-  --neon: #7CFC00;
-}
-
 body {
   margin: 0;
   font-family: sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  background: #0b1020;
+  color: white;
   text-align: center;
 }
 
 .logo {
   width: 100%;
   max-width: 500px;
-  margin: 10px auto;
-  display: block;
 }
 
-h1 {
-  margin: 5px 0 15px;
-}
-
-.container {
-  padding: 10px;
-}
+h1 { margin: 10px 0; }
 
 .tools {
   position: sticky;
   top: 0;
-  background: var(--bg);
+  background: #0b1020;
   padding: 10px;
   z-index: 10;
 }
 
 button {
-  margin: 5px;
-  padding: 10px 14px;
-  border-radius: 10px;
+  margin: 4px;
+  padding: 10px;
+  border-radius: 8px;
   border: none;
   font-weight: bold;
 }
 
-.btn-number { background: #fff; color: #000; }
-.btn-block { background: #000; color: #fff; }
-.btn-bubble { background: var(--cyan); }
-.btn-shaft { background: var(--neon); }
-.btn-empty { background: #ccc; }
+.number { background:#fff; color:#000; }
+.block { background:#000; color:#fff; }
+.bubble { background:#7dd3fc; }
+.shaft { background:#7CFC00; }
+.empty { background:#ccc; }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-  margin: 10px auto;
   max-width: 500px;
+  margin: auto;
+  gap: 2px;
 }
 
 .cell {
   background: #ddd;
   aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  user-select: none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  outline: none;
 }
 
-.block { background: #000; color: #fff; }
-.bubble { background: var(--cyan); }
-.shaft { background: var(--neon); }
+.cell.block { background:#000; color:#fff; }
+.cell.bubble { background:#7dd3fc; }
+.cell.shaft { background:#7CFC00; }
 </style>
 </head>
 
 <body>
 
-<img src="file_00000000e35071fda5e92d9996ac3621.png" class="logo"/>
-
+<img src="file_00000000e35071fda5e92d9996ac3621.png" class="logo">
 <h1>ZM Pathfinder</h1>
 
-<div class="container">
-
 <div class="tools">
-  <button class="btn-number" onclick="setTool('number')">Number</button>
-  <button class="btn-block" onclick="setTool('block')">Block</button>
-  <button class="btn-bubble" onclick="setTool('bubble')">Bubble</button>
-  <button class="btn-shaft" onclick="setTool('shaft')">Shaft 2x3</button>
-  <button class="btn-empty" onclick="setTool('empty')">Empty</button>
+  <button class="number" onclick="setTool('number')">Number</button>
+  <button class="block" onclick="setTool('block')">Block</button>
+  <button class="bubble" onclick="setTool('bubble')">Bubble</button>
+  <button class="shaft" onclick="setTool('shaft')">Shaft 2x3</button>
+  <button class="empty" onclick="setTool('empty')">Empty</button>
 </div>
 
 <div id="grid" class="grid"></div>
-
-</div>
 
 <script>
 const ROWS = 20;
@@ -111,57 +88,58 @@ const COLS = 7;
 
 let grid = [];
 let tool = "number";
-let selectedCell = null;
 
 // BUILD GRID
-function initGrid() {
-  const container = document.getElementById("grid");
-  container.innerHTML = "";
-
+function init() {
+  const g = document.getElementById("grid");
+  g.innerHTML = "";
   grid = [];
 
-  for (let r = 0; r < ROWS; r++) {
-    grid[r] = [];
+  for (let r=0;r<ROWS;r++){
+    grid[r]=[];
+    for (let c=0;c<COLS;c++){
+      grid[r][c]="";
 
-    for (let c = 0; c < COLS; c++) {
-      grid[r][c] = "";
+      const d = document.createElement("div");
+      d.className="cell";
+      d.contentEditable=true;
+      d.dataset.r=r;
+      d.dataset.c=c;
 
-      const cell = document.createElement("div");
-      cell.className = "cell";
-      cell.dataset.r = r;
-      cell.dataset.c = c;
+      d.addEventListener("input", handleTyping);
+      d.addEventListener("paste", handlePaste);
+      d.addEventListener("click", ()=>handleClick(r,c));
 
-      cell.onclick = () => handleCellClick(r, c);
-      cell.onpaste = (e) => handlePaste(e, r, c);
-
-      container.appendChild(cell);
+      g.appendChild(d);
     }
   }
 }
 
-// TOOL SELECT
-function setTool(t) {
-  tool = t;
-}
+function setTool(t){ tool=t; }
 
-// CLICK CELL
-function handleCellClick(r, c) {
-  selectedCell = { r, c };
+// CLICK LOGIC
+function handleClick(r,c){
+  if(tool==="number") return;
 
-  if (tool === "block") {
-    grid[r][c] = grid[r][c] === "X" ? "" : "X";
+  if(tool==="block"){
+    grid[r][c] = grid[r][c]==="X" ? "" : "X";
   }
-  else if (tool === "bubble") {
-    grid[r][c] = grid[r][c] === "B" ? "" : "B";
+
+  else if(tool==="bubble"){
+    grid[r][c] = grid[r][c]==="B" ? "" : "B";
   }
-  else if (tool === "empty") {
-    grid[r][c] = "";
+
+  else if(tool==="empty"){
+    grid[r][c]="";
   }
-  else if (tool === "shaft") {
-    for (let dr = 0; dr < 3; dr++) {
-      for (let dc = 0; dc < 2; dc++) {
-        if (grid[r+dr] && grid[r+dr][c+dc] !== undefined) {
-          grid[r+dr][c+dc] = "S";
+
+  else if(tool==="shaft"){
+    let removing = grid[r][c]==="S";
+
+    for(let dr=0;dr<3;dr++){
+      for(let dc=0;dc<2;dc++){
+        if(grid[r+dr] && grid[r+dr][c+dc]!==undefined){
+          grid[r+dr][c+dc] = removing ? "" : "S";
         }
       }
     }
@@ -170,28 +148,53 @@ function handleCellClick(r, c) {
   render();
 }
 
-// PASTE DIRECTLY INTO GRID
-function handlePaste(e, startR, startC) {
+// TYPING (manual numbers)
+function handleTyping(e){
+  const el = e.target;
+  const r = el.dataset.r;
+  const c = el.dataset.c;
+
+  let val = el.innerText.trim();
+
+  if(val===""){
+    grid[r][c]="";
+  }
+  else if(!isNaN(val)){
+    grid[r][c]=Number(val);
+  }
+  else{
+    el.innerText = grid[r][c] || "";
+  }
+
+  render();
+}
+
+// PASTE (FULL GRID SUPPORT)
+function handlePaste(e){
   e.preventDefault();
 
   const text = e.clipboardData.getData("text");
   const rows = text.trim().split("\n");
 
-  rows.forEach((row, rIndex) => {
+  const start = e.target;
+  const startR = Number(start.dataset.r);
+  const startC = Number(start.dataset.c);
+
+  rows.forEach((row,ri)=>{
     const cols = row.split(/\t|,/);
 
-    cols.forEach((val, cIndex) => {
-      const r = startR + rIndex;
-      const c = startC + cIndex;
+    cols.forEach((val,ci)=>{
+      const r = startR+ri;
+      const c = startC+ci;
 
-      if (grid[r] && grid[r][c] !== undefined) {
-        const v = val.trim();
+      if(grid[r] && grid[r][c]!==undefined){
+        val = val.trim();
 
-        if (!v) return;
+        if(!val) return;
 
-        if (!isNaN(v)) grid[r][c] = Number(v);
-        else if (v.toUpperCase() === "B") grid[r][c] = "B";
-        else if (v.toUpperCase() === "X") grid[r][c] = "X";
+        if(!isNaN(val)) grid[r][c]=Number(val);
+        else if(val.toUpperCase()==="X") grid[r][c]="X";
+        else if(val.toUpperCase()==="B") grid[r][c]="B";
       }
     });
   });
@@ -199,35 +202,34 @@ function handlePaste(e, startR, startC) {
   render();
 }
 
-// RENDER GRID
-function render() {
-  const cells = document.querySelectorAll(".cell");
-
-  cells.forEach(cell => {
+// RENDER
+function render(){
+  document.querySelectorAll(".cell").forEach(cell=>{
     const r = cell.dataset.r;
     const c = cell.dataset.c;
-
     const val = grid[r][c];
 
-    cell.className = "cell";
-    cell.textContent = "";
+    cell.className="cell";
+    cell.innerText="";
 
-    if (val === "X") {
+    if(val==="X"){
       cell.classList.add("block");
-    } else if (val === "B") {
+    }
+    else if(val==="B"){
       cell.classList.add("bubble");
-      cell.textContent = "B";
-    } else if (val === "S") {
+      cell.innerText="B";
+    }
+    else if(val==="S"){
       cell.classList.add("shaft");
-      cell.textContent = "S";
-    } else if (val !== "") {
-      cell.textContent = val;
+      cell.innerText="S";
+    }
+    else if(val!==""){
+      cell.innerText=val;
     }
   });
 }
 
-// INIT
-initGrid();
+init();
 </script>
 
 </body>
