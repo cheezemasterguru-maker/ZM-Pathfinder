@@ -1,216 +1,267 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ZM Pathfinder</title>
   <style>
-    :root{
-      --bg:#0f1220;
-      --panel:#171b2e;
-      --panel2:#1f2540;
-      --text:#f2f5ff;
-      --muted:#aeb8d4;
-      --line:#313857;
-      --red:#ef4444;
-      --blue:#2563eb;
-      --cyan:#7fe7ff;
-      --neon:#7df14a;
-      --select:#f59e0b;
-      --cell:46px;
-      --font:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    :root {
+      --bg: #0f1220;
+      --panel: #171b2e;
+      --panel2: #1f2540;
+      --text: #f2f5ff;
+      --muted: #aeb8d4;
+      --line: #313857;
+      --red: #ef4444;
+      --blue: #2563eb;
+      --cyan: #7fe7ff;
+      --neon: #7df14a;
+      --select: #f59e0b;
+      --cell: 46px;
+      --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     }
 
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:var(--font);
-      background:var(--bg);
-      color:var(--text);
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
     }
 
-    .app{
-      max-width:1700px;
-      margin:0 auto;
-      padding:18px;
-      display:grid;
-      grid-template-columns:410px 1fr;
-      gap:18px;
+    .app {
+      max-width: 1700px;
+      margin: 0 auto;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 18px;
     }
 
-    .card{
-      background:var(--panel);
-      border:1px solid var(--line);
-      border-radius:16px;
-      padding:16px;
-      box-shadow:0 8px 24px rgba(0,0,0,.24);
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.24);
     }
 
-    h1,h2{margin:0 0 12px}
-    h1{font-size:34px;text-align:center}
-    h2{font-size:18px}
-
-    .controls{display:grid;gap:12px}
-    .row{display:grid;gap:10px;grid-template-columns:1fr 1fr}
-    .row3{display:grid;gap:10px;grid-template-columns:1fr 1fr 1fr}
-
-    input,select,button{
-      width:100%;
-      border-radius:12px;
-      border:1px solid var(--line);
-      background:var(--panel2);
-      color:var(--text);
-      padding:10px 12px;
-      font:inherit;
+    h1, h2, h3 {
+      margin: 0 0 12px;
     }
 
-    button{cursor:pointer;font-weight:700}
-    button.primary{background:#2448d8;border-color:#3358e8}
-    button.secondary{background:#26304f}
-
-    .hint,.status,.small{
-      color:var(--muted);
-      line-height:1.45;
-    }
-    .small{font-size:12px}
-    .status{min-height:22px;white-space:pre-wrap}
-
-    .hero{
-      display:grid;
-      justify-items:center;
-      gap:8px;
-      margin-bottom:4px;
+    h1 {
+      font-size: 34px;
+      text-align: center;
     }
 
-    .hero-logo{
-      width:100%;
-      max-width:390px;
-      display:block;
-      object-fit:contain;
+    h2 {
+      font-size: 18px;
     }
 
-    .workspace{display:grid;gap:18px}
-
-    .sticky-tools{
-      position:sticky;
-      top:8px;
-      z-index:20;
-      background:linear-gradient(180deg,var(--panel) 0%,var(--panel) 86%,rgba(23,27,46,0) 100%);
-      padding-bottom:10px;
-      margin-bottom:8px;
+    .controls {
+      display: grid;
+      gap: 12px;
     }
 
-    .tool-grid{
-      display:grid;
-      grid-template-columns:repeat(5,1fr);
-      gap:10px;
+    .row {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr 1fr;
     }
 
-    .tool{
-      min-height:54px;
-      border-radius:14px;
-      border:2px solid var(--line);
-      display:grid;
-      place-items:center;
-      font-weight:800;
-      text-align:center;
-      padding:6px;
-      user-select:none;
+    .row3 {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr 1fr 1fr;
     }
 
-    .tool.active{
-      border-color:#8ab4ff;
-      box-shadow:0 0 0 2px rgba(138,180,255,.15) inset;
+    input, select, button, textarea {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel2);
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
     }
 
-    .tool.number{background:#fff;color:#111}
-    .tool.block{background:#000;color:#fff}
-    .tool.bubble{background:var(--cyan);color:#111}
-    .tool.shaft{background:var(--neon);color:#111}
-    .tool.empty{background:#d8dee9;color:#111}
+    button {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button.primary {
+      background: #2448d8;
+      border-color: #3358e8;
+    }
+
+    button.secondary {
+      background: #26304f;
+    }
+
+    .hint, .status, .small {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .small {
+      font-size: 12px;
+    }
+
+    .status {
+      min-height: 22px;
+      white-space: pre-wrap;
+    }
+
+    .hero {
+      display: grid;
+      justify-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .hero-logo {
+      width: 100%;
+      max-width: 390px;
+      display: block;
+      object-fit: contain;
+    }
+
+    .workspace {
+      display: grid;
+      gap: 18px;
+    }
+
+    .sticky-tools {
+      position: sticky;
+      top: 8px;
+      z-index: 20;
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel) 88%, rgba(23,27,46,0) 100%);
+      padding-bottom: 10px;
+      margin-bottom: 8px;
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .tool {
+      min-height: 54px;
+      border-radius: 14px;
+      border: 2px solid var(--line);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      text-align: center;
+      padding: 6px;
+      user-select: none;
+    }
+
+    .tool.active {
+      border-color: #8ab4ff;
+      box-shadow: 0 0 0 2px rgba(138,180,255,.15) inset;
+    }
+
+    .tool.number { background: #fff; color: #111; }
+    .tool.block { background: #000; color: #fff; }
+    .tool.bubble { background: var(--cyan); color: #111; }
+    .tool.shaft { background: var(--neon); color: #111; }
+    .tool.empty { background: #d8dee9; color: #111; }
 
     .grid-wrap,
-    .preview-wrap{
-      overflow:auto;
-      border-radius:16px;
-      border:1px solid var(--line);
-      background:#0c1020;
-      padding:14px;
+    .preview-wrap {
+      overflow: auto;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #0c1020;
+      padding: 14px;
     }
 
-    .grid-board{
-      display:grid;
-      grid-template-columns:repeat(7,var(--cell));
-      grid-auto-rows:var(--cell);
-      gap:2px;
-      background:#9aa4b2;
-      width:fit-content;
-      min-width:fit-content;
-      margin:0 auto;
-      border-radius:8px;
-      padding:2px;
+    .grid-board {
+      display: grid;
+      grid-template-columns: repeat(7, var(--cell));
+      grid-auto-rows: var(--cell);
+      gap: 2px;
+      background: #9aa4b2;
+      width: fit-content;
+      min-width: fit-content;
+      margin: 0 auto;
+      border-radius: 8px;
+      padding: 2px;
     }
 
-    .cell{
-      width:var(--cell);
-      height:var(--cell);
-      display:grid;
-      place-items:center;
-      font-weight:800;
-      font-size:16px;
-      position:relative;
-      overflow:hidden;
-      text-align:center;
-      background:#f3f4f6;
-      color:#111;
-      outline:none;
-      border:none;
-      user-select:text;
-      -webkit-user-select:text;
-      caret-color:#111;
-      white-space:nowrap;
+    .grid-input {
+      width: var(--cell);
+      height: var(--cell);
+      border: none;
+      border-radius: 0;
+      outline: none;
+      margin: 0;
+      padding: 0;
+      font-weight: 800;
+      font-size: 16px;
+      text-align: center;
+      background: #f3f4f6;
+      color: #111;
+      appearance: none;
+      -webkit-appearance: none;
     }
 
-    .cell.empty{background:#f3f4f6;color:#111}
-    .cell.number{background:#fff;color:#111}
-    .cell.block{background:#000;color:#fff}
-    .cell.bubble{background:var(--cyan);color:#111}
-    .cell.shaft{background:var(--neon);color:#111}
+    .grid-input.number { background: #fff; color: #111; }
+    .grid-input.block { background: #000; color: #fff; }
+    .grid-input.bubble { background: var(--cyan); color: #111; }
+    .grid-input.shaft { background: var(--neon); color: #111; }
+    .grid-input.empty { background: #f3f4f6; color: #111; }
 
-    .cell.selected::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      border:3px solid var(--select);
-      pointer-events:none;
+    .grid-input.selected {
+      box-shadow: inset 0 0 0 3px var(--select);
     }
 
-    .cell[contenteditable="true"]{
-      cursor:text;
+    .solver-report {
+      display: grid;
+      gap: 8px;
+      background: #11162a;
+      border: 1px solid #29314c;
+      border-radius: 12px;
+      padding: 12px;
     }
 
-    canvas{
-      display:block;
-      background:#fff;
-      border-radius:10px;
-      margin:0 auto;
-      max-width:100%;
-      height:auto;
+    .solver-report code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre-wrap;
+      color: #dbe6ff;
     }
 
-    .pill{
-      display:inline-block;
-      padding:2px 8px;
-      border-radius:999px;
-      background:#11162a;
-      border:1px solid #667;
-      color:#dbe6ff;
-      font-size:12px;
+    canvas {
+      display: block;
+      background: #fff;
+      border-radius: 10px;
+      margin: 0 auto;
+      max-width: 100%;
+      height: auto;
     }
 
-    @media (max-width:1100px){
-      .app{grid-template-columns:1fr}
-      .tool-grid{grid-template-columns:repeat(3,1fr)}
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #11162a;
+      border: 1px solid #667;
+      color: #dbe6ff;
+      font-size: 12px;
+    }
+
+    @media (max-width: 1100px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+      .tool-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
     }
   </style>
 </head>
@@ -218,14 +269,14 @@
   <div class="app">
     <div class="card controls">
       <div class="hero">
-        <img class="hero-logo" src="file_00000000e35071fda5e92d9996ac3621.png" alt="ZM Pathfinder Logo">
+        <img class="hero-logo" src="file_00000000e35071fda5e92d9996ac3621.png" alt="ZM Pathfinder Logo" />
         <h1>ZM Pathfinder</h1>
       </div>
 
       <div class="row">
         <label>
           Title
-          <input id="titleInput" value="Gate 1">
+          <input id="titleInput" value="Gate 1" />
         </label>
         <label>
           Gate type
@@ -239,18 +290,18 @@
       <div class="row">
         <label>
           Number tool value
-          <input id="numberValueInput" type="number" min="1" value="1">
+          <input id="numberValueInput" type="number" min="1" value="1" />
         </label>
         <label>
           Selected cell
-          <input id="selectedCellDisplay" value="Row 1, Col 1" readonly>
+          <input id="selectedCellDisplay" value="Row 1, Col 1" readonly />
         </label>
       </div>
 
       <div>
         <h2>How input works</h2>
         <div class="hint">
-          Tap a cell in the grid. Then either type a number directly into that cell or paste copied Sheet/Excel ranges directly into the grid starting from the selected cell. Use the tools above the grid for Block, Bubble, Shaft, and Empty. Tap the same special tile again to remove it.
+          Tap a grid cell first. Then either type a number into that cell or paste a copied range directly into the grid. Use the tools above the grid for Block, Bubble, Shaft, and Empty. Tap the same special tile again to remove it.
         </div>
       </div>
 
@@ -278,6 +329,11 @@
           • Paths start one blank row below the lowest used map cell.<br>
           • Empty cells are free. Black cells block. Shafts are touch-only 2×3.
         </div>
+      </div>
+
+      <div class="solver-report">
+        <div><strong>Solver report</strong></div>
+        <code id="solverReport">No solve yet.</code>
       </div>
 
       <div class="status" id="status"></div>
@@ -344,6 +400,7 @@
     const gateTypeEl = document.getElementById("gateType");
     const numberValueInput = document.getElementById("numberValueInput");
     const selectedCellDisplay = document.getElementById("selectedCellDisplay");
+    const solverReportEl = document.getElementById("solverReport");
     const gridBoard = document.getElementById("gridBoard");
     const canvas = document.getElementById("boardCanvas");
     const ctx = canvas.getContext("2d");
@@ -357,11 +414,17 @@
       gateType: "standard",
       grid: [],
       redPath: [],
-      bluePaths: []
+      bluePaths: [],
+      report: "No solve yet."
     };
 
     function setStatus(msg) {
       statusEl.textContent = msg;
+    }
+
+    function setReport(msg) {
+      model.report = msg;
+      solverReportEl.textContent = msg;
     }
 
     function makeCellEmpty() {
@@ -427,11 +490,15 @@
       }
     }
 
-    function normalizeCellDisplay(cell) {
-      if (cell.type === TYPE.NUMBER) return String(cell.value);
-      if (cell.type === TYPE.BUBBLE) return "B";
-      if (cell.type === TYPE.SHAFT) return "S";
-      return "";
+    function displayCell(cell) {
+      switch (cell.type) {
+        case TYPE.EMPTY: return "";
+        case TYPE.NUMBER: return String(cell.value);
+        case TYPE.BLOCK: return "";
+        case TYPE.BUBBLE: return "B";
+        case TYPE.SHAFT: return "S";
+        default: return "";
+      }
     }
 
     function copyBoardText() {
@@ -440,20 +507,6 @@
         setStatus("Grid text copied to clipboard.");
       }).catch(() => {
         setStatus("Could not copy automatically.");
-      });
-    }
-
-    function renderBoardUI() {
-      [...gridBoard.children].forEach(node => {
-        const r = Number(node.dataset.r);
-        const c = Number(node.dataset.c);
-        const cell = model.grid[r][c];
-        node.className = `cell ${cell.type}`;
-        node.textContent = normalizeCellDisplay(cell);
-        node.setAttribute("data-type", cell.type);
-        if (r === selectedRow && c === selectedCol) {
-          node.classList.add("selected");
-        }
       });
     }
 
@@ -468,98 +521,105 @@
       }
     }
 
+    function renderBoardUI() {
+      [...gridBoard.children].forEach(node => {
+        const r = Number(node.dataset.r);
+        const c = Number(node.dataset.c);
+        const cell = model.grid[r][c];
+        node.className = `grid-input ${cell.type}`;
+        node.value = displayCell(cell);
+        if (r === selectedRow && c === selectedCol) {
+          node.classList.add("selected");
+        }
+      });
+    }
+
+    function parseTypedValue(text) {
+      const raw = String(text || "").trim();
+      if (!raw) return { type: TYPE.EMPTY };
+
+      if (/^\d+$/.test(raw)) {
+        const n = Number(raw);
+        if (Number.isFinite(n) && n > 0) return { type: TYPE.NUMBER, value: n };
+      }
+
+      const upper = raw.toUpperCase();
+      if (upper === "X" || upper === "BLOCK") return { type: TYPE.BLOCK };
+      if (upper === "B" || upper === "BUBBLE") return { type: TYPE.BUBBLE };
+      if (upper === "S" || upper === "SHAFT") return { type: TYPE.SHAFT };
+
+      return null;
+    }
+
     function buildBoardUI() {
       gridBoard.innerHTML = "";
+
       for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-          const cell = document.createElement("div");
-          cell.className = "cell empty";
-          cell.contentEditable = "true";
-          cell.spellcheck = false;
-          cell.dataset.r = r;
-          cell.dataset.c = c;
+          const input = document.createElement("input");
+          input.type = "text";
+          input.className = "grid-input empty";
+          input.dataset.r = r;
+          input.dataset.c = c;
+          input.inputMode = "numeric";
+          input.autocomplete = "off";
+          input.autocapitalize = "off";
+          input.spellcheck = false;
 
-          cell.addEventListener("focus", () => {
+          input.addEventListener("focus", () => {
             selectCell(r, c, false);
           });
 
-          cell.addEventListener("click", () => {
+          input.addEventListener("click", () => {
             selectCell(r, c, false);
             if (activeTool !== TOOL.NUMBER) {
               applyToolAt(r, c);
             }
           });
 
-          cell.addEventListener("keydown", (e) => {
+          input.addEventListener("input", () => {
             if (activeTool !== TOOL.NUMBER) {
-              e.preventDefault();
+              renderBoardUI();
               return;
             }
 
-            if (e.key === "Enter") {
+            const parsed = parseTypedValue(input.value);
+            if (parsed) {
+              model.grid[r][c] = parsed;
+              model.redPath = [];
+              model.bluePaths = [];
+              renderBoardUI();
+              renderPreview();
+            }
+          });
+
+          input.addEventListener("keydown", (e) => {
+            if (activeTool !== TOOL.NUMBER && e.key.length === 1) {
               e.preventDefault();
               return;
             }
 
             if (e.key === "Backspace" || e.key === "Delete") {
-              e.preventDefault();
               model.grid[r][c] = { type: TYPE.EMPTY };
               model.redPath = [];
               model.bluePaths = [];
-              renderBoardUI();
-              renderPreview();
-              return;
-            }
-
-            if (/^[0-9]$/.test(e.key)) {
-              e.preventDefault();
-              const current = model.grid[r][c].type === TYPE.NUMBER ? String(model.grid[r][c].value) : "";
-              const next = (current + e.key).slice(0, 2);
-              const n = Number(next);
-              if (Number.isFinite(n) && n > 0) {
-                model.grid[r][c] = { type: TYPE.NUMBER, value: n };
-                model.redPath = [];
-                model.bluePaths = [];
+              setTimeout(() => {
                 renderBoardUI();
                 renderPreview();
-              }
-              return;
-            }
-
-            if (e.key.length === 1) {
-              e.preventDefault();
+              }, 0);
             }
           });
 
-          cell.addEventListener("paste", (e) => {
+          input.addEventListener("paste", (e) => {
             e.preventDefault();
             const text = e.clipboardData?.getData("text/plain") || "";
             pasteIntoBoard(text, r, c);
           });
 
-          cell.addEventListener("input", () => {
-            if (activeTool !== TOOL.NUMBER) {
-              renderBoardUI();
-              return;
-            }
-            const text = cell.textContent.trim();
-            if (!text) {
-              model.grid[r][c] = { type: TYPE.EMPTY };
-            } else {
-              const n = Number(text.replace(/[^\d]/g, ""));
-              if (Number.isFinite(n) && n > 0) {
-                model.grid[r][c] = { type: TYPE.NUMBER, value: n };
-              }
-            }
-            model.redPath = [];
-            model.bluePaths = [];
-            renderBoardUI();
-            renderPreview();
-          });
-
-          gridBoard.appendChild(cell);
+          gridBoard.appendChild(input);
         }
       }
+
       renderBoardUI();
     }
 
@@ -648,13 +708,21 @@
           if (!inBounds(r, c)) continue;
 
           const raw = String(rows[rOff][cOff] ?? "").trim();
-          if (raw === "") continue;
+          if (!raw) continue;
 
-          const n = Number(raw);
-          if (!Number.isNaN(n)) {
-            model.grid[r][c] = { type: TYPE.NUMBER, value: n };
-            placed++;
+          const parsed = parseTypedValue(raw);
+          if (!parsed) continue;
+
+          if (parsed.type === TYPE.SHAFT) {
+            for (let rr = r; rr < r + 3; rr++) {
+              for (let cc = c; cc < c + 2; cc++) {
+                if (inBounds(rr, cc)) model.grid[rr][cc] = { type: TYPE.SHAFT };
+              }
+            }
+          } else {
+            model.grid[r][c] = parsed;
           }
+          placed++;
         }
       }
 
@@ -669,6 +737,7 @@
     function usedRowsInfo() {
       let minRow = ROWS;
       let maxRow = -1;
+
       for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
           if (model.grid[r][c].type !== TYPE.EMPTY) {
@@ -677,6 +746,7 @@
           }
         }
       }
+
       if (maxRow === -1) return { minRow: 0, maxRow: 0, startRow: 1 };
       const startRow = Math.min(maxRow + 1, ROWS - 1);
       return { minRow, maxRow, startRow };
@@ -694,11 +764,573 @@
     function gateAttackCells(grid, gateType) {
       const preferred = gateType === "end" ? [2, 3, 4] : [1, 2, 3, 4, 5];
       const valid = [];
+
       for (const c of preferred) {
         if (grid[0][c] && isTraversable(grid[0][c])) valid.push([0, c]);
       }
+
       if (valid.length) return valid;
 
       const fallback = [];
       for (let c = 0; c < COLS; c++) {
-        if (isTraversable(grid[0][c])) 
+        if (isTraversable(grid[0][c])) fallback.push([0, c]);
+      }
+      return fallback;
+    }
+
+    function findBubbles(grid) {
+      const out = [];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (grid[r][c].type === TYPE.BUBBLE) out.push([r, c]);
+        }
+      }
+      return out;
+    }
+
+    function findShaftClusters(grid) {
+      const seen = new Set();
+      const clusters = [];
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (grid[r][c].type !== TYPE.SHAFT) continue;
+          const startKey = coordKey(r, c);
+          if (seen.has(startKey)) continue;
+
+          const stack = [[r, c]];
+          const cells = [];
+
+          while (stack.length) {
+            const [rr, cc] = stack.pop();
+            const key = coordKey(rr, cc);
+            if (seen.has(key)) continue;
+            if (!inBounds(rr, cc)) continue;
+            if (grid[rr][cc].type !== TYPE.SHAFT) continue;
+
+            seen.add(key);
+            cells.push([rr, cc]);
+            stack.push([rr - 1, cc], [rr + 1, cc], [rr, cc - 1], [rr, cc + 1]);
+          }
+
+          clusters.push(cells);
+        }
+      }
+
+      return clusters;
+    }
+
+    function shaftTouchPoints(grid, cluster) {
+      const set = new Set();
+      for (const [r, c] of cluster) {
+        for (const [rr, cc] of neighbors(r, c)) {
+          if (isTraversable(grid[rr][cc])) set.add(coordKey(rr, cc));
+        }
+      }
+      return [...set].map(parseKey);
+    }
+
+    function dijkstra(grid, startNodes, goalNodes, extraFree = new Set()) {
+      const goalSet = new Set(goalNodes.map(([r, c]) => coordKey(r, c)));
+      const dist = new Map();
+      const steps = new Map();
+      const prev = new Map();
+      const queue = [];
+
+      for (const [r, c] of startNodes) {
+        const k = coordKey(r, c);
+        dist.set(k, 0);
+        steps.set(k, 0);
+        queue.push({ r, c, cost: 0, len: 0 });
+      }
+
+      while (queue.length) {
+        queue.sort((a, b) => (a.cost !== b.cost ? a.cost - b.cost : a.len - b.len));
+        const cur = queue.shift();
+        const ck = coordKey(cur.r, cur.c);
+        if (cur.cost !== dist.get(ck) || cur.len !== steps.get(ck)) continue;
+
+        if (goalSet.has(ck)) {
+          const path = [];
+          let walk = ck;
+          while (walk) {
+            path.push(parseKey(walk));
+            walk = prev.get(walk);
+          }
+          return path.reverse();
+        }
+
+        for (const [nr, nc] of neighbors(cur.r, cur.c)) {
+          const nk = coordKey(nr, nc);
+          const cell = grid[nr][nc];
+          if (!isTraversable(cell)) continue;
+
+          const add = extraFree.has(nk) ? 0 : cellCost(cell);
+          const nextCost = cur.cost + add;
+          const nextLen = cur.len + 1;
+          const oldCost = dist.get(nk);
+          const oldLen = steps.get(nk);
+
+          const better =
+            oldCost === undefined ||
+            nextCost < oldCost ||
+            (nextCost === oldCost && nextLen < oldLen);
+
+          if (better) {
+            dist.set(nk, nextCost);
+            steps.set(nk, nextLen);
+            prev.set(nk, ck);
+            queue.push({ r: nr, c: nc, cost: nextCost, len: nextLen });
+          }
+        }
+      }
+
+      return null;
+    }
+
+    function pathCost(grid, path, extraFree = new Set()) {
+      if (!path || !path.length) return Infinity;
+      let cost = 0;
+      for (let i = 1; i < path.length; i++) {
+        const [r, c] = path[i];
+        const k = coordKey(r, c);
+        if (!extraFree.has(k)) cost += cellCost(grid[r][c]);
+      }
+      return cost;
+    }
+
+    function uniquePath(path) {
+      if (!path || !path.length) return [];
+      const out = [path[0]];
+      for (let i = 1; i < path.length; i++) {
+        const [r1, c1] = out[out.length - 1];
+        const [r2, c2] = path[i];
+        if (r1 !== r2 || c1 !== c2) out.push(path[i]);
+      }
+      return out;
+    }
+
+    function solveRed(grid, starts, gateGoals, bubbles) {
+      const candidates = [];
+
+      const direct = dijkstra(grid, starts, gateGoals);
+      if (direct) {
+        candidates.push({
+          redPath: uniquePath(direct),
+          redHandled: new Set(),
+          redCost: pathCost(grid, direct),
+          mode: "direct-to-gate"
+        });
+      }
+
+      for (const bubble of bubbles) {
+        const toBubble = dijkstra(grid, starts, [bubble]);
+        if (!toBubble) continue;
+        const bubbleToGate = dijkstra(grid, [bubble], gateGoals);
+        if (!bubbleToGate) continue;
+
+        const merged = uniquePath([...toBubble, ...bubbleToGate.slice(1)]);
+        candidates.push({
+          redPath: merged,
+          redHandled: new Set([coordKey(bubble[0], bubble[1])]),
+          redCost: pathCost(grid, merged),
+          mode: `via-bubble-${bubble[0]+1},${bubble[1]+1}`
+        });
+      }
+
+      if (!candidates.length) throw new Error("No valid red path.");
+      candidates.sort((a, b) => a.redCost - b.redCost || a.redPath.length - b.redPath.length);
+      return candidates[0];
+    }
+
+    function solveBlueGreedy(grid, starts, existingFreeSet, shaftClusters, remainingBubbles) {
+      const jobs = [];
+
+      for (const cluster of shaftClusters) {
+        jobs.push({
+          kind: "shaft",
+          targets: shaftTouchPoints(grid, cluster),
+          label: `shaft`
+        });
+      }
+
+      for (const bubble of remainingBubbles) {
+        jobs.push({
+          kind: "bubble",
+          targets: [bubble],
+          label: `bubble-${bubble[0]+1},${bubble[1]+1}`
+        });
+      }
+
+      const bluePaths = [];
+      let freeSet = new Set(existingFreeSet);
+      let currentStarts = [...starts];
+      let totalCost = 0;
+
+      while (jobs.length) {
+        let bestIndex = -1;
+        let bestPath = null;
+        let bestCost = Infinity;
+
+        for (let i = 0; i < jobs.length; i++) {
+          const path = dijkstra(grid, currentStarts, jobs[i].targets, freeSet);
+          if (!path) continue;
+          const cost = pathCost(grid, path, freeSet);
+          if (cost < bestCost || (cost === bestCost && path.length < (bestPath?.length || Infinity))) {
+            bestCost = cost;
+            bestPath = path;
+            bestIndex = i;
+          }
+        }
+
+        if (bestIndex === -1) break;
+
+        const picked = uniquePath(bestPath);
+        bluePaths.push(picked);
+        totalCost += bestCost;
+
+        for (const [r, c] of picked) freeSet.add(coordKey(r, c));
+        currentStarts = currentStarts.concat(picked);
+        jobs.splice(bestIndex, 1);
+      }
+
+      return { bluePaths, blueCost: totalCost, unresolvedJobs: jobs.length };
+    }
+
+    function solveBoard(grid, gateType) {
+      const starts = candidateStartCells(grid);
+      if (!starts.length) throw new Error("No valid start cells one row below used map.");
+
+      const gates = gateAttackCells(grid, gateType);
+      if (!gates.length) throw new Error("No valid gate attack cells.");
+
+      const bubbles = findBubbles(grid);
+      const shaftClusters = findShaftClusters(grid);
+
+      const red = solveRed(grid, starts, gates, bubbles);
+      const redSet = new Set(red.redPath.map(([r, c]) => coordKey(r, c)));
+
+      const remainingBubbles = bubbles.filter(([r, c]) => !red.redHandled.has(coordKey(r, c)));
+
+      const blue = solveBlueGreedy(
+        grid,
+        starts.concat(red.redPath),
+        redSet,
+        shaftClusters,
+        remainingBubbles
+      );
+
+      const reportLines = [
+        `red_mode: ${red.mode}`,
+        `red_cost: ${red.redCost}`,
+        `red_steps: ${red.redPath.length}`,
+        `red_bubbles: ${red.redHandled.size ? [...red.redHandled].join(" | ") : "none"}`,
+        `blue_cost: ${blue.blueCost}`,
+        `blue_paths: ${blue.bluePaths.length}`,
+        `remaining_bubbles: ${remainingBubbles.length}`,
+        `unresolved_jobs: ${blue.unresolvedJobs}`,
+        `total_cost: ${red.redCost + blue.blueCost}`
+      ];
+
+      return {
+        redPath: red.redPath,
+        bluePaths: blue.bluePaths,
+        report: reportLines.join("\n")
+      };
+    }
+
+    function shaftRects(grid) {
+      return findShaftClusters(grid).map(cells => {
+        const rows = cells.map(([r]) => r);
+        const cols = cells.map(([, c]) => c);
+        return {
+          minR: Math.min(...rows),
+          maxR: Math.max(...rows),
+          minC: Math.min(...cols),
+          maxC: Math.max(...cols)
+        };
+      });
+    }
+
+    function cellCenter(renderRow, c) {
+      return {
+        x: PAD + c * CELL + CELL / 2,
+        y: TITLE_H + PAD + renderRow * CELL + CELL / 2
+      };
+    }
+
+    function drawSinglePath(path, color, width, rowOffset) {
+      if (!path || path.length < 2) return;
+
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      ctx.lineWidth = width + 6;
+      ctx.strokeStyle = "#000";
+      ctx.beginPath();
+      let p = cellCenter(path[0][0] - rowOffset, path[0][1]);
+      ctx.moveTo(p.x, p.y);
+      for (let i = 1; i < path.length; i++) {
+        p = cellCenter(path[i][0] - rowOffset, path[i][1]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+
+      ctx.lineWidth = width;
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      p = cellCenter(path[0][0] - rowOffset, path[0][1]);
+      ctx.moveTo(p.x, p.y);
+      for (let i = 1; i < path.length; i++) {
+        p = cellCenter(path[i][0] - rowOffset, path[i][1]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    }
+
+    function drawLegend(canvasHeight) {
+      const y = canvasHeight - 28;
+
+      ctx.lineWidth = 18;
+      ctx.strokeStyle = "#000";
+      ctx.beginPath();
+      ctx.moveTo(32, y);
+      ctx.lineTo(112, y);
+      ctx.stroke();
+
+      ctx.lineWidth = 12;
+      ctx.strokeStyle = "#ef4444";
+      ctx.beginPath();
+      ctx.moveTo(32, y);
+      ctx.lineTo(112, y);
+      ctx.stroke();
+
+      ctx.fillStyle = "#111";
+      ctx.font = "700 18px system-ui";
+      ctx.textAlign = "left";
+      ctx.fillText("1st Strongest Z", 124, y + 6);
+
+      ctx.lineWidth = 18;
+      ctx.strokeStyle = "#000";
+      ctx.beginPath();
+      ctx.moveTo(360, y);
+      ctx.lineTo(440, y);
+      ctx.stroke();
+
+      ctx.lineWidth = 12;
+      ctx.strokeStyle = "#2563eb";
+      ctx.beginPath();
+      ctx.moveTo(360, y);
+      ctx.lineTo(440, y);
+      ctx.stroke();
+
+      ctx.fillStyle = "#111";
+      ctx.fillText("2nd Strongest Z", 452, y + 6);
+    }
+
+    function drawHeaderLogoAndTitle() {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 420;
+        const maxH = 170;
+        const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+        const w = img.width * ratio;
+        const h = img.height * ratio;
+        const x = (canvas.width - w) / 2;
+        const y = 8;
+        ctx.drawImage(img, x, y, w, h);
+
+        ctx.fillStyle = "#111";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "700 42px system-ui";
+        ctx.fillText(model.title.toUpperCase(), canvas.width / 2, 210);
+      };
+      img.src = LOGO_SRC;
+    }
+
+    function renderPreview() {
+      model.title = titleInput.value.trim() || "Gate";
+      model.gateType = gateTypeEl.value;
+
+      const info = usedRowsInfo();
+      const startRenderRow = Math.max(0, info.minRow === ROWS ? 0 : info.minRow);
+      const endRenderRow = Math.max(info.startRow, info.maxRow >= 0 ? info.maxRow : 0);
+      const visibleRows = Math.max(4, endRenderRow - startRenderRow + 1);
+
+      canvas.width = COLS * CELL + PAD * 2;
+      canvas.height = visibleRows * CELL + PAD * 2 + TITLE_H + LEGEND_H;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      drawHeaderLogoAndTitle();
+
+      for (let r = startRenderRow; r <= endRenderRow; r++) {
+        const rr = r - startRenderRow;
+
+        for (let c = 0; c < COLS; c++) {
+          const x = PAD + c * CELL;
+          const y = TITLE_H + PAD + rr * CELL;
+          const cell = model.grid[r][c];
+
+          if (cell.type === TYPE.SHAFT) continue;
+
+          if (cell.type === TYPE.BLOCK) {
+            ctx.fillStyle = "#000";
+            ctx.fillRect(x, y, CELL, CELL);
+            ctx.strokeStyle = "#bbb";
+            ctx.strokeRect(x, y, CELL, CELL);
+          } else if (cell.type === TYPE.BUBBLE) {
+            ctx.fillStyle = "#7fe7ff";
+            ctx.fillRect(x, y, CELL, CELL);
+            ctx.strokeStyle = "#3cb8cf";
+            ctx.strokeRect(x, y, CELL, CELL);
+            ctx.fillStyle = "#111";
+            ctx.font = "700 28px system-ui";
+            ctx.textAlign = "center";
+            ctx.fillText("B", x + CELL / 2, y + CELL / 2);
+          } else {
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(x, y, CELL, CELL);
+            ctx.strokeStyle = "#ccc";
+            ctx.strokeRect(x, y, CELL, CELL);
+            if (cell.type === TYPE.NUMBER) {
+              ctx.fillStyle = "#111";
+              ctx.font = "700 28px system-ui";
+              ctx.textAlign = "center";
+              ctx.fillText(String(cell.value), x + CELL / 2, y + CELL / 2);
+            }
+          }
+        }
+      }
+
+      for (const rect of shaftRects(model.grid)) {
+        if (rect.maxR < startRenderRow || rect.minR > endRenderRow) continue;
+
+        const x = PAD + rect.minC * CELL;
+        const y = TITLE_H + PAD + (rect.minR - startRenderRow) * CELL;
+        const w = (rect.maxC - rect.minC + 1) * CELL;
+        const h = (rect.maxR - rect.minR + 1) * CELL;
+
+        ctx.fillStyle = "#39FF14";
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = "#0a8f00";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, w, h);
+        ctx.fillStyle = "#111";
+        ctx.font = "700 24px system-ui";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("Shaft", x + w / 2, y + h / 2);
+      }
+
+      for (const path of model.bluePaths) drawSinglePath(path, "#2563eb", 10, startRenderRow);
+      drawSinglePath(model.redPath, "#ef4444", 12, startRenderRow);
+      drawLegend(canvas.height);
+    }
+
+    function clearBoard() {
+      model.grid = makeBlankGrid();
+      model.redPath = [];
+      model.bluePaths = [];
+      titleInput.value = "Gate";
+      setReport("No solve yet.");
+      renderBoardUI();
+      renderPreview();
+      setStatus("Board cleared.");
+    }
+
+    function clearPathsOnly() {
+      model.redPath = [];
+      model.bluePaths = [];
+      setReport("Paths cleared. No solve yet.");
+      renderPreview();
+      setStatus("Paths cleared.");
+    }
+
+    function solve() {
+      try {
+        model.title = titleInput.value.trim() || "Gate";
+        model.gateType = gateTypeEl.value;
+        const solved = solveBoard(model.grid, model.gateType);
+        model.redPath = solved.redPath;
+        model.bluePaths = solved.bluePaths;
+        setReport(solved.report);
+        renderPreview();
+        setStatus("Solved.");
+      } catch (err) {
+        setStatus(err.message || String(err));
+      }
+    }
+
+    function downloadPNG() {
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = `${(titleInput.value || "ZM-Pathfinder").replace(/\s+/g, "_")}.png`;
+      a.click();
+    }
+
+    function loadSampleGate1() {
+      clearBoard();
+      titleInput.value = "Gate 1";
+      gateTypeEl.value = "standard";
+
+      const sample = [
+        [8,9,11,9,12,8,9],
+        [10,"X",8,"X",7,11,7],
+        [8,7,9,6,9,6,"X"],
+        ["X",8,6,8,"B","S","S"],
+        ["X",6,7,6,5,"S","S"],
+        ["X",5,4,5,"X","S","S"],
+        ["X",4,5,4,5,4,6],
+        ["S","S",4,5,4,"X",5],
+        ["S","S",3,4,3,5,4],
+        ["S","S",2,"",2,4,3],
+        [1,2,"","","",3,""]
+      ];
+
+      for (let r = 0; r < sample.length; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const v = sample[r][c];
+          if (v === "X") model.grid[r][c] = { type: TYPE.BLOCK };
+          else if (v === "B") model.grid[r][c] = { type: TYPE.BUBBLE };
+          else if (v === "S") model.grid[r][c] = { type: TYPE.SHAFT };
+          else if (v === "" || v === undefined) model.grid[r][c] = { type: TYPE.EMPTY };
+          else model.grid[r][c] = { type: TYPE.NUMBER, value: Number(v) };
+        }
+      }
+
+      model.redPath = [];
+      model.bluePaths = [];
+      setReport("Sample loaded. Press Solve.");
+      renderBoardUI();
+      renderPreview();
+      setStatus("Sample Gate 1 loaded.");
+    }
+
+    document.querySelectorAll(".tool").forEach(btn => {
+      btn.addEventListener("click", () => {
+        activeTool = btn.dataset.tool;
+        document.querySelectorAll(".tool").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", clearBoard);
+    document.getElementById("solveBtn").addEventListener("click", solve);
+    document.getElementById("downloadBtn").addEventListener("click", downloadPNG);
+    document.getElementById("sampleGate1Btn").addEventListener("click", loadSampleGate1);
+    document.getElementById("copyBoardBtn").addEventListener("click", copyBoardText);
+    document.getElementById("clearPathsBtn").addEventListener("click", clearPathsOnly);
+
+    model.grid = makeBlankGrid();
+    buildBoardUI();
+    updateSelectedCellDisplay();
+    renderPreview();
+    setReport("No solve yet.");
+    setStatus("Board ready. Tap a cell, then paste directly into the grid.");
+  </script>
+</body>
+</html>
