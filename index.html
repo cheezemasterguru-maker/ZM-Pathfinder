@@ -144,7 +144,7 @@
     .help{
       color:var(--muted);
       font-size:13px;
-      line-height:1.4;
+      line-height:1.45;
       text-align:left;
       margin-bottom:10px;
     }
@@ -310,7 +310,9 @@
     }
 
     .modal{
-      width:min(520px, 100%);
+      width:min(560px, 100%);
+      max-height:90vh;
+      overflow:auto;
       background:#11182d;
       border:1px solid #31406d;
       border-radius:22px;
@@ -423,6 +425,25 @@
       margin-top:8px;
     }
 
+    .help-section{
+      margin-top:14px;
+      padding:12px;
+      border:1px solid #2d3c66;
+      border-radius:14px;
+      background:#0f1528;
+    }
+
+    .help-section h3{
+      margin:0 0 8px;
+      font-size:16px;
+    }
+
+    .help-section p{
+      margin:0 0 10px;
+      text-align:left;
+      color:#d8e0ff;
+    }
+
     @media (max-width:700px){
       .page{ padding:10px 6px 18px; }
       h1{ font-size:30px; }
@@ -470,12 +491,13 @@
           </div>
         </div>
 
-        <div class="section-title">How input works</div>
+        <div class="section-title">How the input grid works</div>
         <div class="help">
-          1. Tap a cell in the board.<br>
-          2. Copy a number range from Sheets / Excel.<br>
-          3. Tap <b>Paste From Clipboard</b> to place it starting from the selected cell.<br>
-          4. Use the visual tools for Block, Bubble, and Shaft.
+          Tap a cell and type a number with the <b>Number</b> tool, or tap a start cell and use <b>Paste From Clipboard</b> for data copied from Sheets or Excel.
+          <br><br>
+          <b>Block</b>, <b>Bubble</b>, and <b>Shaft</b> place special tiles. Tap the same tile again with the same tool to remove it.
+          <br><br>
+          Use <b>Solver Help</b> for full instructions on what this tool does, how the tools work, and what the solver output means.
         </div>
 
         <div class="btn-grid">
@@ -485,7 +507,7 @@
 
           <button class="btn-action" onclick="loadSampleGrid()">Sample Grid</button>
           <button class="btn-action" onclick="pasteFromClipboard()">Paste From Clipboard</button>
-          <button class="btn-action" onclick="setReport('Tap a cell, then paste from clipboard.')">Paste Help</button>
+          <button class="btn-action" onclick="openSolverHelp()">Solver Help</button>
         </div>
 
         <div id="report" class="report">Ready. Grid and solver are wired together.</div>
@@ -495,7 +517,7 @@
         <div class="sticky-tools">
           <div class="section-title" style="margin-top:0;">Editable Board</div>
           <div class="help" style="margin-bottom:8px;">
-            Tap a cell to select it. Paste starts from that cell. Tap special tiles again to remove them.
+            Select a tool, then tap the grid to place numbers or special tiles.
           </div>
 
           <div class="tool-grid">
@@ -576,6 +598,73 @@
     </div>
   </div>
 
+  <div id="solverHelpOverlay" class="overlay" onclick="closeSolverHelp()">
+    <div class="modal modal-box" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeSolverHelp()" aria-label="Close">×</button>
+      <h2>Solver Help</h2>
+      <p>How the tool works, how to build your board, and what to expect from the solver.</p>
+
+      <div class="help-section">
+        <h3>What this tool does</h3>
+        <p>
+          ZM Pathfinder helps Zombie Miner players build an input board that matches a mine section, then calculates efficient pathing for the strongest zombie and the second strongest zombie.
+        </p>
+        <p>
+          The result gives you a visual route preview so you can review likely movement and shaft access before making decisions in-game.
+        </p>
+      </div>
+
+      <div class="help-section">
+        <h3>How to build the input grid</h3>
+        <p>
+          Use <b>Number</b> to tap a cell and type a mineral value manually.
+        </p>
+        <p>
+          Use <b>Paste From Clipboard</b> after selecting a start cell to place copied values from Google Sheets or Excel.
+        </p>
+        <p>
+          Blank pasted cells do not erase existing content.
+        </p>
+      </div>
+
+      <div class="help-section">
+        <h3>How the tools work</h3>
+        <p>
+          <b>Block:</b> Places a blocked tile. Tap the same blocked tile again with the Block tool to remove it.
+        </p>
+        <p>
+          <b>Bubble:</b> Places a bubble tile. Tap the same bubble again with the Bubble tool to remove it.
+        </p>
+        <p>
+          <b>Shaft:</b> Places a 2×3 shaft using the tapped cell as the top-left start point. Tap a shaft tile again with the Shaft tool to remove that shaft.
+        </p>
+        <p>
+          <b>Clear Board:</b> Resets the entire grid.
+        </p>
+        <p>
+          <b>Sample Grid:</b> Loads a premade example so you can see how the solver behaves.
+        </p>
+      </div>
+
+      <div class="help-section">
+        <h3>What the solver shows</h3>
+        <p>
+          <b>Red path:</b> the strongest zombie’s route.
+        </p>
+        <p>
+          <b>Blue path:</b> the second strongest zombie’s route.
+        </p>
+        <p>
+          The preview shows mineral values, bubbles, shafts, and the calculated routes. The report summarizes the selected solution and current solver version.
+        </p>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-action" onclick="closeSolverHelp()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const ROWS = 20;
     const COLS = 7;
@@ -587,11 +676,11 @@
 
     const DEFAULT_TESTERS = [
       { name: "CheezeMasterGuru", id: "7625451", isAdmin: true },
-      { name: "AniLaBanani", id: "23358613", isAdmin: false }
-      { name: "ChristopherH", id: "17462546", isAdmin: false }
-    { name: "Azshannia", id: "13276937", isAdmin: false }
+      { name: "AniLaBanani", id: "23358613", isAdmin: false },
+      { name: "ChristopherH", id: "17462546", isAdmin: false },
+      { name: "Azshannia", id: "13276937", isAdmin: false }
       // Add more testers here:
-      // { name: "TesterName", id: "12345678", isAdmin: false }
+      // { name: "NewTester", id: "12345678", isAdmin: false }
     ];
 
     let grid = [];
@@ -762,6 +851,7 @@
       currentTester = null;
       clearSession();
       closeAddTesterModal();
+      closeSolverHelp();
       lockApp();
       setLoginStatus("");
     }
@@ -779,6 +869,14 @@
     function closeAddTesterModal(){
       document.getElementById("addTesterOverlay").classList.remove("show");
       setAddTesterStatus("");
+    }
+
+    function openSolverHelp(){
+      document.getElementById("solverHelpOverlay").classList.add("show");
+    }
+
+    function closeSolverHelp(){
+      document.getElementById("solverHelpOverlay").classList.remove("show");
     }
 
     function renderTesterList(){
