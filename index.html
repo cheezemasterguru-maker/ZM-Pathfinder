@@ -19,8 +19,6 @@
       --shaft:#98f44d;
       --empty:#ececef;
       --select:#f59e0b;
-      --red:#ef4444;
-      --blue:#2563eb;
       --danger:#b91c1c;
       --success:#15803d;
     }
@@ -549,7 +547,7 @@
       <button class="modal-close" onclick="closeAddTesterModal()" aria-label="Close">×</button>
 
       <h2>Add Beta Tester</h2>
-      <p>Only the hard-coded admin account can add testers.</p>
+      <p>Only the hard-coded admin account can add testers locally.</p>
 
       <div class="modal-grid">
         <div class="field">
@@ -587,6 +585,13 @@
     const TESTER_STORAGE_KEY = "zm_pathfinder_beta_testers";
     const SESSION_STORAGE_KEY = "zm_pathfinder_beta_session";
 
+    const DEFAULT_TESTERS = [
+      { name: "CheezeMasterGuru", id: "7625451", isAdmin: true },
+      { name: "AniLaBanani", id: "23358613", isAdmin: false }
+      // Add more testers here:
+      // { name: "TesterName", id: "12345678", isAdmin: false }
+    ];
+
     let grid = [];
     let tool = "number";
     let lastSelected = { r: 0, c: 0 };
@@ -602,6 +607,31 @@
 
     function normalizeId(value){
       return String(value || "").trim();
+    }
+
+    function initializeTesters(){
+      let existing = [];
+      try{
+        existing = JSON.parse(localStorage.getItem(TESTER_STORAGE_KEY) || "[]");
+      } catch(e){
+        existing = [];
+      }
+
+      if (!Array.isArray(existing)) existing = [];
+
+      const merged = [...existing];
+
+      DEFAULT_TESTERS.forEach(def => {
+        const exists = merged.some(t => normalizeId(t.id) === normalizeId(def.id));
+        if (!exists) merged.push(def);
+      });
+
+      const hasAdmin = merged.some(t => normalizeId(t.id) === normalizeId(ADMIN_ID));
+      if (!hasAdmin) {
+        merged.unshift({ name: ADMIN_NAME, id: ADMIN_ID, isAdmin: true });
+      }
+
+      localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(merged));
     }
 
     function setReport(msg){
@@ -626,18 +656,7 @@
       } catch(e){
         testers = [];
       }
-
-      const hasAdmin = testers.some(t => normalizeId(t.id) === normalizeId(ADMIN_ID));
-      if(!hasAdmin){
-        testers.unshift({
-          name: ADMIN_NAME,
-          id: ADMIN_ID,
-          isAdmin: true
-        });
-        localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(testers));
-      }
-
-      return testers;
+      return Array.isArray(testers) ? testers : [];
     }
 
     function saveStoredTesters(testers){
@@ -730,6 +749,7 @@
       saveSession(tester);
       setLoginStatus(`Welcome, ${tester.name}.`, true);
       updateUserUI();
+
       setTimeout(() => {
         unlockApp();
         clearLoginField();
@@ -834,16 +854,16 @@
 
       saveStoredTesters(testers);
       renderTesterList();
-      setAddTesterStatus(`Added tester: ${name} (${id})`, true);
+      setAddTesterStatus(`Added tester locally: ${name} (${id})`, true);
 
       document.getElementById("newTesterName").value = "";
       document.getElementById("newTesterId").value = "";
     }
 
     function initAccessControl(){
-      getStoredTesters();
-      const session = getStoredSession();
+      initializeTesters();
 
+      const session = getStoredSession();
       if(session){
         const tester = findTesterById(session.id);
         if(tester){
