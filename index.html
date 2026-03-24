@@ -649,31 +649,28 @@
       ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const logo = new Image();
-      logo.onload = () => {
-        const maxW = 280;
-        const maxH = 100;
-        const ratio = Math.min(maxW / logo.width, maxH / logo.height, 1);
-        const w = logo.width * ratio;
-        const h = logo.height * ratio;
-        ctx.drawImage(logo, (canvas.width - w) / 2, 10, w, h);
+      const drawEverything = () => {
+        const logo = new Image();
+        logo.onload = () => {
+          const maxW = 280;
+          const maxH = 100;
+          const ratio = Math.min(maxW / logo.width, maxH / logo.height, 1);
+          const w = logo.width * ratio;
+          const h = logo.height * ratio;
+          ctx.drawImage(logo, (canvas.width - w) / 2, 10, w, h);
 
-        ctx.fillStyle = "#111";
-        ctx.font = "700 34px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText((document.getElementById("titleInput").value || "Gate").toUpperCase(), canvas.width / 2, 140);
+          ctx.fillStyle = "#111";
+          ctx.font = "700 34px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "alphabetic";
+          ctx.fillText((document.getElementById("titleInput").value || "Gate").toUpperCase(), canvas.width / 2, 140);
 
-        drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow);
+          drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow);
+        };
+        logo.src = "file_00000000e35071fda5e92d9996ac3621.png";
       };
-      logo.src = "file_00000000e35071fda5e92d9996ac3621.png";
 
-      if (logo.complete) {
-        ctx.fillStyle = "#111";
-        ctx.font = "700 34px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText((document.getElementById("titleInput").value || "Gate").toUpperCase(), canvas.width / 2, 140);
-        drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow);
-      }
+      drawEverything();
     }
 
     function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
@@ -752,15 +749,6 @@
         drawPath(ctx, path, "#2563eb", 10, cell, pad, topPad, rowOffset);
       }
       drawPath(ctx, solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset);
-
-      for(const [r,c] of solveState.shaftEntryDots){
-        const x = pad + c * cell + cell/2;
-        const y = topPad + (r - rowOffset) * cell + cell/2;
-        ctx.fillStyle = "#2563eb";
-        ctx.beginPath();
-        ctx.arc(x, y, 6, 0, Math.PI * 2);
-        ctx.fill();
-      }
 
       const ly = ctx.canvas.height - 35;
 
@@ -877,7 +865,7 @@
         a.href = url;
         a.download = `${(document.getElementById("titleInput").value || "zm-pathfinder").replace(/\s+/g, "-").toLowerCase()}.png`;
         a.click();
-      }, 120);
+      }, 160);
     }
 
     window.addEventListener("load", init);
