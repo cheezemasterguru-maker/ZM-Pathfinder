@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V4.2 loaded");
+  console.log("ZM Solver V4.3 loaded");
 
-  const SOLVER_VERSION = "V4.2";
+  const SOLVER_VERSION = "V4.3";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -19,9 +19,14 @@
     return v !== "X" && v !== "S";
   }
 
+  function isAttackableTile(v) {
+    return typeof v === "number" || v === "B";
+  }
+
   function cellWeight(grid, r, c, freeCells) {
     if (freeCells && freeCells.has(`${r},${c}`)) return 0;
     const v = grid[r][c];
+    if (v === "B") return 0;
     return typeof v === "number" ? numberCost(v) : 0;
   }
 
@@ -111,7 +116,7 @@
         if (rr < 0 || cc < 0 || rr >= grid.length || cc >= grid[0].length) continue;
         if (clusterSet.has(`${rr},${cc}`)) continue;
 
-        if (typeof grid[rr][cc] === "number") {
+        if (isAttackableTile(grid[rr][cc])) {
           const key = `${rr},${cc}`;
           if (!entryMap.has(key)) {
             attacks.push([rr, cc]);
@@ -271,6 +276,22 @@
       }
     }
     return score;
+  }
+
+  function countBubbleCells(path, grid) {
+    let n = 0;
+    for (const [r, c] of path || []) {
+      if (grid[r] && grid[r][c] === "B") n++;
+    }
+    return n;
+  }
+
+  function bubblePathBonus(path, entry, grid) {
+    let bonus = countBubbleCells(path, grid) * 0.4;
+    if (entry && grid[entry[0]] && grid[entry[0]][entry[1]] === "B") {
+      bonus += 4.0;
+    }
+    return bonus;
   }
 
   function pathTouchesAnyStart(path, starts) {
@@ -608,6 +629,7 @@
     let dependencyCost = 0;
     let assistBonus = 0;
     let lowerShaftBonus = 0;
+    let bubbleBonus = 0;
 
     const reusable = new Set([...pathSet(redCandidate.path)]);
     let cumulativeStarts = dedupeCells(starts.concat(redCandidate.path));
@@ -653,12 +675,10 @@
 
         const baseLocalBlue = getBlueLocalRouteStrength(grid, starts, new Set(), info.attacks);
         let assistA = countAdjacentSharedOpens(redCandidate.path, finalA) * 0.35;
-
-        if (baseLocalBlue < 50000) {
-          assistA *= 0.25;
-        }
+        if (baseLocalBlue < 50000) assistA *= 0.25;
 
         const lowerBonusA = getLowestShaftPreferenceBonus(routeA, entryA, cluster, "cumulative", isLowestShaft);
+        const bubbleBonusA = bubblePathBonus(finalA, entryA, grid);
 
         routeOptions.push({
           kind: "cumulative",
@@ -668,7 +688,8 @@
           dependency: depA,
           assist: assistA,
           lowerBonus: lowerBonusA,
-          totalScore: routeA.cost + depA - assistA - lowerBonusA
+          bubbleBonus: bubbleBonusA,
+          totalScore: routeA.cost + depA - assistA - lowerBonusA - bubbleBonusA
         });
       }
 
@@ -685,12 +706,10 @@
 
         const baseLocalBlue = getBlueLocalRouteStrength(grid, starts, new Set(), info.attacks);
         let assistB = countAdjacentSharedOpens(redCandidate.path, finalB) * 0.35;
-
-        if (baseLocalBlue < 50000) {
-          assistB *= 0.25;
-        }
+        if (baseLocalBlue < 50000) assistB *= 0.25;
 
         const lowerBonusB = getLowestShaftPreferenceBonus(routeB, entryB, cluster, "base", isLowestShaft);
+        const bubbleBonusB = bubblePathBonus(finalB, entryB, grid);
 
         routeOptions.push({
           kind: "base",
@@ -700,7 +719,8 @@
           dependency: 0,
           assist: assistB,
           lowerBonus: lowerBonusB,
-          totalScore: routeB.cost - assistB - lowerBonusB
+          bubbleBonus: bubbleBonusB,
+          totalScore: routeB.cost - assistB - lowerBonusB - bubbleBonusB
         });
       }
 
@@ -719,6 +739,7 @@
       dependencyCost += chosen.dependency;
       assistBonus += chosen.assist;
       lowerShaftBonus += chosen.lowerBonus || 0;
+      bubbleBonus += chosen.bubbleBonus || 0;
 
       for (const [r, c] of chosen.finalPath) {
         reusable.add(`${r},${c}`);
@@ -749,6 +770,7 @@
       if (bubbleRoute) {
         bluePaths.push(bubbleRoute.path);
         blueCost += bubbleRoute.cost;
+        bubbleBonus += bubblePathBonus(bubbleRoute.path, bubbleRoute.goal, grid);
 
         for (const [r, c] of bubbleRoute.path) {
           reusable.add(`${r},${c}`);
@@ -776,6 +798,7 @@
       dependencyCost,
       assistBonus,
       lowerShaftBonus,
+      bubbleBonus,
       redLoopPenalty,
       overAssistPenalty
     };
@@ -794,7 +817,7 @@
         `${idx + 1}. mode=${cand.redMode} variant=${cand.redVariant} ` +
         `red=${roundCost(cand.redCost)} blue=${roundCost(cand.blueCost)} ` +
         `dep=${roundCost(cand.dependencyCost)} assist=${roundCost(cand.assistBonus)} ` +
-        `lower_bonus=${roundCost(cand.lowerShaftBonus)} ` +
+        `lower_bonus=${roundCost(cand.lowerShaftBonus)} bubble_bonus=${roundCost(cand.bubbleBonus)} ` +
         `loop_pen=${roundCost(cand.redLoopPenalty)} over_assist=${roundCost(cand.overAssistPenalty)} ` +
         `effective=${roundCost(cand.effectiveTotal)} unresolved=${cand.unresolvedTargets}`
       );
@@ -854,7 +877,8 @@
         blueEval.blueCost +
         blueEval.dependencyCost -
         blueEval.assistBonus -
-        blueEval.lowerShaftBonus +
+        blueEval.lowerShaftBonus -
+        blueEval.bubbleBonus +
         blueEval.redLoopPenalty +
         blueEval.overAssistPenalty;
 
@@ -873,6 +897,7 @@
         dependencyCost: blueEval.dependencyCost,
         assistBonus: blueEval.assistBonus,
         lowerShaftBonus: blueEval.lowerShaftBonus,
+        bubbleBonus: blueEval.bubbleBonus,
         redLoopPenalty: blueEval.redLoopPenalty,
         overAssistPenalty: blueEval.overAssistPenalty,
         effectiveTotal
@@ -928,6 +953,7 @@
       dependencyCost: roundCost(best.dependencyCost),
       assistBonus: roundCost(best.assistBonus),
       lowerShaftBonus: roundCost(best.lowerShaftBonus),
+      bubbleBonus: roundCost(best.bubbleBonus),
       redLoopPenalty: roundCost(best.redLoopPenalty),
       overAssistPenalty: roundCost(best.overAssistPenalty),
       shaftClusters: shaftClustersOrdered,
@@ -947,6 +973,7 @@
         `dependency_cost: ${roundCost(best.dependencyCost)}\n` +
         `assist_bonus: ${roundCost(best.assistBonus)}\n` +
         `lower_shaft_bonus: ${roundCost(best.lowerShaftBonus)}\n` +
+        `bubble_bonus: ${roundCost(best.bubbleBonus)}\n` +
         `red_loop_penalty: ${roundCost(best.redLoopPenalty)}\n` +
         `over_assist_penalty: ${roundCost(best.overAssistPenalty)}\n` +
         `bubble_count: ${bubbles.length}\n` +
