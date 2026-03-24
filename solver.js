@@ -217,6 +217,124 @@
     return Math.round(n * 100) / 100;
   }
 
+  function buildRedCandidates(grid, starts, gateGoals, bubbles) {
+    const candidates = [];
+
+    // direct to each gate cell individually
+    for (const gateGoal of gateGoals) {
+      const direct = dijkstra({ grid, starts, goals: [gateGoal] });
+      if (direct) {
+        candidates.push({
+          mode: "direct",
+          redBubble: null,
+          path: uniquePath(direct.path),
+          redCost: direct.cost,
+          gateGoal
+        });
+      }
+    }
+
+    // via each bubble, then to each gate cell
+    for (const bubble of bubbles) {
+      const a = dijkstra({ grid, starts, goals: [bubble] });
+      if (!a) continue;
+
+      for (const gateGoal of gateGoals) {
+        const b = dijkstra({ grid, starts: [bubble], goals: [gateGoal] });
+        if (!b) continue;
+
+        candidates.push({
+          mode: "via bubble",
+          redBubble: bubble,
+          path: uniquePath(mergePaths(a.path, b.path)),
+          redCost: a.cost + b.cost,
+          gateGoal
+        });
+      }
+    }
+
+    // dedupe identical red paths
+    const seen = new Set();
+    return candidates.filter((cand) => {
+      const key = cand.path.map(([r, c]) => `${r},${c}`).join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function evaluateBlueForRedCandidate(grid, starts, redCandidate, shaftClusters, bubbles) {
+    const freeRed = pathSet(redCandidate.path);
+    const bluePaths = [];
+    const shaftEntryDots = [];
+    const attackPoints = [];
+    let blueCost = 0;
+    let unresolved = 0;
+
+    for (const cluster of shaftClusters) {
+      const info = getShaftAttackInfo(grid, cluster);
+      if (!info.attacks.length) {
+        unresolved++;
+        continue;
+      }
+
+      const shaftRoute = dijkstra({
+        grid,
+        starts: starts.concat(redCandidate.path),
+        goals: info.attacks,
+        freeCells: freeRed,
+      });
+
+      if (!shaftRoute) {
+        unresolved++;
+        continue;
+      }
+
+      attackPoints.push(shaftRoute.goal);
+
+      const entry = info.entryMap.get(`${shaftRoute.goal[0]},${shaftRoute.goal[1]}`);
+      if (entry) {
+        shaftEntryDots.push(entry);
+        bluePaths.push(appendEntryStep(shaftRoute.path, entry));
+      } else {
+        bluePaths.push(shaftRoute.path);
+      }
+
+      blueCost += shaftRoute.cost;
+    }
+
+    const redBubbleKey = redCandidate.redBubble
+      ? `${redCandidate.redBubble[0]},${redCandidate.redBubble[1]}`
+      : null;
+
+    for (const bubble of bubbles) {
+      const key = `${bubble[0]},${bubble[1]}`;
+      if (key === redBubbleKey) continue;
+
+      const bubbleRoute = dijkstra({
+        grid,
+        starts: starts.concat(redCandidate.path),
+        goals: [bubble],
+        freeCells: freeRed,
+      });
+
+      if (bubbleRoute) {
+        bluePaths.push(bubbleRoute.path);
+        blueCost += bubbleRoute.cost;
+      } else {
+        unresolved++;
+      }
+    }
+
+    return {
+      bluePaths,
+      shaftEntryDots,
+      attackPoints,
+      blueCost,
+      unresolved
+    };
+  }
+
   function solveGrid({ grid, gateType = "standard" }) {
     const rows = grid.length;
     const cols = grid[0].length;
@@ -242,29 +360,8 @@
     const bubbles = getBubbles(grid);
     const shaftClusters = getShaftClusters(grid);
 
-    let bestRed = dijkstra({ grid, starts, goals: gateGoals });
-    let redMode = "direct";
-    let redBubble = null;
-
-    for (const bubble of bubbles) {
-      const a = dijkstra({ grid, starts, goals: [bubble] });
-      const b = dijkstra({ grid, starts: [bubble], goals: gateGoals });
-
-      if (a && b) {
-        const total = a.cost + b.cost;
-        if (!bestRed || total < bestRed.cost) {
-          bestRed = {
-            path: uniquePath(mergePaths(a.path, b.path)),
-            cost: total,
-            goal: b.goal,
-          };
-          redMode = "via bubble";
-          redBubble = bubble;
-        }
-      }
-    }
-
-    if (!bestRed) {
+    const redCandidates = buildRedCandidates(grid, starts, gateGoals, bubbles);
+    if (!redCandidates.length) {
       return {
         ok: false,
         message: "No valid red path to gate.",
@@ -272,62 +369,57 @@
       };
     }
 
-    const freeRed = pathSet(bestRed.path);
-    const bluePaths = [];
-    const shaftEntryDots = [];
-    const attackPoints = [];
-    let blueCost = 0;
-    let unresolved = 0;
+    let best = null;
 
-    for (const cluster of shaftClusters) {
-      const info = getShaftAttackInfo(grid, cluster);
-      if (!info.attacks.length) {
-        unresolved++;
+    for (const redCandidate of redCandidates) {
+      const blueEval = evaluateBlueForRedCandidate(
+        grid,
+        starts,
+        redCandidate,
+        shaftClusters,
+        bubbles
+      );
+
+      const totalCost = redCandidate.redCost + blueEval.blueCost;
+
+      const candidate = {
+        redMode: redCandidate.mode,
+        redBubble: redCandidate.redBubble,
+        redPath: redCandidate.path,
+        redCost: redCandidate.redCost,
+        gateGoal: redCandidate.gateGoal,
+        bluePaths: blueEval.bluePaths,
+        blueCost: blueEval.blueCost,
+        shaftEntryDots: blueEval.shaftEntryDots,
+        attackPoints: blueEval.attackPoints,
+        unresolvedTargets: blueEval.unresolved,
+        totalCost
+      };
+
+      if (!best) {
+        best = candidate;
         continue;
       }
 
-      const shaftRoute = dijkstra({
-        grid,
-        starts: starts.concat(bestRed.path),
-        goals: info.attacks,
-        freeCells: freeRed,
-      });
-
-      if (!shaftRoute) {
-        unresolved++;
+      if (candidate.unresolvedTargets < best.unresolvedTargets) {
+        best = candidate;
         continue;
       }
 
-      attackPoints.push(shaftRoute.goal);
-
-      const entry = info.entryMap.get(`${shaftRoute.goal[0]},${shaftRoute.goal[1]}`);
-      if (entry) {
-        shaftEntryDots.push(entry);
-        bluePaths.push(appendEntryStep(shaftRoute.path, entry));
-      } else {
-        bluePaths.push(shaftRoute.path);
+      if (
+        candidate.unresolvedTargets === best.unresolvedTargets &&
+        candidate.totalCost < best.totalCost
+      ) {
+        best = candidate;
+        continue;
       }
 
-      blueCost += shaftRoute.cost;
-    }
-
-    const redBubbleKey = redBubble ? `${redBubble[0]},${redBubble[1]}` : null;
-    for (const bubble of bubbles) {
-      const key = `${bubble[0]},${bubble[1]}`;
-      if (key === redBubbleKey) continue;
-
-      const bubbleRoute = dijkstra({
-        grid,
-        starts: starts.concat(bestRed.path),
-        goals: [bubble],
-        freeCells: freeRed,
-      });
-
-      if (bubbleRoute) {
-        bluePaths.push(bubbleRoute.path);
-        blueCost += bubbleRoute.cost;
-      } else {
-        unresolved++;
+      if (
+        candidate.unresolvedTargets === best.unresolvedTargets &&
+        candidate.totalCost === best.totalCost &&
+        candidate.redCost < best.redCost
+      ) {
+        best = candidate;
       }
     }
 
@@ -337,27 +429,27 @@
       cols,
       gateType,
       startRow,
-      redMode,
-      redBubble,
-      redPath: bestRed.path,
-      redCost: roundCost(bestRed.cost),
-      bluePaths,
-      blueCost: roundCost(blueCost),
-      totalCost: roundCost(bestRed.cost + blueCost),
+      redMode: best.redMode,
+      redBubble: best.redBubble,
+      redPath: best.redPath,
+      redCost: roundCost(best.redCost),
+      bluePaths: best.bluePaths,
+      blueCost: roundCost(best.blueCost),
+      totalCost: roundCost(best.totalCost),
       shaftClusters,
-      shaftEntryDots,
-      attackPoints,
+      shaftEntryDots: best.shaftEntryDots,
+      attackPoints: best.attackPoints,
       bubbles,
-      unresolvedTargets: unresolved,
+      unresolvedTargets: best.unresolvedTargets,
       message:
         "solver_status: solved\n" +
-        `red_mode: ${redMode}\n` +
-        `red_cost: ${roundCost(bestRed.cost)}\n` +
-        `blue_cost: ${roundCost(blueCost)}\n` +
+        `red_mode: ${best.redMode}\n` +
+        `red_cost: ${roundCost(best.redCost)}\n` +
+        `blue_cost: ${roundCost(best.blueCost)}\n` +
         `bubble_count: ${bubbles.length}\n` +
         `shaft_count: ${shaftClusters.length}\n` +
-        `unresolved_targets: ${unresolved}\n` +
-        `total_cost: ${roundCost(bestRed.cost + blueCost)}`
+        `unresolved_targets: ${best.unresolvedTargets}\n` +
+        `total_cost: ${roundCost(best.totalCost)}`
     };
   }
 
