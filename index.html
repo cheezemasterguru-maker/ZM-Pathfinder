@@ -19,7 +19,9 @@ body {
   max-width: 500px;
 }
 
-h1 { margin: 10px 0; }
+h1 {
+  margin: 10px 0;
+}
 
 .tools {
   position: sticky;
@@ -60,28 +62,19 @@ button {
   justify-content:center;
   font-weight:bold;
   outline: none;
+  user-select: text;
 }
 
 .cell.block { background:#000; color:#fff; }
 .cell.bubble { background:#7dd3fc; color:#000; }
 .cell.shaft { background:#7CFC00; color:#000; }
-
-/* paste box */
-.paste-box {
-  width: 90%;
-  max-width: 500px;
-  height: 80px;
-  margin: 10px auto;
-  border-radius: 10px;
-  border: none;
-  padding: 10px;
-}
 </style>
 </head>
 
 <body>
 
 <img src="file_00000000e35071fda5e92d9996ac3621.png" class="logo">
+
 <h1>ZM Pathfinder</h1>
 
 <div class="tools">
@@ -92,11 +85,6 @@ button {
   <button class="empty" onclick="setTool('empty')">Empty</button>
 </div>
 
-<!-- MOBILE SAFE PASTE -->
-<textarea id="pasteBox" class="paste-box" placeholder="Paste from Sheets here if direct paste doesn’t work"></textarea>
-<br>
-<button onclick="applyPaste()">Paste Into Grid</button>
-
 <div id="grid" class="grid"></div>
 
 <script>
@@ -105,6 +93,7 @@ const COLS = 7;
 
 let grid = [];
 let tool = "number";
+let lastSelected = { r: 0, c: 0 };
 
 // INIT GRID
 function init() {
@@ -112,51 +101,53 @@ function init() {
   g.innerHTML = "";
   grid = [];
 
-  for (let r=0;r<ROWS;r++){
-    grid[r]=[];
-    for (let c=0;c<COLS;c++){
-      grid[r][c]="";
+  for (let r = 0; r < ROWS; r++) {
+    grid[r] = [];
+
+    for (let c = 0; c < COLS; c++) {
+      grid[r][c] = "";
 
       const d = document.createElement("div");
-      d.className="cell";
-      d.contentEditable=true;
-      d.dataset.r=r;
-      d.dataset.c=c;
+      d.className = "cell";
+      d.contentEditable = true;
+      d.dataset.r = r;
+      d.dataset.c = c;
 
       d.addEventListener("input", handleTyping);
-      d.addEventListener("paste", handlePaste);
-      d.addEventListener("click", ()=>handleClick(r,c));
+      d.addEventListener("click", () => handleClick(r, c));
 
       g.appendChild(d);
     }
   }
 }
 
-function setTool(t){ tool=t; }
+// TOOL SELECT
+function setTool(t) {
+  tool = t;
+}
 
 // CLICK
-function handleClick(r,c){
-  if(tool==="number") return;
+function handleClick(r, c) {
+  lastSelected = { r, c };
 
-  if(tool==="block"){
-    grid[r][c] = grid[r][c]==="X" ? "" : "X";
+  if (tool === "number") return;
+
+  if (tool === "block") {
+    grid[r][c] = grid[r][c] === "X" ? "" : "X";
   }
-
-  else if(tool==="bubble"){
-    grid[r][c] = grid[r][c]==="B" ? "" : "B";
+  else if (tool === "bubble") {
+    grid[r][c] = grid[r][c] === "B" ? "" : "B";
   }
-
-  else if(tool==="empty"){
-    grid[r][c]="";
+  else if (tool === "empty") {
+    grid[r][c] = "";
   }
+  else if (tool === "shaft") {
+    let removing = grid[r][c] === "S";
 
-  else if(tool==="shaft"){
-    let removing = grid[r][c]==="S";
-
-    for(let dr=0;dr<3;dr++){
-      for(let dc=0;dc<2;dc++){
-        if(grid[r+dr] && grid[r+dr][c+dc]!==undefined){
-          grid[r+dr][c+dc] = removing ? "" : "S";
+    for (let dr = 0; dr < 3; dr++) {
+      for (let dc = 0; dc < 2; dc++) {
+        if (grid[r + dr] && grid[r + dr][c + dc] !== undefined) {
+          grid[r + dr][c + dc] = removing ? "" : "S";
         }
       }
     }
@@ -165,70 +156,36 @@ function handleClick(r,c){
   render();
 }
 
-// TYPING
-function handleTyping(e){
-  const el = e.target;
-  const r = el.dataset.r;
-  const c = el.dataset.c;
+// GLOBAL PASTE (FIXES MOBILE)
+document.addEventListener("paste", function (e) {
+  const text = e.clipboardData.getData("text");
+  if (!text) return;
 
-  let val = el.innerText.trim();
-
-  if(val===""){
-    grid[r][c]="";
-  }
-  else if(!isNaN(val)){
-    grid[r][c]=Number(val);
-  }
-  else{
-    el.innerText = grid[r][c] || "";
-  }
-
-  render();
-}
-
-// DIRECT PASTE (may fail on mobile)
-function handlePaste(e){
-  try {
-    const text = e.clipboardData.getData("text");
-    applyText(text, e.target);
-  } catch {}
-}
-
-// FALLBACK PASTE
-function applyPaste(){
-  const text = document.getElementById("pasteBox").value;
   applyText(text);
-}
+});
 
-// CORE PASTE LOGIC
-function applyText(text, startCell){
-  if(!text) return;
+// APPLY TEXT
+function applyText(text) {
+  const rows = text.trim().split("\\n");
 
-  const rows = text.trim().split("\n");
+  const startR = lastSelected.r;
+  const startC = lastSelected.c;
 
-  let startR = 0;
-  let startC = 0;
+  rows.forEach((row, ri) => {
+    const cols = row.split(/\\t|,/);
 
-  if(startCell){
-    startR = Number(startCell.dataset.r);
-    startC = Number(startCell.dataset.c);
-  }
+    cols.forEach((val, ci) => {
+      const r = startR + ri;
+      const c = startC + ci;
 
-  rows.forEach((row,ri)=>{
-    const cols = row.split(/\t|,/);
-
-    cols.forEach((val,ci)=>{
-      const r = startR+ri;
-      const c = startC+ci;
-
-      if(grid[r] && grid[r][c]!==undefined){
+      if (grid[r] && grid[r][c] !== undefined) {
         val = val.trim();
 
-        if(!val) return;
+        if (!val) return;
 
-        if(!isNaN(val)) grid[r][c]=Number(val);
-        else if(val.toUpperCase()==="X") grid[r][c]="X";
-        else if(val.toUpperCase()==="B") grid[r][c]="B";
+        if (!isNaN(val)) grid[r][c] = Number(val);
+        else if (val.toUpperCase() === "X") grid[r][c] = "X";
+        else if (val.toUpperCase() === "B") grid[r][c] = "B";
       }
     });
   });
@@ -236,29 +193,50 @@ function applyText(text, startCell){
   render();
 }
 
+// TYPING
+function handleTyping(e) {
+  const el = e.target;
+  const r = el.dataset.r;
+  const c = el.dataset.c;
+
+  let val = el.innerText.trim();
+
+  if (val === "") {
+    grid[r][c] = "";
+  }
+  else if (!isNaN(val)) {
+    grid[r][c] = Number(val);
+  }
+  else {
+    el.innerText = grid[r][c] || "";
+  }
+
+  render();
+}
+
 // RENDER
-function render(){
-  document.querySelectorAll(".cell").forEach(cell=>{
+function render() {
+  document.querySelectorAll(".cell").forEach(cell => {
     const r = cell.dataset.r;
     const c = cell.dataset.c;
     const val = grid[r][c];
 
-    cell.className="cell";
-    cell.innerText="";
+    cell.className = "cell";
+    cell.innerText = "";
 
-    if(val==="X"){
+    if (val === "X") {
       cell.classList.add("block");
     }
-    else if(val==="B"){
+    else if (val === "B") {
       cell.classList.add("bubble");
-      cell.innerText="B";
+      cell.innerText = "B";
     }
-    else if(val==="S"){
+    else if (val === "S") {
       cell.classList.add("shaft");
-      cell.innerText="S";
+      cell.innerText = "S";
     }
-    else if(val!==""){
-      cell.innerText=val;
+    else if (val !== "") {
+      cell.innerText = val;
     }
   });
 }
