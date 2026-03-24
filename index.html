@@ -37,7 +37,7 @@
       margin: 0 auto;
       padding: 18px;
       display: grid;
-      grid-template-columns: 420px 1fr;
+      grid-template-columns: 440px 1fr;
       gap: 18px;
     }
 
@@ -54,7 +54,7 @@
     }
 
     h1 {
-      font-size: 30px;
+      font-size: 34px;
       text-align: center;
     }
 
@@ -79,7 +79,7 @@
       grid-template-columns: 1fr 1fr 1fr;
     }
 
-    input, select, button {
+    input, select, button, textarea {
       width: 100%;
       border-radius: 12px;
       border: 1px solid var(--line);
@@ -87,6 +87,14 @@
       color: var(--text);
       padding: 10px 12px;
       font: inherit;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+      line-height: 1.35;
+      white-space: pre;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
 
     button {
@@ -120,19 +128,20 @@
     .logo-header {
       display: grid;
       justify-items: center;
-      gap: 10px;
+      gap: 12px;
       margin-bottom: 4px;
     }
 
     .logo-preview {
-      width: 140px;
-      height: 140px;
-      border-radius: 18px;
+      width: 240px;
+      height: 240px;
+      border-radius: 22px;
       border: 1px solid var(--line);
       background: #0c1020;
       display: grid;
       place-items: center;
       overflow: hidden;
+      padding: 8px;
     }
 
     .logo-preview img {
@@ -309,13 +318,18 @@
       </div>
 
       <div>
-        <h2>How input works</h2>
+        <h2>Paste Numbers Into Selected Cell</h2>
         <div class="hint">
-          1. Tap a cell in the board.<br>
-          2. Copy a number range from Sheets / Excel.<br>
-          3. Paste with <span class="kbd">Ctrl/Cmd+V</span> on desktop or your phone’s paste command.<br>
-          4. Use the visual tools for Block, Bubble, Shaft, and Empty.
+          Tap a cell in the board first. Then paste a copied range from Sheets / Excel into this box and tap <span class="kbd">Paste Into Board</span>.
+          This is the mobile-safe way to load number data.
         </div>
+        <textarea id="pasteArea" placeholder="Paste copied number cells here..."></textarea>
+      </div>
+
+      <div class="row3">
+        <button id="pasteBtn" class="primary">Paste Into Board</button>
+        <button id="clearPasteBtn" class="secondary">Clear Paste Box</button>
+        <button id="copyBoardBtn" class="secondary">Copy Grid Text</button>
       </div>
 
       <div class="row3">
@@ -327,7 +341,7 @@
       <div class="row3">
         <button id="sampleGate1Btn" class="secondary">Sample Gate 1</button>
         <button id="sampleBlankBtn" class="secondary">Blank Board</button>
-        <button id="copyBoardBtn" class="secondary">Copy Grid Text</button>
+        <button id="fillEmptyBtn" class="secondary">Clear Paths</button>
       </div>
 
       <div>
@@ -362,7 +376,7 @@
     <div class="workspace">
       <div class="card">
         <h2>Editable Board</h2>
-        <div class="small">Tap to select a cell. Paste numbers into the board from the selected cell. Special tiles are placed visually.</div>
+        <div class="small">Tap to select a cell. Use the paste box for numbers. Use visual tools for special tiles.</div>
         <div class="grid-wrap">
           <div id="gridBoard" class="grid-board" aria-label="Editable 7 by 20 board"></div>
         </div>
@@ -383,7 +397,7 @@
     const ROWS = 20;
     const CELL = 88;
     const PAD = 18;
-    const TITLE_H = 190;
+    const TITLE_H = 250;
     const LEGEND_H = 70;
 
     const TYPE = {
@@ -410,6 +424,7 @@
     const gridBoard = document.getElementById("gridBoard");
     const canvas = document.getElementById("boardCanvas");
     const ctx = canvas.getContext("2d");
+    const pasteArea = document.getElementById("pasteArea");
 
     let activeTool = TOOL.NUMBER;
     let selectedRow = 0;
@@ -601,15 +616,6 @@
       renderPreview();
       setStatus(`Pasted values starting at Row ${selectedRow + 1}, Col ${selectedCol + 1}. Updated ${placed} cells.`);
     }
-
-    document.addEventListener("paste", (evt) => {
-      const active = document.activeElement;
-      if (active && ["INPUT", "TEXTAREA"].includes(active.tagName)) return;
-      const text = evt.clipboardData?.getData("text/plain");
-      if (!text) return;
-      evt.preventDefault();
-      pasteIntoBoard(text);
-    });
 
     function usedRowsInfo() {
       let minRow = ROWS;
@@ -889,12 +895,25 @@
       ctx.fillText("2nd Strongest Z", 452, y + 6);
     }
 
-    function drawHeaderTitleOnly() {
-      ctx.fillStyle = "#111";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.font = "700 42px system-ui";
-      ctx.fillText(model.title.toUpperCase(), canvas.width / 2, 160);
+    function drawHeaderLogoAndTitle() {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 220;
+        const maxH = 220;
+        const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+        const w = img.width * ratio;
+        const h = img.height * ratio;
+        const x = (canvas.width - w) / 2;
+        const y = 12;
+        ctx.drawImage(img, x, y, w, h);
+
+        ctx.fillStyle = "#111";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "700 42px system-ui";
+        ctx.fillText(model.title.toUpperCase(), canvas.width / 2, 220);
+      };
+      img.src = "file_00000000e35071fda5e92d9996ac3621.png";
     }
 
     function renderPreview() {
@@ -913,7 +932,7 @@
       ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      drawHeaderTitleOnly();
+      drawHeaderLogoAndTitle();
 
       for (let r = startRenderRow; r <= endRenderRow; r++) {
         const rr = r - startRenderRow;
@@ -1057,20 +1076,25 @@
     document.getElementById("sampleBlankBtn").addEventListener("click", clearBoard);
     document.getElementById("copyBoardBtn").addEventListener("click", copyBoardText);
 
-    document.addEventListener("paste", (evt) => {
-      const active = document.activeElement;
-      if (active && ["INPUT", "TEXTAREA"].includes(active.tagName)) return;
-      const text = evt.clipboardData?.getData("text/plain");
-      if (!text) return;
-      evt.preventDefault();
+    document.getElementById("pasteBtn").addEventListener("click", () => {
+      const text = pasteArea.value;
+      if (!text.trim()) {
+        setStatus("Paste box is empty.");
+        return;
+      }
       pasteIntoBoard(text);
+    });
+
+    document.getElementById("clearPasteBtn").addEventListener("click", () => {
+      pasteArea.value = "";
+      setStatus("Paste box cleared.");
     });
 
     model.grid = makeBlankGrid();
     buildBoardUI();
     updateSelectedCellDisplay();
     renderPreview();
-    setStatus("Board ready. Tap a cell, then paste numbers into the grid or place special tiles visually.");
+    setStatus("Board ready. Tap a cell, paste numbers into the paste box, then tap Paste Into Board. Use visual tools for blocks, shafts, and bubbles.");
   </script>
 </body>
 </html>
