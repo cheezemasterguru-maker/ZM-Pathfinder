@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V4.4 loaded");
+  console.log("ZM Solver V4.5 loaded");
 
-  const SOLVER_VERSION = "V4.4";
+  const SOLVER_VERSION = "V4.5";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -20,7 +20,7 @@
   }
 
   function isAttackableTile(v) {
-    return typeof v === "number" || v === "B";
+    return typeof v === "number" || v === "B" || v === "";
   }
 
   function cellWeight(grid, r, c, freeCells) {
@@ -129,7 +129,14 @@
     return { attacks, entryMap };
   }
 
-  function dijkstra({ grid, starts, goals, freeCells = new Set(), blockedEdges = new Set(), penaltyCells = new Map() }) {
+  function dijkstra({
+    grid,
+    starts,
+    goals,
+    freeCells = new Set(),
+    blockedEdges = new Set(),
+    penaltyCells = new Map(),
+  }) {
     if (!starts.length || !goals.length) return null;
 
     const rows = grid.length;
@@ -609,14 +616,175 @@
     return penalty;
   }
 
-  function pickBestShaftRouteOption(options) {
-    if (!options.length) return null;
-    options.sort((a, b) => {
-      if (a.totalScore !== b.totalScore) return a.totalScore - b.totalScore;
-      if (a.route.cost !== b.route.cost) return a.route.cost - b.route.cost;
-      return a.route.len - b.route.len;
+  function pathMinerCount(path, grid, freeCells = new Set()) {
+    let count = 0;
+    for (const [r, c] of path || []) {
+      const key = `${r},${c}`;
+      if (freeCells.has(key)) continue;
+      if (typeof grid[r][c] === "number") count++;
+    }
+    return count;
+  }
+
+  function pathRawNumberSum(path, grid, freeCells = new Set()) {
+    let total = 0;
+    for (const [r, c] of path || []) {
+      const key = `${r},${c}`;
+      if (freeCells.has(key)) continue;
+      if (typeof grid[r][c] === "number") total += grid[r][c];
+    }
+    return total;
+  }
+
+  function pathSharesWithRed(path, redPath) {
+    const redSet = new Set((redPath || []).map(([r, c]) => `${r},${c}`));
+    let shared = 0;
+    for (const [r, c] of path || []) {
+      if (redSet.has(`${r},${c}`)) shared++;
+    }
+    return shared;
+  }
+
+  function getEntryBottomDepth(entry, cluster) {
+    if (!entry || !cluster || !cluster.length) return 0;
+    const bottom = Math.max(...cluster.map(([r]) => r));
+    return entry[0] / Math.max(1, bottom);
+  }
+
+  function buildSingleAttackRouteOption({
+    grid,
+    starts,
+    goals,
+    reusable,
+    redPath,
+    entryMap,
+    cluster,
+    routeKind,
+    isLowestShaft
+  }) {
+    const route = dijkstra({
+      grid,
+      starts,
+      goals,
+      freeCells: reusable
     });
-    return options[0];
+    if (!route) return null;
+
+    const entry = entryMap.get(`${route.goal[0]},${route.goal[1]}`);
+    const finalPath = entry ? appendEntryStep(route.path, entry) : route.path;
+
+    const rawCost = route.cost;
+    const minerCount = pathMinerCount(finalPath, grid, reusable);
+    const rawValueSum = pathRawNumberSum(finalPath, grid, reusable);
+    const sharedCount = pathSharesWithRed(finalPath, redPath);
+    const adjacentShared = countAdjacentSharedOpens(redPath, finalPath);
+    const lowerBonus = getLowestShaftPreferenceBonus(route, entry, cluster, routeKind, isLowestShaft);
+    const bubbleBonus = bubblePathBonus(finalPath, entry, grid);
+    const entryDepth = getEntryBottomDepth(entry, cluster);
+
+    return {
+      kind: routeKind,
+      route,
+      entry,
+      finalPath,
+      rawCost,
+      minerCount,
+      rawValueSum,
+      sharedCount,
+      adjacentShared,
+      lowerBonus,
+      bubbleBonus,
+      entryDepth
+    };
+  }
+
+  function chooseBestBlueRouteOption(options, isLowestShaft) {
+    if (!options.length) return null;
+
+    // Step 1: determine truly cheapest direct/base option.
+    const baseOptions = options.filter(o => o.kind === "base");
+    const bestBase = baseOptions.length
+      ? [...baseOptions].sort((a, b) =>
+          a.rawCost - b.rawCost ||
+          a.minerCount - b.minerCount ||
+          a.rawValueSum - b.rawValueSum ||
+          b.entryDepth - a.entryDepth ||
+          a.route.len - b.route.len
+        )[0]
+      : null;
+
+    // Step 2: compute score with much weaker reuse bias.
+    for (const o of options) {
+      let score = o.rawCost;
+
+      // prefer direct low-mineral routes
+      score += o.minerCount * 10;
+      score += o.rawValueSum * 0.35;
+
+      // small shaft-order preference
+      score -= o.lowerBonus;
+      score -= o.bubbleBonus;
+
+      // reuse only as a light tie-breaker
+      score -= Math.min(0.8, o.sharedCount * 0.08);
+      score -= Math.min(0.5, o.adjacentShared * 0.05);
+
+      // extra preference for deeper entry on lowest shaft only
+      if (isLowestShaft) {
+        score -= o.entryDepth * 3.5;
+      }
+
+      o.score = score;
+    }
+
+    options.sort((a, b) =>
+      a.score - b.score ||
+      a.rawCost - b.rawCost ||
+      a.minerCount - b.minerCount ||
+      a.rawValueSum - b.rawValueSum ||
+      b.entryDepth - a.entryDepth ||
+      a.route.len - b.route.len
+    );
+
+    let chosen = options[0];
+
+    // Step 3: hard guard against unnecessary reuse.
+    // If direct/base is close or cheaper, and cumulative breaks more minerals, choose base.
+    if (bestBase) {
+      const costGap = chosen.rawCost - bestBase.rawCost;
+      const scoreGap = chosen.score - bestBase.score;
+      const baseClearlyCleaner =
+        bestBase.minerCount < chosen.minerCount ||
+        bestBase.rawValueSum < chosen.rawValueSum;
+
+      const baseStronglyPreferredLowest =
+        isLowestShaft &&
+        bestBase.entryDepth > chosen.entryDepth &&
+        bestBase.rawCost <= chosen.rawCost * 1.08;
+
+      const baseNearEqual =
+        scoreGap >= -6 &&
+        bestBase.rawCost <= chosen.rawCost * 1.10;
+
+      if (
+        chosen.kind !== "base" &&
+        (baseStronglyPreferredLowest || (baseNearEqual && baseClearlyCleaner))
+      ) {
+        chosen = bestBase;
+      }
+
+      // Extra guard: if cumulative is only winning because of reuse, but direct is cheaper on raw route cost, take direct.
+      if (
+        chosen.kind !== "base" &&
+        bestBase.rawCost < chosen.rawCost &&
+        bestBase.minerCount <= chosen.minerCount &&
+        bestBase.rawValueSum <= chosen.rawValueSum
+      ) {
+        chosen = bestBase;
+      }
+    }
+
+    return chosen;
   }
 
   function evaluateOrderedBlueForRedCandidate(grid, starts, redCandidate, shaftClustersOrdered, bubbles) {
@@ -647,84 +815,55 @@
       const routeOptions = [];
       const isLowestShaft = i === 0;
 
-      const routeA = dijkstra({
+      const cumulativeOption = buildSingleAttackRouteOption({
         grid,
         starts: cumulativeStarts,
         goals: info.attacks,
-        freeCells: reusable,
+        reusable,
+        redPath: redCandidate.path,
+        entryMap: info.entryMap,
+        cluster,
+        routeKind: "cumulative",
+        isLowestShaft
       });
+      if (cumulativeOption) {
+        // dependency penalty: if cumulative route delays obvious direct shaft access, penalize it
+        const directStandalone = dijkstra({
+          grid,
+          starts,
+          goals: info.attacks,
+          freeCells: new Set()
+        });
 
-      if (routeA) {
-        const entryA = info.entryMap.get(`${routeA.goal[0]},${routeA.goal[1]}`);
-        const finalA = entryA ? appendEntryStep(routeA.path, entryA) : routeA.path;
-
-        let depA = 0;
-        if (isLowestShaft) {
-          const directBottom = dijkstra({
-            grid,
-            starts,
-            goals: info.attacks,
-            freeCells: new Set()
-          });
-          if (directBottom) {
-            const gap = routeA.cost - directBottom.cost;
-            if (gap > 0) depA += gap;
-            if (!pathTouchesAnyStart(routeA.path, starts)) depA += 0.75;
-          }
+        let dep = 0;
+        if (directStandalone) {
+          const gap = cumulativeOption.rawCost - directStandalone.cost;
+          if (gap > 0) dep += gap * 0.75;
+          if (isLowestShaft && cumulativeOption.entryDepth < 0.75) dep += 16;
+          if (!pathTouchesAnyStart(cumulativeOption.finalPath, starts)) dep += 1.5;
         }
 
-        const baseLocalBlue = getBlueLocalRouteStrength(grid, starts, new Set(), info.attacks);
-        let assistA = countAdjacentSharedOpens(redCandidate.path, finalA) * 0.35;
-        if (baseLocalBlue < 50000) assistA *= 0.25;
-
-        const lowerBonusA = getLowestShaftPreferenceBonus(routeA, entryA, cluster, "cumulative", isLowestShaft);
-        const bubbleBonusA = bubblePathBonus(finalA, entryA, grid);
-
-        routeOptions.push({
-          kind: "cumulative",
-          route: routeA,
-          finalPath: finalA,
-          entry: entryA,
-          dependency: depA,
-          assist: assistA,
-          lowerBonus: lowerBonusA,
-          bubbleBonus: bubbleBonusA,
-          totalScore: routeA.cost + depA - assistA - lowerBonusA - bubbleBonusA
-        });
+        cumulativeOption.dependency = dep;
+        routeOptions.push(cumulativeOption);
       }
 
-      const routeB = dijkstra({
+      const baseOption = buildSingleAttackRouteOption({
         grid,
         starts,
         goals: info.attacks,
-        freeCells: reusable,
+        reusable,
+        redPath: redCandidate.path,
+        entryMap: info.entryMap,
+        cluster,
+        routeKind: "base",
+        isLowestShaft
       });
-
-      if (routeB) {
-        const entryB = info.entryMap.get(`${routeB.goal[0]},${routeB.goal[1]}`);
-        const finalB = entryB ? appendEntryStep(routeB.path, entryB) : routeB.path;
-
-        const baseLocalBlue = getBlueLocalRouteStrength(grid, starts, new Set(), info.attacks);
-        let assistB = countAdjacentSharedOpens(redCandidate.path, finalB) * 0.35;
-        if (baseLocalBlue < 50000) assistB *= 0.25;
-
-        const lowerBonusB = getLowestShaftPreferenceBonus(routeB, entryB, cluster, "base", isLowestShaft);
-        const bubbleBonusB = bubblePathBonus(finalB, entryB, grid);
-
-        routeOptions.push({
-          kind: "base",
-          route: routeB,
-          finalPath: finalB,
-          entry: entryB,
-          dependency: 0,
-          assist: assistB,
-          lowerBonus: lowerBonusB,
-          bubbleBonus: bubbleBonusB,
-          totalScore: routeB.cost - assistB - lowerBonusB - bubbleBonusB
-        });
+      if (baseOption) {
+        baseOption.dependency = 0;
+        routeOptions.push(baseOption);
       }
 
-      const chosen = pickBestShaftRouteOption(routeOptions);
+      const chosen = chooseBestBlueRouteOption(routeOptions, isLowestShaft);
 
       if (!chosen) {
         unresolved++;
@@ -735,9 +874,11 @@
       attackPoints.push(chosen.route.goal);
       if (chosen.entry) shaftEntryDots.push(chosen.entry);
 
-      blueCost += chosen.route.cost;
-      dependencyCost += chosen.dependency;
-      assistBonus += chosen.assist;
+      blueCost += chosen.rawCost;
+      dependencyCost += chosen.dependency || 0;
+
+      // much lighter assist accounting now
+      assistBonus += Math.min(1.25, chosen.sharedCount * 0.06 + chosen.adjacentShared * 0.03);
       lowerShaftBonus += chosen.lowerBonus || 0;
       bubbleBonus += chosen.bubbleBonus || 0;
 
