@@ -1,246 +1,644 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ZM Pathfinder</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZM Pathfinder</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#171b2e;
+      --panel2:#1f2540;
+      --line:#313857;
+      --text:#eef2ff;
+      --muted:#b8c2e3;
+      --accent:#3152f0;
+      --action:#2a3560;
+      --bubble:#8fd3f7;
+      --shaft:#98f44d;
+      --empty:#d7d9df;
+      --white:#ffffff;
+      --black:#000000;
+      --select:#f59e0b;
+    }
 
-<style>
-body{
-  margin:0;
-  background:#0b1020;
-  color:#fff;
-  font-family:Arial;
-  text-align:center;
-}
+    *{box-sizing:border-box}
 
-.wrap{
-  max-width:520px;
-  margin:auto;
-  padding:10px;
-}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:Arial, Helvetica, sans-serif;
+    }
 
-.logo{
-  width:100%;
-  max-width:320px;
-  margin:auto;
-  display:block;
-}
+    .page{
+      max-width:900px;
+      margin:0 auto;
+      padding:18px 14px 30px;
+    }
 
-h1{
-  margin:5px 0 10px;
-  font-size:26px;
-}
+    .card{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:24px;
+      padding:18px;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+    }
 
-select{
-  width:100%;
-  padding:8px;
-  font-size:14px;
-  border-radius:10px;
-  margin-bottom:10px;
-}
+    .hero{
+      display:grid;
+      justify-items:center;
+      gap:12px;
+      margin-bottom:14px;
+    }
 
-button{
-  margin:4px;
-  padding:10px 12px;
-  font-size:14px;
-  border:none;
-  border-radius:10px;
-  font-weight:bold;
-}
+    .logo-shell{
+      width:min(100%, 420px);
+      background:#0b1020;
+      border:1px solid #2a3356;
+      border-radius:28px;
+      padding:18px;
+      display:grid;
+      place-items:center;
+    }
 
-.number{background:#fff;color:#000;}
-.block{background:#000;color:#fff;}
-.bubble{background:#8fd3f7;color:#000;}
-.shaft{background:#98f44d;color:#000;}
-.empty{background:#ccc;color:#000;}
-.action{background:#2a3560;color:#fff;}
+    .logo{
+      display:block;
+      width:100%;
+      max-width:340px;
+      height:auto;
+      object-fit:contain;
+    }
 
-.grid{
-  display:grid;
-  grid-template-columns:repeat(7,1fr);
-  gap:2px;
-  margin-top:10px;
-}
+    h1{
+      margin:0;
+      font-size:56px;
+      line-height:1;
+      font-weight:800;
+      letter-spacing:-1px;
+      text-align:center;
+    }
 
-.cell{
-  background:#eee;
-  color:#111;
-  aspect-ratio:1;
-  font-size:16px;
-  font-weight:bold;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
+    .controls-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:16px;
+      margin-top:8px;
+    }
 
-.selected{
-  outline:3px solid orange;
-}
+    .field label{
+      display:block;
+      font-size:17px;
+      font-weight:700;
+      margin-bottom:8px;
+      color:var(--text);
+    }
 
-.blockCell{background:#000;color:#fff;}
-.bubbleCell{background:#8fd3f7;}
-.shaftCell{background:#98f44d;}
-</style>
+    .field input,
+    .field select,
+    .paste-box{
+      width:100%;
+      border:none;
+      outline:none;
+      border-radius:18px;
+      padding:16px 18px;
+      background:var(--panel2);
+      color:var(--text);
+      font-size:17px;
+      border:1px solid #36406a;
+    }
+
+    .field input[readonly]{
+      color:#dde6ff;
+    }
+
+    .field select{
+      appearance:auto;
+      -webkit-appearance:auto;
+      background:var(--panel2);
+    }
+
+    .section-title{
+      margin:18px 0 10px;
+      font-size:28px;
+      font-weight:800;
+      text-align:left;
+    }
+
+    .help{
+      color:var(--muted);
+      font-size:16px;
+      line-height:1.45;
+      text-align:left;
+      margin-bottom:12px;
+    }
+
+    .kbd{
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:10px;
+      border:1px solid #6170a8;
+      background:#151c34;
+      color:#f3f6ff;
+      font-size:15px;
+    }
+
+    .btn-grid{
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:16px;
+      margin-top:14px;
+    }
+
+    .tool-grid{
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:16px;
+      margin-top:10px;
+      max-width:700px;
+    }
+
+    button{
+      border:none;
+      border-radius:22px;
+      padding:18px 14px;
+      font-size:19px;
+      font-weight:800;
+      cursor:pointer;
+      min-height:88px;
+      transition:transform .05s ease;
+    }
+
+    button:active{
+      transform:scale(.99);
+    }
+
+    .btn-white{background:#fff;color:#111;}
+    .btn-black{background:#000;color:#fff;border:1px solid #444b66;}
+    .btn-bubble{background:var(--bubble);color:#111;}
+    .btn-shaft{background:var(--shaft);color:#111;}
+    .btn-empty{background:#cfd3dc;color:#111;}
+    .btn-action{background:var(--action);color:#fff;}
+    .btn-solve{background:var(--accent);color:#fff;}
+
+    .tool-active{
+      box-shadow:inset 0 0 0 4px rgba(255,255,255,.25), 0 0 0 2px rgba(143,211,247,.25);
+    }
+
+    .report{
+      margin-top:14px;
+      padding:16px 18px;
+      background:#131a30;
+      border:1px solid #2a355f;
+      border-radius:18px;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size:16px;
+      white-space:pre-wrap;
+      color:#f3f6ff;
+    }
+
+    .editor-card{
+      margin-top:18px;
+      position:relative;
+    }
+
+    .sticky-tools{
+      position:sticky;
+      top:10px;
+      z-index:10;
+      background:linear-gradient(180deg, rgba(23,27,46,1) 0%, rgba(23,27,46,1) 82%, rgba(23,27,46,0) 100%);
+      padding-bottom:14px;
+      border-radius:20px 20px 0 0;
+    }
+
+    .grid-wrap{
+      overflow:auto;
+      padding-bottom:4px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(7, 1fr);
+      gap:3px;
+      max-width:760px;
+      margin:0 auto;
+    }
+
+    .cell{
+      min-height:78px;
+      aspect-ratio:1/1;
+      background:#ececef;
+      color:#111;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:22px;
+      font-weight:800;
+      user-select:none;
+      -webkit-user-select:none;
+      border:none;
+      outline:none;
+      border-radius:0;
+    }
+
+    .cell.selected{
+      box-shadow:inset 0 0 0 5px var(--select);
+    }
+
+    .cell.block{
+      background:#000;
+      color:#fff;
+    }
+
+    .cell.bubble{
+      background:var(--bubble);
+      color:#111;
+    }
+
+    .cell.shaft{
+      background:var(--shaft);
+      color:#111;
+    }
+
+    @media (max-width:700px){
+      .page{
+        padding:14px 10px 24px;
+      }
+
+      h1{
+        font-size:40px;
+      }
+
+      .controls-grid{
+        grid-template-columns:1fr 1fr;
+        gap:12px;
+      }
+
+      .field label{
+        font-size:15px;
+      }
+
+      .field input,
+      .field select,
+      .paste-box{
+        font-size:15px;
+        padding:14px 14px;
+        border-radius:16px;
+      }
+
+      .section-title{
+        font-size:24px;
+      }
+
+      .help{
+        font-size:15px;
+      }
+
+      .btn-grid,
+      .tool-grid{
+        gap:12px;
+      }
+
+      button{
+        min-height:76px;
+        font-size:17px;
+        border-radius:18px;
+        padding:14px 10px;
+      }
+
+      .cell{
+        min-height:58px;
+        font-size:18px;
+      }
+    }
+  </style>
 </head>
-
 <body>
-<div class="wrap">
+  <div class="page">
+    <div class="card">
+      <div class="hero">
+        <div class="logo-shell">
+          <img src="file_00000000e35071fda5e92d9996ac3621.png" class="logo" alt="ZM Pathfinder Logo">
+        </div>
+        <h1>ZM Pathfinder</h1>
+      </div>
 
-<img src="file_00000000e35071fda5e92d9996ac3621.png" class="logo">
-<h1>ZM Pathfinder</h1>
+      <div class="controls-grid">
+        <div class="field">
+          <label for="titleInput">Title</label>
+          <input id="titleInput" type="text" value="Gate 1">
+        </div>
+        <div class="field">
+          <label for="gateType">Gate type</label>
+          <select id="gateType">
+            <option value="standard">Standard — 5 attack points</option>
+            <option value="end">End — 3 attack points</option>
+          </select>
+        </div>
 
-<select>
-<option>Standard — 5 attack points</option>
-<option>End — 3 attack points</option>
-</select>
+        <div class="field">
+          <label for="selectedCellDisplay">Paste start</label>
+          <input id="selectedCellDisplay" type="text" value="Row 1, Col 1" readonly>
+        </div>
+        <div class="field">
+          <label for="pasteBox">Paste Numbers Into Selected Cell</label>
+          <textarea id="pasteBox" class="paste-box" rows="3" placeholder="Paste copied number cells here..."></textarea>
+        </div>
+      </div>
 
-<div>
-<button class="number" onclick="setTool('number')">Number</button>
-<button class="block" onclick="setTool('block')">Block</button>
-<button class="bubble" onclick="setTool('bubble')">Bubble</button>
-<button class="shaft" onclick="setTool('shaft')">Shaft 2x3</button>
-<button class="empty" onclick="setTool('empty')">Empty</button>
-</div>
+      <div class="section-title">How input works</div>
+      <div class="help">
+        1. Tap a cell in the board.<br>
+        2. Copy a number range from Sheets / Excel.<br>
+        3. Tap <span class="kbd">Paste From Clipboard</span> or use <span class="kbd">Paste Into Board</span> from the box.<br>
+        4. Use the visual tools for Block, Bubble, Shaft, and Empty.
+      </div>
 
-<div>
-<button class="action" onclick="pasteClipboard()">📋 Paste From Clipboard</button>
-<button class="action" onclick="copyGrid()">Copy Grid</button>
-<button class="action" onclick="clearGrid()">Clear</button>
-<button class="action" onclick="sample()">Sample</button>
-</div>
+      <div class="btn-grid">
+        <button class="btn-action" onclick="clearBoard()">Clear Board</button>
+        <button class="btn-solve" onclick="setReport('Solver not wired into this merged layout yet.')">Solve</button>
+        <button class="btn-action" onclick="downloadPlaceholder()">Download PNG</button>
 
-<div id="grid" class="grid"></div>
+        <button class="btn-action" onclick="loadSampleGate1()">Sample Gate 1</button>
+        <button class="btn-action" onclick="blankBoard()">Blank Board</button>
+        <button class="btn-action" onclick="copyGridText()">Copy Grid Text</button>
 
-</div>
+        <button class="btn-solve" onclick="applyPasteBox()">Paste Into Board</button>
+        <button class="btn-action" onclick="clearPasteBox()">Clear Paste</button>
+        <button class="btn-action" onclick="pasteFromClipboard()">Paste From Clipboard</button>
+      </div>
 
-<script>
-const ROWS=20, COLS=7;
-let grid=[], tool="number";
-let selected={r:0,c:0};
+      <div class="section-title">Visual placement tools</div>
+      <div class="tool-grid">
+        <button id="tool-number" class="btn-white tool-active" onclick="setTool('number')">Number</button>
+        <button id="tool-block" class="btn-black" onclick="setTool('block')">Block</button>
+        <button id="tool-bubble" class="btn-bubble" onclick="setTool('bubble')">Bubble</button>
+        <button id="tool-shaft" class="btn-shaft" onclick="setTool('shaft')">Shaft 2×3</button>
+        <button id="tool-empty" class="btn-empty" onclick="setTool('empty')">Empty</button>
+      </div>
 
-function init(){
-  const g=document.getElementById("grid");
-  g.innerHTML="";
-  grid=[];
+      <div id="report" class="report">Layout restored. Grid paste is wired in. Solver not wired into this merged layout yet.</div>
+    </div>
 
-  for(let r=0;r<ROWS;r++){
-    grid[r]=[];
-    for(let c=0;c<COLS;c++){
-      grid[r][c]="";
+    <div class="card editor-card">
+      <div class="sticky-tools">
+        <div class="section-title" style="margin-top:0;">Editable Board</div>
+        <div class="help" style="margin-bottom:8px;">
+          Tap a cell to select it. Paste starts from that cell. Tap special tiles again to remove them.
+        </div>
+      </div>
 
-      const d=document.createElement("div");
-      d.className="cell";
-      d.onclick=()=>clickCell(r,c);
-      d.dataset.r=r;
-      d.dataset.c=c;
+      <div class="grid-wrap">
+        <div id="grid" class="grid"></div>
+      </div>
+    </div>
+  </div>
 
-      g.appendChild(d);
+  <script>
+    const ROWS = 20;
+    const COLS = 7;
+
+    let grid = [];
+    let tool = "number";
+    let lastSelected = { r: 0, c: 0 };
+
+    function setReport(msg){
+      document.getElementById("report").textContent = msg;
     }
-  }
-  render();
-}
 
-function setTool(t){tool=t;}
-
-function clickCell(r,c){
-  selected={r,c};
-
-  if(tool==="number"){
-    let val=prompt("Number:");
-    if(val!==null){
-      grid[r][c]=val===""?"":Number(val);
+    function updateSelectedDisplay(){
+      document.getElementById("selectedCellDisplay").value =
+        `Row ${lastSelected.r + 1}, Col ${lastSelected.c + 1}`;
     }
-  }
 
-  if(tool==="block"){
-    grid[r][c]=grid[r][c]==="X"?"":"X";
-  }
+    function init(){
+      const g = document.getElementById("grid");
+      g.innerHTML = "";
+      grid = [];
 
-  if(tool==="bubble"){
-    grid[r][c]=grid[r][c]==="B"?"":"B";
-  }
+      for(let r = 0; r < ROWS; r++){
+        grid[r] = [];
+        for(let c = 0; c < COLS; c++){
+          grid[r][c] = "";
 
-  if(tool==="empty"){
-    grid[r][c]="";
-  }
+          const d = document.createElement("div");
+          d.className = "cell";
+          d.dataset.r = r;
+          d.dataset.c = c;
+          d.onclick = () => clickCell(r, c);
 
-  if(tool==="shaft"){
-    let removing=grid[r][c]==="S";
-    for(let dr=0;dr<3;dr++){
-      for(let dc=0;dc<2;dc++){
-        if(grid[r+dr] && grid[r+dr][c+dc]!==undefined){
-          grid[r+dr][c+dc]=removing?"":"S";
+          g.appendChild(d);
         }
       }
+
+      updateSelectedDisplay();
+      render();
     }
-  }
 
-  render();
-}
+    function setTool(nextTool){
+      tool = nextTool;
 
-async function pasteClipboard(){
-  let text=await navigator.clipboard.readText();
-  let rows=text.split("\n");
+      document.getElementById("tool-number").classList.remove("tool-active");
+      document.getElementById("tool-block").classList.remove("tool-active");
+      document.getElementById("tool-bubble").classList.remove("tool-active");
+      document.getElementById("tool-shaft").classList.remove("tool-active");
+      document.getElementById("tool-empty").classList.remove("tool-active");
 
-  rows.forEach((row,i)=>{
-    let cols=row.split(/\t|,/);
-    cols.forEach((v,j)=>{
-      let r=selected.r+i;
-      let c=selected.c+j;
+      document.getElementById(`tool-${nextTool}`).classList.add("tool-active");
+    }
 
-      if(grid[r] && grid[r][c]!==undefined){
-        let val=v.trim();
-        if(!val)return;
+    function clickCell(r, c){
+      lastSelected = { r, c };
+      updateSelectedDisplay();
 
-        if(!isNaN(val)) grid[r][c]=Number(val);
-        else if(val==="X") grid[r][c]="X";
-        else if(val==="B") grid[r][c]="B";
+      if(tool === "number"){
+        const current = typeof grid[r][c] === "number" ? String(grid[r][c]) : "";
+        const val = prompt("Enter number (blank clears):", current);
+        if(val === null){
+          render();
+          return;
+        }
+        const trimmed = val.trim();
+        if(trimmed === ""){
+          grid[r][c] = "";
+        } else if(!isNaN(trimmed) && Number(trimmed) > 0){
+          grid[r][c] = Number(trimmed);
+        }
       }
-    });
-  });
 
-  render();
-}
+      if(tool === "block"){
+        grid[r][c] = grid[r][c] === "X" ? "" : "X";
+      }
 
-function copyGrid(){
-  let txt=grid.map(r=>r.join("\t")).join("\n");
-  navigator.clipboard.writeText(txt);
-}
+      if(tool === "bubble"){
+        grid[r][c] = grid[r][c] === "B" ? "" : "B";
+      }
 
-function clearGrid(){
-  for(let r=0;r<ROWS;r++)
-    for(let c=0;c<COLS;c++)
-      grid[r][c]="";
-  render();
-}
+      if(tool === "empty"){
+        grid[r][c] = "";
+      }
 
-function sample(){
-  clearGrid();
-  grid[0]=[8,9,11,9,12,8,9];
-  grid[1]=[10,"X",8,"X",7,11,7];
-  render();
-}
+      if(tool === "shaft"){
+        const removing = grid[r][c] === "S";
+        for(let dr = 0; dr < 3; dr++){
+          for(let dc = 0; dc < 2; dc++){
+            if(grid[r + dr] && grid[r + dr][c + dc] !== undefined){
+              grid[r + dr][c + dc] = removing ? "" : "S";
+            }
+          }
+        }
+      }
 
-function render(){
-  document.querySelectorAll(".cell").forEach(cell=>{
-    let r=cell.dataset.r;
-    let c=cell.dataset.c;
-    let val=grid[r][c];
+      render();
+    }
 
-    cell.className="cell";
-    cell.innerText="";
+    async function pasteFromClipboard(){
+      try{
+        const text = await navigator.clipboard.readText();
+        applyText(text);
+      } catch(e){
+        alert("Clipboard blocked. Copy again, tap the starting cell, then tap Paste From Clipboard.");
+      }
+    }
 
-    if(r==selected.r && c==selected.c)
-      cell.classList.add("selected");
+    function applyPasteBox(){
+      applyText(document.getElementById("pasteBox").value);
+    }
 
-    if(val==="X") cell.classList.add("blockCell");
-    else if(val==="B"){cell.classList.add("bubbleCell");cell.innerText="B";}
-    else if(val==="S"){cell.classList.add("shaftCell");cell.innerText="S";}
-    else if(val!=="") cell.innerText=val;
-  });
-}
+    function clearPasteBox(){
+      document.getElementById("pasteBox").value = "";
+      setReport("Paste box cleared.");
+    }
 
-init();
-</script>
+    function applyText(text){
+      if(!text || !text.trim()) return;
+
+      const rows = text.trim().split("\n");
+      const startR = lastSelected.r;
+      const startC = lastSelected.c;
+
+      rows.forEach((row, ri) => {
+        const cols = row.split(/\t|,/);
+
+        cols.forEach((raw, ci) => {
+          const r = startR + ri;
+          const c = startC + ci;
+
+          if(!grid[r] || grid[r][c] === undefined) return;
+
+          const val = String(raw).trim();
+          if(!val) return;
+
+          if(!isNaN(val)){
+            grid[r][c] = Number(val);
+          } else if(val.toUpperCase() === "X"){
+            grid[r][c] = "X";
+          } else if(val.toUpperCase() === "B"){
+            grid[r][c] = "B";
+          } else if(val.toUpperCase() === "S" || val.toUpperCase() === "SHAFT"){
+            for(let dr = 0; dr < 3; dr++){
+              for(let dc = 0; dc < 2; dc++){
+                if(grid[r + dr] && grid[r + dr][c + dc] !== undefined){
+                  grid[r + dr][c + dc] = "S";
+                }
+              }
+            }
+          }
+        });
+      });
+
+      render();
+      setReport(`Pasted into board starting at Row ${startR + 1}, Col ${startC + 1}.`);
+    }
+
+    function copyGridText(){
+      const text = grid.map(row =>
+        row.map(v => v === "" ? "" : String(v)).join("\t")
+      ).join("\n");
+
+      navigator.clipboard.writeText(text).then(() => {
+        setReport("Grid text copied.");
+      }).catch(() => {
+        setReport("Could not copy grid text.");
+      });
+    }
+
+    function clearBoard(){
+      for(let r = 0; r < ROWS; r++){
+        for(let c = 0; c < COLS; c++){
+          grid[r][c] = "";
+        }
+      }
+      render();
+      setReport("Board cleared.");
+    }
+
+    function blankBoard(){
+      clearBoard();
+      setReport("Blank board loaded.");
+    }
+
+    function loadSampleGate1(){
+      clearBoard();
+      document.getElementById("gateType").value = "standard";
+      document.getElementById("titleInput").value = "Gate 1";
+
+      const sample = [
+        [8,9,11,9,12,8,9],
+        [10,"X",8,"X",7,11,7],
+        [8,7,9,6,9,6,"X"],
+        ["X",8,6,8,"B","S","S"],
+        ["X",6,7,6,5,"S","S"],
+        ["X",5,4,5,"X","S","S"],
+        ["X",4,5,4,5,4,6],
+        ["S","S",4,5,4,"X",5],
+        ["S","S",3,4,3,5,4],
+        ["S","S",2,"",2,4,3],
+        [1,2,"","","",3,""]
+      ];
+
+      for(let r = 0; r < sample.length; r++){
+        for(let c = 0; c < COLS; c++){
+          grid[r][c] = sample[r][c] === undefined ? "" : sample[r][c];
+        }
+      }
+
+      render();
+      setReport("Sample Gate 1 loaded.");
+    }
+
+    function downloadPlaceholder(){
+      setReport("PNG download is not wired into this merged layout yet.");
+    }
+
+    function render(){
+      document.querySelectorAll(".cell").forEach(cell => {
+        const r = Number(cell.dataset.r);
+        const c = Number(cell.dataset.c);
+        const val = grid[r][c];
+
+        cell.className = "cell";
+        cell.textContent = "";
+
+        if(r === lastSelected.r && c === lastSelected.c){
+          cell.classList.add("selected");
+        }
+
+        if(val === "X"){
+          cell.classList.add("block");
+        } else if(val === "B"){
+          cell.classList.add("bubble");
+          cell.textContent = "B";
+        } else if(val === "S"){
+          cell.classList.add("shaft");
+          cell.textContent = "S";
+        } else if(val !== ""){
+          cell.textContent = String(val);
+        }
+      });
+    }
+
+    init();
+  </script>
 </body>
 </html>
