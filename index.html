@@ -47,7 +47,7 @@
       box-shadow: 0 8px 24px rgba(0,0,0,.24);
     }
 
-    h1, h2, h3 {
+    h1, h2 {
       margin: 0 0 12px;
     }
 
@@ -211,29 +211,14 @@
       -webkit-appearance: none;
     }
 
+    .grid-input.empty { background: #f3f4f6; color: #111; }
     .grid-input.number { background: #fff; color: #111; }
     .grid-input.block { background: #000; color: #fff; }
     .grid-input.bubble { background: var(--cyan); color: #111; }
     .grid-input.shaft { background: var(--neon); color: #111; }
-    .grid-input.empty { background: #f3f4f6; color: #111; }
 
     .grid-input.selected {
       box-shadow: inset 0 0 0 3px var(--select);
-    }
-
-    .solver-report {
-      display: grid;
-      gap: 8px;
-      background: #11162a;
-      border: 1px solid #29314c;
-      border-radius: 12px;
-      padding: 12px;
-    }
-
-    .solver-report code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      white-space: pre-wrap;
-      color: #dbe6ff;
     }
 
     canvas {
@@ -245,20 +230,20 @@
       height: auto;
     }
 
-    .pill {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
+    .solver-note {
+      display: grid;
+      gap: 8px;
       background: #11162a;
-      border: 1px solid #667;
-      color: #dbe6ff;
-      font-size: 12px;
+      border: 1px solid #29314c;
+      border-radius: 12px;
+      padding: 12px;
     }
 
     @media (max-width: 1100px) {
       .app {
         grid-template-columns: 1fr;
       }
+
       .tool-grid {
         grid-template-columns: repeat(3, 1fr);
       }
@@ -299,41 +284,23 @@
       </div>
 
       <div>
-        <h2>How input works</h2>
+        <h2>Grid behavior</h2>
         <div class="hint">
-          Tap a grid cell first. Then either type a number into that cell or paste a copied range directly into the grid. Use the tools above the grid for Block, Bubble, Shaft, and Empty. Tap the same special tile again to remove it.
+          Tap a cell first. Then paste a copied range from Sheets/Excel directly into the grid. The full range will be distributed from that selected cell using tabs and line breaks. Use the tools above the grid for Block, Bubble, Shaft, and Empty.
         </div>
       </div>
 
       <div class="row3">
         <button id="clearBtn" class="secondary">Clear Board</button>
-        <button id="solveBtn" class="primary">Solve</button>
-        <button id="downloadBtn" class="secondary">Download PNG</button>
-      </div>
-
-      <div class="row3">
-        <button id="sampleGate1Btn" class="secondary">Sample Gate 1</button>
         <button id="copyBoardBtn" class="secondary">Copy Grid Text</button>
-        <button id="clearPathsBtn" class="secondary">Clear Paths</button>
+        <button id="sampleGate1Btn" class="secondary">Sample Gate 1</button>
       </div>
 
-      <div>
-        <h2>Global solver rules</h2>
-        <div class="hint">
-          • Exponential weighting is global for all numbered cells.<br>
-          • Movement is orthogonal only.<br>
-          • Standard vs End only changes attack width, not weighting logic.<br>
-          • Red = gate objective.<br>
-          • Blue = shaft objective and may reuse red where that lowers weighted cost.<br>
-          • Bubbles are assigned by lower weighted total route cost.<br>
-          • Paths start one blank row below the lowest used map cell.<br>
-          • Empty cells are free. Black cells block. Shafts are touch-only 2×3.
+      <div class="solver-note">
+        <strong>Current focus</strong>
+        <div class="small">
+          This version is for fixing the grid editor and range paste first. Solver logic is intentionally not being changed here.
         </div>
-      </div>
-
-      <div class="solver-report">
-        <div><strong>Solver report</strong></div>
-        <code id="solverReport">No solve yet.</code>
       </div>
 
       <div class="status" id="status"></div>
@@ -344,7 +311,7 @@
         <div class="sticky-tools">
           <h2>Editable Board</h2>
           <div class="small" style="margin-bottom:10px">
-            Direct paste works in the grid itself. Tap a cell first, then paste.
+            Sticky tools stay here so you do not need to scroll back and forth.
           </div>
           <div class="tool-grid">
             <button class="tool number active" data-tool="number">Number</button>
@@ -361,10 +328,10 @@
       </div>
 
       <div class="card">
-        <h2>Rendered Preview</h2>
-        <div class="small">This is the export image.</div>
+        <h2>Preview</h2>
+        <div class="small">Preview is left simple here while the grid is being stabilized.</div>
         <div class="preview-wrap">
-          <canvas id="boardCanvas" width="900" height="1400"></canvas>
+          <canvas id="boardCanvas" width="900" height="1200"></canvas>
         </div>
       </div>
     </div>
@@ -373,11 +340,6 @@
   <script>
     const COLS = 7;
     const ROWS = 20;
-    const CELL = 88;
-    const PAD = 18;
-    const TITLE_H = 250;
-    const LEGEND_H = 70;
-    const LOGO_SRC = "file_00000000e35071fda5e92d9996ac3621.png";
 
     const TYPE = {
       EMPTY: "empty",
@@ -396,11 +358,8 @@
     };
 
     const statusEl = document.getElementById("status");
-    const titleInput = document.getElementById("titleInput");
-    const gateTypeEl = document.getElementById("gateType");
-    const numberValueInput = document.getElementById("numberValueInput");
     const selectedCellDisplay = document.getElementById("selectedCellDisplay");
-    const solverReportEl = document.getElementById("solverReport");
+    const numberValueInput = document.getElementById("numberValueInput");
     const gridBoard = document.getElementById("gridBoard");
     const canvas = document.getElementById("boardCanvas");
     const ctx = canvas.getContext("2d");
@@ -409,70 +368,12 @@
     let selectedRow = 0;
     let selectedCol = 0;
 
-    let model = {
-      title: "Gate 1",
-      gateType: "standard",
-      grid: [],
-      redPath: [],
-      bluePaths: [],
-      report: "No solve yet."
-    };
+    let grid = Array.from({ length: ROWS }, () =>
+      Array.from({ length: COLS }, () => ({ type: TYPE.EMPTY }))
+    );
 
     function setStatus(msg) {
       statusEl.textContent = msg;
-    }
-
-    function setReport(msg) {
-      model.report = msg;
-      solverReportEl.textContent = msg;
-    }
-
-    function makeCellEmpty() {
-      return { type: TYPE.EMPTY };
-    }
-
-    function makeBlankGrid() {
-      return Array.from({ length: ROWS }, () =>
-        Array.from({ length: COLS }, () => makeCellEmpty())
-      );
-    }
-
-    function coordKey(r, c) {
-      return `${r},${c}`;
-    }
-
-    function parseKey(key) {
-      return key.split(",").map(Number);
-    }
-
-    function inBounds(r, c) {
-      return r >= 0 && r < ROWS && c >= 0 && c < COLS;
-    }
-
-    function neighbors(r, c) {
-      return [
-        [r - 1, c],
-        [r + 1, c],
-        [r, c - 1],
-        [r, c + 1]
-      ].filter(([rr, cc]) => inBounds(rr, cc));
-    }
-
-    function isTraversable(cell) {
-      return cell.type !== TYPE.BLOCK && cell.type !== TYPE.SHAFT;
-    }
-
-    function exponentialCost(n) {
-      if (n <= 0) return Infinity;
-      if (n <= 10) return Math.pow(2, n - 1);
-      return Math.pow(2, 9) * Math.pow(1.6, n - 10);
-    }
-
-    function cellCost(cell) {
-      if (cell.type === TYPE.EMPTY) return 0;
-      if (cell.type === TYPE.BUBBLE) return 0;
-      if (cell.type === TYPE.NUMBER) return exponentialCost(cell.value);
-      return Infinity;
     }
 
     function updateSelectedCellDisplay() {
@@ -501,39 +402,6 @@
       }
     }
 
-    function copyBoardText() {
-      const text = model.grid.map(row => row.map(serializeCell).join("\t")).join("\n");
-      navigator.clipboard.writeText(text).then(() => {
-        setStatus("Grid text copied to clipboard.");
-      }).catch(() => {
-        setStatus("Could not copy automatically.");
-      });
-    }
-
-    function selectCell(r, c, focus = false) {
-      selectedRow = r;
-      selectedCol = c;
-      updateSelectedCellDisplay();
-      renderBoardUI();
-      if (focus) {
-        const node = gridBoard.querySelector(`[data-r="${r}"][data-c="${c}"]`);
-        if (node) node.focus();
-      }
-    }
-
-    function renderBoardUI() {
-      [...gridBoard.children].forEach(node => {
-        const r = Number(node.dataset.r);
-        const c = Number(node.dataset.c);
-        const cell = model.grid[r][c];
-        node.className = `grid-input ${cell.type}`;
-        node.value = displayCell(cell);
-        if (r === selectedRow && c === selectedCol) {
-          node.classList.add("selected");
-        }
-      });
-    }
-
     function parseTypedValue(text) {
       const raw = String(text || "").trim();
       if (!raw) return { type: TYPE.EMPTY };
@@ -549,6 +417,142 @@
       if (upper === "S" || upper === "SHAFT") return { type: TYPE.SHAFT };
 
       return null;
+    }
+
+    function renderBoardUI() {
+      [...gridBoard.children].forEach(node => {
+        const r = Number(node.dataset.r);
+        const c = Number(node.dataset.c);
+        const cell = grid[r][c];
+        node.className = `grid-input ${cell.type}`;
+        node.value = displayCell(cell);
+        if (r === selectedRow && c === selectedCol) {
+          node.classList.add("selected");
+        }
+      });
+    }
+
+    function selectCell(r, c, focus = false) {
+      selectedRow = r;
+      selectedCol = c;
+      updateSelectedCellDisplay();
+      renderBoardUI();
+      if (focus) {
+        const node = gridBoard.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+        if (node) node.focus();
+      }
+    }
+
+    function inBounds(r, c) {
+      return r >= 0 && r < ROWS && c >= 0 && c < COLS;
+    }
+
+    function toggleSpecialTile(r, c, type) {
+      if (grid[r][c].type === type) {
+        grid[r][c] = { type: TYPE.EMPTY };
+      } else {
+        grid[r][c] = { type };
+      }
+    }
+
+    function shaftAreaMatches(r, c) {
+      for (let rr = r; rr < r + 3; rr++) {
+        for (let cc = c; cc < c + 2; cc++) {
+          if (!inBounds(rr, cc) || grid[rr][cc].type !== TYPE.SHAFT) return false;
+        }
+      }
+      return true;
+    }
+
+    function clearShaftArea(r, c) {
+      for (let rr = r; rr < r + 3; rr++) {
+        for (let cc = c; cc < c + 2; cc++) {
+          if (inBounds(rr, cc)) grid[rr][cc] = { type: TYPE.EMPTY };
+        }
+      }
+    }
+
+    function applyToolAt(r, c) {
+      if (!inBounds(r, c)) return;
+
+      if (activeTool === TOOL.NUMBER) {
+        const n = Number(numberValueInput.value || 1);
+        if (!Number.isFinite(n) || n < 1) return;
+        if (grid[r][c].type === TYPE.NUMBER && grid[r][c].value === n) {
+          grid[r][c] = { type: TYPE.EMPTY };
+        } else {
+          grid[r][c] = { type: TYPE.NUMBER, value: n };
+        }
+      } else if (activeTool === TOOL.BLOCK) {
+        toggleSpecialTile(r, c, TYPE.BLOCK);
+      } else if (activeTool === TOOL.BUBBLE) {
+        toggleSpecialTile(r, c, TYPE.BUBBLE);
+      } else if (activeTool === TOOL.EMPTY) {
+        grid[r][c] = { type: TYPE.EMPTY };
+      } else if (activeTool === TOOL.SHAFT) {
+        if (shaftAreaMatches(r, c)) {
+          clearShaftArea(r, c);
+        } else {
+          for (let rr = r; rr < r + 3; rr++) {
+            for (let cc = c; cc < c + 2; cc++) {
+              if (inBounds(rr, cc)) grid[rr][cc] = { type: TYPE.SHAFT };
+            }
+          }
+        }
+      }
+
+      renderBoardUI();
+      renderSimplePreview();
+    }
+
+    function parseRangeText(text) {
+      const lines = text.replace(/\r/g, "").split("\n").filter(line => line.length > 0);
+      return lines.map(line => {
+        if (line.includes("\t")) return line.split("\t");
+        if (line.includes(",")) return line.split(",").map(x => x.trim());
+        return line.trim().split(/\s+/);
+      });
+    }
+
+    function pasteIntoBoard(text, startR = selectedRow, startC = selectedCol) {
+      if (!text.trim()) {
+        setStatus("Clipboard was empty.");
+        return;
+      }
+
+      const rows = parseRangeText(text);
+      let placed = 0;
+
+      for (let rOff = 0; rOff < rows.length; rOff++) {
+        for (let cOff = 0; cOff < rows[rOff].length; cOff++) {
+          const r = startR + rOff;
+          const c = startC + cOff;
+          if (!inBounds(r, c)) continue;
+
+          const raw = String(rows[rOff][cOff] ?? "").trim();
+          if (!raw) continue;
+
+          const parsed = parseTypedValue(raw);
+          if (!parsed) continue;
+
+          if (parsed.type === TYPE.SHAFT) {
+            for (let rr = r; rr < r + 3; rr++) {
+              for (let cc = c; cc < c + 2; cc++) {
+                if (inBounds(rr, cc)) grid[rr][cc] = { type: TYPE.SHAFT };
+              }
+            }
+          } else {
+            grid[r][c] = parsed;
+          }
+
+          placed++;
+        }
+      }
+
+      selectCell(startR, startC, false);
+      renderBoardUI();
+      renderSimplePreview();
+      setStatus(`Pasted range starting at Row ${startR + 1}, Col ${startC + 1}. Updated ${placed} cells.`);
     }
 
     function buildBoardUI() {
@@ -585,11 +589,9 @@
 
             const parsed = parseTypedValue(input.value);
             if (parsed) {
-              model.grid[r][c] = parsed;
-              model.redPath = [];
-              model.bluePaths = [];
+              grid[r][c] = parsed;
               renderBoardUI();
-              renderPreview();
+              renderSimplePreview();
             }
           });
 
@@ -600,12 +602,10 @@
             }
 
             if (e.key === "Backspace" || e.key === "Delete") {
-              model.grid[r][c] = { type: TYPE.EMPTY };
-              model.redPath = [];
-              model.bluePaths = [];
+              grid[r][c] = { type: TYPE.EMPTY };
               setTimeout(() => {
                 renderBoardUI();
-                renderPreview();
+                renderSimplePreview();
               }, 0);
             }
           });
@@ -623,659 +623,74 @@
       renderBoardUI();
     }
 
-    function toggleSpecialTile(r, c, type) {
-      if (model.grid[r][c].type === type) {
-        model.grid[r][c] = { type: TYPE.EMPTY };
-      } else {
-        model.grid[r][c] = { type };
-      }
-    }
-
-    function shaftAreaMatches(r, c) {
-      for (let rr = r; rr < r + 3; rr++) {
-        for (let cc = c; cc < c + 2; cc++) {
-          if (!inBounds(rr, cc) || model.grid[rr][cc].type !== TYPE.SHAFT) return false;
-        }
-      }
-      return true;
-    }
-
-    function clearShaftArea(r, c) {
-      for (let rr = r; rr < r + 3; rr++) {
-        for (let cc = c; cc < c + 2; cc++) {
-          if (inBounds(rr, cc)) model.grid[rr][cc] = { type: TYPE.EMPTY };
-        }
-      }
-    }
-
-    function applyToolAt(r, c) {
-      if (!inBounds(r, c)) return;
-
-      if (activeTool === TOOL.NUMBER) {
-        const n = Number(numberValueInput.value || 1);
-        if (!Number.isFinite(n) || n < 1) return;
-        if (model.grid[r][c].type === TYPE.NUMBER && model.grid[r][c].value === n) {
-          model.grid[r][c] = { type: TYPE.EMPTY };
-        } else {
-          model.grid[r][c] = { type: TYPE.NUMBER, value: n };
-        }
-      } else if (activeTool === TOOL.BLOCK) {
-        toggleSpecialTile(r, c, TYPE.BLOCK);
-      } else if (activeTool === TOOL.BUBBLE) {
-        toggleSpecialTile(r, c, TYPE.BUBBLE);
-      } else if (activeTool === TOOL.EMPTY) {
-        model.grid[r][c] = { type: TYPE.EMPTY };
-      } else if (activeTool === TOOL.SHAFT) {
-        if (shaftAreaMatches(r, c)) {
-          clearShaftArea(r, c);
-        } else {
-          for (let rr = r; rr < r + 3; rr++) {
-            for (let cc = c; cc < c + 2; cc++) {
-              if (inBounds(rr, cc)) model.grid[rr][cc] = { type: TYPE.SHAFT };
-            }
-          }
-        }
-      }
-
-      model.redPath = [];
-      model.bluePaths = [];
-      renderBoardUI();
-      renderPreview();
-    }
-
-    function parsePastedNumbers(text) {
-      const lines = text.replace(/\r/g, "").split("\n").filter(line => line.length > 0);
-      return lines.map(line => {
-        if (line.includes("\t")) return line.split("\t");
-        if (line.includes(",")) return line.split(",").map(x => x.trim());
-        return line.trim().split(/\s+/);
-      });
-    }
-
-    function pasteIntoBoard(text, startR = selectedRow, startC = selectedCol) {
-      if (!text.trim()) {
-        setStatus("Clipboard was empty.");
-        return;
-      }
-
-      const rows = parsePastedNumbers(text);
-      let placed = 0;
-
-      for (let rOff = 0; rOff < rows.length; rOff++) {
-        for (let cOff = 0; cOff < rows[rOff].length; cOff++) {
-          const r = startR + rOff;
-          const c = startC + cOff;
-          if (!inBounds(r, c)) continue;
-
-          const raw = String(rows[rOff][cOff] ?? "").trim();
-          if (!raw) continue;
-
-          const parsed = parseTypedValue(raw);
-          if (!parsed) continue;
-
-          if (parsed.type === TYPE.SHAFT) {
-            for (let rr = r; rr < r + 3; rr++) {
-              for (let cc = c; cc < c + 2; cc++) {
-                if (inBounds(rr, cc)) model.grid[rr][cc] = { type: TYPE.SHAFT };
-              }
-            }
-          } else {
-            model.grid[r][c] = parsed;
-          }
-          placed++;
-        }
-      }
-
-      model.redPath = [];
-      model.bluePaths = [];
-      selectCell(startR, startC, false);
-      renderBoardUI();
-      renderPreview();
-      setStatus(`Pasted values starting at Row ${startR + 1}, Col ${startC + 1}. Updated ${placed} cells.`);
-    }
-
-    function usedRowsInfo() {
-      let minRow = ROWS;
-      let maxRow = -1;
-
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (model.grid[r][c].type !== TYPE.EMPTY) {
-            minRow = Math.min(minRow, r);
-            maxRow = Math.max(maxRow, r);
-          }
-        }
-      }
-
-      if (maxRow === -1) return { minRow: 0, maxRow: 0, startRow: 1 };
-      const startRow = Math.min(maxRow + 1, ROWS - 1);
-      return { minRow, maxRow, startRow };
-    }
-
-    function candidateStartCells(grid) {
-      const { startRow } = usedRowsInfo();
-      const out = [];
-      for (let c = 0; c < COLS; c++) {
-        if (isTraversable(grid[startRow][c])) out.push([startRow, c]);
-      }
-      return out;
-    }
-
-    function gateAttackCells(grid, gateType) {
-      const preferred = gateType === "end" ? [2, 3, 4] : [1, 2, 3, 4, 5];
-      const valid = [];
-
-      for (const c of preferred) {
-        if (grid[0][c] && isTraversable(grid[0][c])) valid.push([0, c]);
-      }
-
-      if (valid.length) return valid;
-
-      const fallback = [];
-      for (let c = 0; c < COLS; c++) {
-        if (isTraversable(grid[0][c])) fallback.push([0, c]);
-      }
-      return fallback;
-    }
-
-    function findBubbles(grid) {
-      const out = [];
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (grid[r][c].type === TYPE.BUBBLE) out.push([r, c]);
-        }
-      }
-      return out;
-    }
-
-    function findShaftClusters(grid) {
-      const seen = new Set();
-      const clusters = [];
-
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (grid[r][c].type !== TYPE.SHAFT) continue;
-          const startKey = coordKey(r, c);
-          if (seen.has(startKey)) continue;
-
-          const stack = [[r, c]];
-          const cells = [];
-
-          while (stack.length) {
-            const [rr, cc] = stack.pop();
-            const key = coordKey(rr, cc);
-            if (seen.has(key)) continue;
-            if (!inBounds(rr, cc)) continue;
-            if (grid[rr][cc].type !== TYPE.SHAFT) continue;
-
-            seen.add(key);
-            cells.push([rr, cc]);
-            stack.push([rr - 1, cc], [rr + 1, cc], [rr, cc - 1], [rr, cc + 1]);
-          }
-
-          clusters.push(cells);
-        }
-      }
-
-      return clusters;
-    }
-
-    function shaftTouchPoints(grid, cluster) {
-      const set = new Set();
-      for (const [r, c] of cluster) {
-        for (const [rr, cc] of neighbors(r, c)) {
-          if (isTraversable(grid[rr][cc])) set.add(coordKey(rr, cc));
-        }
-      }
-      return [...set].map(parseKey);
-    }
-
-    function dijkstra(grid, startNodes, goalNodes, extraFree = new Set()) {
-      const goalSet = new Set(goalNodes.map(([r, c]) => coordKey(r, c)));
-      const dist = new Map();
-      const steps = new Map();
-      const prev = new Map();
-      const queue = [];
-
-      for (const [r, c] of startNodes) {
-        const k = coordKey(r, c);
-        dist.set(k, 0);
-        steps.set(k, 0);
-        queue.push({ r, c, cost: 0, len: 0 });
-      }
-
-      while (queue.length) {
-        queue.sort((a, b) => (a.cost !== b.cost ? a.cost - b.cost : a.len - b.len));
-        const cur = queue.shift();
-        const ck = coordKey(cur.r, cur.c);
-        if (cur.cost !== dist.get(ck) || cur.len !== steps.get(ck)) continue;
-
-        if (goalSet.has(ck)) {
-          const path = [];
-          let walk = ck;
-          while (walk) {
-            path.push(parseKey(walk));
-            walk = prev.get(walk);
-          }
-          return path.reverse();
-        }
-
-        for (const [nr, nc] of neighbors(cur.r, cur.c)) {
-          const nk = coordKey(nr, nc);
-          const cell = grid[nr][nc];
-          if (!isTraversable(cell)) continue;
-
-          const add = extraFree.has(nk) ? 0 : cellCost(cell);
-          const nextCost = cur.cost + add;
-          const nextLen = cur.len + 1;
-          const oldCost = dist.get(nk);
-          const oldLen = steps.get(nk);
-
-          const better =
-            oldCost === undefined ||
-            nextCost < oldCost ||
-            (nextCost === oldCost && nextLen < oldLen);
-
-          if (better) {
-            dist.set(nk, nextCost);
-            steps.set(nk, nextLen);
-            prev.set(nk, ck);
-            queue.push({ r: nr, c: nc, cost: nextCost, len: nextLen });
-          }
-        }
-      }
-
-      return null;
-    }
-
-    function pathCost(grid, path, extraFree = new Set()) {
-      if (!path || !path.length) return Infinity;
-      let cost = 0;
-      for (let i = 1; i < path.length; i++) {
-        const [r, c] = path[i];
-        const k = coordKey(r, c);
-        if (!extraFree.has(k)) cost += cellCost(grid[r][c]);
-      }
-      return cost;
-    }
-
-    function uniquePath(path) {
-      if (!path || !path.length) return [];
-      const out = [path[0]];
-      for (let i = 1; i < path.length; i++) {
-        const [r1, c1] = out[out.length - 1];
-        const [r2, c2] = path[i];
-        if (r1 !== r2 || c1 !== c2) out.push(path[i]);
-      }
-      return out;
-    }
-
-    function solveRed(grid, starts, gateGoals, bubbles) {
-      const candidates = [];
-
-      const direct = dijkstra(grid, starts, gateGoals);
-      if (direct) {
-        candidates.push({
-          redPath: uniquePath(direct),
-          redHandled: new Set(),
-          redCost: pathCost(grid, direct),
-          mode: "direct-to-gate"
-        });
-      }
-
-      for (const bubble of bubbles) {
-        const toBubble = dijkstra(grid, starts, [bubble]);
-        if (!toBubble) continue;
-        const bubbleToGate = dijkstra(grid, [bubble], gateGoals);
-        if (!bubbleToGate) continue;
-
-        const merged = uniquePath([...toBubble, ...bubbleToGate.slice(1)]);
-        candidates.push({
-          redPath: merged,
-          redHandled: new Set([coordKey(bubble[0], bubble[1])]),
-          redCost: pathCost(grid, merged),
-          mode: `via-bubble-${bubble[0]+1},${bubble[1]+1}`
-        });
-      }
-
-      if (!candidates.length) throw new Error("No valid red path.");
-      candidates.sort((a, b) => a.redCost - b.redCost || a.redPath.length - b.redPath.length);
-      return candidates[0];
-    }
-
-    function solveBlueGreedy(grid, starts, existingFreeSet, shaftClusters, remainingBubbles) {
-      const jobs = [];
-
-      for (const cluster of shaftClusters) {
-        jobs.push({
-          kind: "shaft",
-          targets: shaftTouchPoints(grid, cluster),
-          label: `shaft`
-        });
-      }
-
-      for (const bubble of remainingBubbles) {
-        jobs.push({
-          kind: "bubble",
-          targets: [bubble],
-          label: `bubble-${bubble[0]+1},${bubble[1]+1}`
-        });
-      }
-
-      const bluePaths = [];
-      let freeSet = new Set(existingFreeSet);
-      let currentStarts = [...starts];
-      let totalCost = 0;
-
-      while (jobs.length) {
-        let bestIndex = -1;
-        let bestPath = null;
-        let bestCost = Infinity;
-
-        for (let i = 0; i < jobs.length; i++) {
-          const path = dijkstra(grid, currentStarts, jobs[i].targets, freeSet);
-          if (!path) continue;
-          const cost = pathCost(grid, path, freeSet);
-          if (cost < bestCost || (cost === bestCost && path.length < (bestPath?.length || Infinity))) {
-            bestCost = cost;
-            bestPath = path;
-            bestIndex = i;
-          }
-        }
-
-        if (bestIndex === -1) break;
-
-        const picked = uniquePath(bestPath);
-        bluePaths.push(picked);
-        totalCost += bestCost;
-
-        for (const [r, c] of picked) freeSet.add(coordKey(r, c));
-        currentStarts = currentStarts.concat(picked);
-        jobs.splice(bestIndex, 1);
-      }
-
-      return { bluePaths, blueCost: totalCost, unresolvedJobs: jobs.length };
-    }
-
-    function solveBoard(grid, gateType) {
-      const starts = candidateStartCells(grid);
-      if (!starts.length) throw new Error("No valid start cells one row below used map.");
-
-      const gates = gateAttackCells(grid, gateType);
-      if (!gates.length) throw new Error("No valid gate attack cells.");
-
-      const bubbles = findBubbles(grid);
-      const shaftClusters = findShaftClusters(grid);
-
-      const red = solveRed(grid, starts, gates, bubbles);
-      const redSet = new Set(red.redPath.map(([r, c]) => coordKey(r, c)));
-
-      const remainingBubbles = bubbles.filter(([r, c]) => !red.redHandled.has(coordKey(r, c)));
-
-      const blue = solveBlueGreedy(
-        grid,
-        starts.concat(red.redPath),
-        redSet,
-        shaftClusters,
-        remainingBubbles
-      );
-
-      const reportLines = [
-        `red_mode: ${red.mode}`,
-        `red_cost: ${red.redCost}`,
-        `red_steps: ${red.redPath.length}`,
-        `red_bubbles: ${red.redHandled.size ? [...red.redHandled].join(" | ") : "none"}`,
-        `blue_cost: ${blue.blueCost}`,
-        `blue_paths: ${blue.bluePaths.length}`,
-        `remaining_bubbles: ${remainingBubbles.length}`,
-        `unresolved_jobs: ${blue.unresolvedJobs}`,
-        `total_cost: ${red.redCost + blue.blueCost}`
-      ];
-
-      return {
-        redPath: red.redPath,
-        bluePaths: blue.bluePaths,
-        report: reportLines.join("\n")
-      };
-    }
-
-    function shaftRects(grid) {
-      return findShaftClusters(grid).map(cells => {
-        const rows = cells.map(([r]) => r);
-        const cols = cells.map(([, c]) => c);
-        return {
-          minR: Math.min(...rows),
-          maxR: Math.max(...rows),
-          minC: Math.min(...cols),
-          maxC: Math.max(...cols)
-        };
-      });
-    }
-
-    function cellCenter(renderRow, c) {
-      return {
-        x: PAD + c * CELL + CELL / 2,
-        y: TITLE_H + PAD + renderRow * CELL + CELL / 2
-      };
-    }
-
-    function drawSinglePath(path, color, width, rowOffset) {
-      if (!path || path.length < 2) return;
-
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-
-      ctx.lineWidth = width + 6;
-      ctx.strokeStyle = "#000";
-      ctx.beginPath();
-      let p = cellCenter(path[0][0] - rowOffset, path[0][1]);
-      ctx.moveTo(p.x, p.y);
-      for (let i = 1; i < path.length; i++) {
-        p = cellCenter(path[i][0] - rowOffset, path[i][1]);
-        ctx.lineTo(p.x, p.y);
-      }
-      ctx.stroke();
-
-      ctx.lineWidth = width;
-      ctx.strokeStyle = color;
-      ctx.beginPath();
-      p = cellCenter(path[0][0] - rowOffset, path[0][1]);
-      ctx.moveTo(p.x, p.y);
-      for (let i = 1; i < path.length; i++) {
-        p = cellCenter(path[i][0] - rowOffset, path[i][1]);
-        ctx.lineTo(p.x, p.y);
-      }
-      ctx.stroke();
-    }
-
-    function drawLegend(canvasHeight) {
-      const y = canvasHeight - 28;
-
-      ctx.lineWidth = 18;
-      ctx.strokeStyle = "#000";
-      ctx.beginPath();
-      ctx.moveTo(32, y);
-      ctx.lineTo(112, y);
-      ctx.stroke();
-
-      ctx.lineWidth = 12;
-      ctx.strokeStyle = "#ef4444";
-      ctx.beginPath();
-      ctx.moveTo(32, y);
-      ctx.lineTo(112, y);
-      ctx.stroke();
-
-      ctx.fillStyle = "#111";
-      ctx.font = "700 18px system-ui";
-      ctx.textAlign = "left";
-      ctx.fillText("1st Strongest Z", 124, y + 6);
-
-      ctx.lineWidth = 18;
-      ctx.strokeStyle = "#000";
-      ctx.beginPath();
-      ctx.moveTo(360, y);
-      ctx.lineTo(440, y);
-      ctx.stroke();
-
-      ctx.lineWidth = 12;
-      ctx.strokeStyle = "#2563eb";
-      ctx.beginPath();
-      ctx.moveTo(360, y);
-      ctx.lineTo(440, y);
-      ctx.stroke();
-
-      ctx.fillStyle = "#111";
-      ctx.fillText("2nd Strongest Z", 452, y + 6);
-    }
-
-    function drawHeaderLogoAndTitle() {
-      const img = new Image();
-      img.onload = () => {
-        const maxW = 420;
-        const maxH = 170;
-        const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
-        const w = img.width * ratio;
-        const h = img.height * ratio;
-        const x = (canvas.width - w) / 2;
-        const y = 8;
-        ctx.drawImage(img, x, y, w, h);
-
-        ctx.fillStyle = "#111";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.font = "700 42px system-ui";
-        ctx.fillText(model.title.toUpperCase(), canvas.width / 2, 210);
-      };
-      img.src = LOGO_SRC;
-    }
-
-    function renderPreview() {
-      model.title = titleInput.value.trim() || "Gate";
-      model.gateType = gateTypeEl.value;
-
-      const info = usedRowsInfo();
-      const startRenderRow = Math.max(0, info.minRow === ROWS ? 0 : info.minRow);
-      const endRenderRow = Math.max(info.startRow, info.maxRow >= 0 ? info.maxRow : 0);
-      const visibleRows = Math.max(4, endRenderRow - startRenderRow + 1);
-
-      canvas.width = COLS * CELL + PAD * 2;
-      canvas.height = visibleRows * CELL + PAD * 2 + TITLE_H + LEGEND_H;
-
+    function renderSimplePreview() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      drawHeaderLogoAndTitle();
+      ctx.fillStyle = "#111";
+      ctx.font = "700 24px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText("GRID PREVIEW ONLY", canvas.width / 2, 40);
 
-      for (let r = startRenderRow; r <= endRenderRow; r++) {
-        const rr = r - startRenderRow;
+      const cellSize = 40;
+      const startX = 40;
+      const startY = 70;
 
+      for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-          const x = PAD + c * CELL;
-          const y = TITLE_H + PAD + rr * CELL;
-          const cell = model.grid[r][c];
-
-          if (cell.type === TYPE.SHAFT) continue;
+          const x = startX + c * cellSize;
+          const y = startY + r * cellSize;
+          const cell = grid[r][c];
 
           if (cell.type === TYPE.BLOCK) {
             ctx.fillStyle = "#000";
-            ctx.fillRect(x, y, CELL, CELL);
-            ctx.strokeStyle = "#bbb";
-            ctx.strokeRect(x, y, CELL, CELL);
           } else if (cell.type === TYPE.BUBBLE) {
             ctx.fillStyle = "#7fe7ff";
-            ctx.fillRect(x, y, CELL, CELL);
-            ctx.strokeStyle = "#3cb8cf";
-            ctx.strokeRect(x, y, CELL, CELL);
-            ctx.fillStyle = "#111";
-            ctx.font = "700 28px system-ui";
-            ctx.textAlign = "center";
-            ctx.fillText("B", x + CELL / 2, y + CELL / 2);
+          } else if (cell.type === TYPE.SHAFT) {
+            ctx.fillStyle = "#7df14a";
           } else {
             ctx.fillStyle = "#fff";
-            ctx.fillRect(x, y, CELL, CELL);
-            ctx.strokeStyle = "#ccc";
-            ctx.strokeRect(x, y, CELL, CELL);
-            if (cell.type === TYPE.NUMBER) {
-              ctx.fillStyle = "#111";
-              ctx.font = "700 28px system-ui";
-              ctx.textAlign = "center";
-              ctx.fillText(String(cell.value), x + CELL / 2, y + CELL / 2);
-            }
+          }
+
+          ctx.fillRect(x, y, cellSize, cellSize);
+          ctx.strokeStyle = "#999";
+          ctx.strokeRect(x, y, cellSize, cellSize);
+
+          if (cell.type === TYPE.NUMBER) {
+            ctx.fillStyle = "#111";
+            ctx.font = "700 16px system-ui";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(String(cell.value), x + cellSize / 2, y + cellSize / 2);
+          } else if (cell.type === TYPE.BUBBLE) {
+            ctx.fillStyle = "#111";
+            ctx.font = "700 16px system-ui";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("B", x + cellSize / 2, y + cellSize / 2);
+          } else if (cell.type === TYPE.SHAFT) {
+            ctx.fillStyle = "#111";
+            ctx.font = "700 12px system-ui";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("S", x + cellSize / 2, y + cellSize / 2);
           }
         }
       }
-
-      for (const rect of shaftRects(model.grid)) {
-        if (rect.maxR < startRenderRow || rect.minR > endRenderRow) continue;
-
-        const x = PAD + rect.minC * CELL;
-        const y = TITLE_H + PAD + (rect.minR - startRenderRow) * CELL;
-        const w = (rect.maxC - rect.minC + 1) * CELL;
-        const h = (rect.maxR - rect.minR + 1) * CELL;
-
-        ctx.fillStyle = "#39FF14";
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = "#0a8f00";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x, y, w, h);
-        ctx.fillStyle = "#111";
-        ctx.font = "700 24px system-ui";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("Shaft", x + w / 2, y + h / 2);
-      }
-
-      for (const path of model.bluePaths) drawSinglePath(path, "#2563eb", 10, startRenderRow);
-      drawSinglePath(model.redPath, "#ef4444", 12, startRenderRow);
-      drawLegend(canvas.height);
     }
 
     function clearBoard() {
-      model.grid = makeBlankGrid();
-      model.redPath = [];
-      model.bluePaths = [];
-      titleInput.value = "Gate";
-      setReport("No solve yet.");
+      grid = Array.from({ length: ROWS }, () =>
+        Array.from({ length: COLS }, () => ({ type: TYPE.EMPTY }))
+      );
       renderBoardUI();
-      renderPreview();
+      renderSimplePreview();
       setStatus("Board cleared.");
-    }
-
-    function clearPathsOnly() {
-      model.redPath = [];
-      model.bluePaths = [];
-      setReport("Paths cleared. No solve yet.");
-      renderPreview();
-      setStatus("Paths cleared.");
-    }
-
-    function solve() {
-      try {
-        model.title = titleInput.value.trim() || "Gate";
-        model.gateType = gateTypeEl.value;
-        const solved = solveBoard(model.grid, model.gateType);
-        model.redPath = solved.redPath;
-        model.bluePaths = solved.bluePaths;
-        setReport(solved.report);
-        renderPreview();
-        setStatus("Solved.");
-      } catch (err) {
-        setStatus(err.message || String(err));
-      }
-    }
-
-    function downloadPNG() {
-      const a = document.createElement("a");
-      a.href = canvas.toDataURL("image/png");
-      a.download = `${(titleInput.value || "ZM-Pathfinder").replace(/\s+/g, "_")}.png`;
-      a.click();
     }
 
     function loadSampleGate1() {
       clearBoard();
-      titleInput.value = "Gate 1";
-      gateTypeEl.value = "standard";
 
       const sample = [
         [8,9,11,9,12,8,9],
@@ -1294,19 +709,16 @@
       for (let r = 0; r < sample.length; r++) {
         for (let c = 0; c < COLS; c++) {
           const v = sample[r][c];
-          if (v === "X") model.grid[r][c] = { type: TYPE.BLOCK };
-          else if (v === "B") model.grid[r][c] = { type: TYPE.BUBBLE };
-          else if (v === "S") model.grid[r][c] = { type: TYPE.SHAFT };
-          else if (v === "" || v === undefined) model.grid[r][c] = { type: TYPE.EMPTY };
-          else model.grid[r][c] = { type: TYPE.NUMBER, value: Number(v) };
+          if (v === "X") grid[r][c] = { type: TYPE.BLOCK };
+          else if (v === "B") grid[r][c] = { type: TYPE.BUBBLE };
+          else if (v === "S") grid[r][c] = { type: TYPE.SHAFT };
+          else if (v === "" || v === undefined) grid[r][c] = { type: TYPE.EMPTY };
+          else grid[r][c] = { type: TYPE.NUMBER, value: Number(v) };
         }
       }
 
-      model.redPath = [];
-      model.bluePaths = [];
-      setReport("Sample loaded. Press Solve.");
       renderBoardUI();
-      renderPreview();
+      renderSimplePreview();
       setStatus("Sample Gate 1 loaded.");
     }
 
@@ -1315,22 +727,4 @@
         activeTool = btn.dataset.tool;
         document.querySelectorAll(".tool").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
-      });
-    });
-
-    document.getElementById("clearBtn").addEventListener("click", clearBoard);
-    document.getElementById("solveBtn").addEventListener("click", solve);
-    document.getElementById("downloadBtn").addEventListener("click", downloadPNG);
-    document.getElementById("sampleGate1Btn").addEventListener("click", loadSampleGate1);
-    document.getElementById("copyBoardBtn").addEventListener("click", copyBoardText);
-    document.getElementById("clearPathsBtn").addEventListener("click", clearPathsOnly);
-
-    model.grid = makeBlankGrid();
-    buildBoardUI();
-    updateSelectedCellDisplay();
-    renderPreview();
-    setReport("No solve yet.");
-    setStatus("Board ready. Tap a cell, then paste directly into the grid.");
-  </script>
-</body>
-</html>
+      }
