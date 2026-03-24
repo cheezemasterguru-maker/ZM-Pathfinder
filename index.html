@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ZM Pathfinder</title>
   <style>
     :root{
@@ -17,7 +17,7 @@
       --cyan:#7fe7ff;
       --neon:#7df14a;
       --select:#f59e0b;
-      --uiCell:46px;
+      --cell:46px;
       --font:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
     }
 
@@ -30,11 +30,11 @@
     }
 
     .app{
-      max-width:1680px;
+      max-width:1700px;
       margin:0 auto;
       padding:18px;
       display:grid;
-      grid-template-columns:430px 1fr;
+      grid-template-columns:410px 1fr;
       gap:18px;
     }
 
@@ -54,7 +54,7 @@
     .row{display:grid;gap:10px;grid-template-columns:1fr 1fr}
     .row3{display:grid;gap:10px;grid-template-columns:1fr 1fr 1fr}
 
-    input,select,textarea,button{
+    input,select,button{
       width:100%;
       border-radius:12px;
       border:1px solid var(--line);
@@ -64,26 +64,21 @@
       font:inherit;
     }
 
-    textarea{
-      min-height:110px;
-      resize:vertical;
-      line-height:1.35;
-      white-space:pre;
-      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    }
-
     button{cursor:pointer;font-weight:700}
     button.primary{background:#2448d8;border-color:#3358e8}
     button.secondary{background:#26304f}
 
-    .hint,.status,.small{color:var(--muted);line-height:1.45}
+    .hint,.status,.small{
+      color:var(--muted);
+      line-height:1.45;
+    }
     .small{font-size:12px}
     .status{min-height:22px;white-space:pre-wrap}
 
     .hero{
       display:grid;
       justify-items:center;
-      gap:10px;
+      gap:8px;
       margin-bottom:4px;
     }
 
@@ -94,14 +89,25 @@
       object-fit:contain;
     }
 
+    .workspace{display:grid;gap:18px}
+
+    .sticky-tools{
+      position:sticky;
+      top:8px;
+      z-index:20;
+      background:linear-gradient(180deg,var(--panel) 0%,var(--panel) 86%,rgba(23,27,46,0) 100%);
+      padding-bottom:10px;
+      margin-bottom:8px;
+    }
+
     .tool-grid{
       display:grid;
-      grid-template-columns:repeat(3,1fr);
+      grid-template-columns:repeat(5,1fr);
       gap:10px;
     }
 
     .tool{
-      min-height:56px;
+      min-height:54px;
       border-radius:14px;
       border:2px solid var(--line);
       display:grid;
@@ -123,8 +129,6 @@
     .tool.shaft{background:var(--neon);color:#111}
     .tool.empty{background:#d8dee9;color:#111}
 
-    .workspace{display:grid;gap:18px}
-
     .grid-wrap,
     .preview-wrap{
       overflow:auto;
@@ -136,8 +140,8 @@
 
     .grid-board{
       display:grid;
-      grid-template-columns:repeat(7,46px);
-      grid-auto-rows:46px;
+      grid-template-columns:repeat(7,var(--cell));
+      grid-auto-rows:var(--cell);
       gap:2px;
       background:#9aa4b2;
       width:fit-content;
@@ -148,19 +152,23 @@
     }
 
     .cell{
-      width:46px;
-      height:46px;
+      width:var(--cell);
+      height:var(--cell);
       display:grid;
       place-items:center;
       font-weight:800;
       font-size:16px;
-      border:none;
-      padding:0;
-      margin:0;
       position:relative;
       overflow:hidden;
       text-align:center;
-      touch-action:manipulation;
+      background:#f3f4f6;
+      color:#111;
+      outline:none;
+      border:none;
+      user-select:text;
+      -webkit-user-select:text;
+      caret-color:#111;
+      white-space:nowrap;
     }
 
     .cell.empty{background:#f3f4f6;color:#111}
@@ -168,6 +176,7 @@
     .cell.block{background:#000;color:#fff}
     .cell.bubble{background:var(--cyan);color:#111}
     .cell.shaft{background:var(--neon);color:#111}
+
     .cell.selected::after{
       content:"";
       position:absolute;
@@ -176,27 +185,32 @@
       pointer-events:none;
     }
 
+    .cell[contenteditable="true"]{
+      cursor:text;
+    }
+
     canvas{
       display:block;
-      background:white;
+      background:#fff;
       border-radius:10px;
       margin:0 auto;
       max-width:100%;
       height:auto;
     }
 
-    .kbd{
+    .pill{
       display:inline-block;
-      padding:1px 6px;
-      border:1px solid #667;
-      border-radius:8px;
+      padding:2px 8px;
+      border-radius:999px;
       background:#11162a;
-      font-size:12px;
+      border:1px solid #667;
       color:#dbe6ff;
+      font-size:12px;
     }
 
     @media (max-width:1100px){
       .app{grid-template-columns:1fr}
+      .tool-grid{grid-template-columns:repeat(3,1fr)}
     }
   </style>
 </head>
@@ -216,8 +230,8 @@
         <label>
           Gate type
           <select id="gateType">
-            <option value="normal">Normal / Graveyard (5 attack points)</option>
-            <option value="end">End Gate (3 attack points)</option>
+            <option value="standard">Standard (regular gates / graveyard — 5 attack points)</option>
+            <option value="end">End (end gate — 3 attack points)</option>
           </select>
         </label>
       </div>
@@ -236,7 +250,7 @@
       <div>
         <h2>How input works</h2>
         <div class="hint">
-          Tap a grid cell first. Paste copied number ranges into the visible paste box on the right, then tap <span class="kbd">Apply Paste</span>. Use the visual tools for Block, Bubble, Shaft, and Empty. Tap the same special tile again to remove it.
+          Tap a cell in the grid. Then either type a number directly into that cell or paste copied Sheet/Excel ranges directly into the grid starting from the selected cell. Use the tools above the grid for Block, Bubble, Shaft, and Empty. Tap the same special tile again to remove it.
         </div>
       </div>
 
@@ -253,26 +267,16 @@
       </div>
 
       <div>
-        <h2>Visual placement tools</h2>
-        <div class="tool-grid">
-          <button class="tool number active" data-tool="number">Number</button>
-          <button class="tool block" data-tool="block">Block</button>
-          <button class="tool bubble" data-tool="bubble">Bubble</button>
-          <button class="tool shaft" data-tool="shaft">Shaft 2×3</button>
-          <button class="tool empty" data-tool="empty">Empty</button>
-        </div>
-      </div>
-
-      <div>
-        <h2>Rules hardcoded</h2>
+        <h2>Global solver rules</h2>
         <div class="hint">
-          • Board is always 7 columns × 20 rows.<br>
-          • Paths start one blank row below the lowest used map cell.<br>
+          • Exponential weighting is global for all numbered cells.<br>
           • Movement is orthogonal only.<br>
-          • Normal gates / graveyards use 5 attack points. End gates use 3.<br>
-          • Blue may reuse red path at zero added weighted cost.<br>
-          • Empty cells are free. Black cells are blocked. Shafts are touch-only 2×3 regions.<br>
-          • Bubble ownership is chosen by cheaper total weighted route, but this version is still a heuristic and may still need tuning on edge cases.
+          • Standard vs End only changes attack width, not weighting logic.<br>
+          • Red = gate objective.<br>
+          • Blue = shaft objective and may reuse red where that lowers weighted cost.<br>
+          • Bubbles are assigned by lower weighted total route cost.<br>
+          • Paths start one blank row below the lowest used map cell.<br>
+          • Empty cells are free. Black cells block. Shafts are touch-only 2×3.
         </div>
       </div>
 
@@ -281,20 +285,22 @@
 
     <div class="workspace">
       <div class="card">
-        <h2>Editable Board</h2>
-        <div class="small">Tap a cell to select it. Use the grid tools or the paste box directly below.</div>
-        <div class="grid-wrap">
-          <div id="gridBoard" class="grid-board" aria-label="Editable 7 by 20 board"></div>
+        <div class="sticky-tools">
+          <h2>Editable Board</h2>
+          <div class="small" style="margin-bottom:10px">
+            Direct paste works in the grid itself. Tap a cell first, then paste.
+          </div>
+          <div class="tool-grid">
+            <button class="tool number active" data-tool="number">Number</button>
+            <button class="tool block" data-tool="block">Block</button>
+            <button class="tool bubble" data-tool="bubble">Bubble</button>
+            <button class="tool shaft" data-tool="shaft">Shaft 2×3</button>
+            <button class="tool empty" data-tool="empty">Empty</button>
+          </div>
         </div>
 
-        <div style="margin-top:14px">
-          <div class="small" style="margin-bottom:8px">Paste values starting from the selected cell:</div>
-          <textarea id="pasteArea" placeholder="Paste copied number cells here..."></textarea>
-          <div class="row3" style="margin-top:10px">
-            <button id="applyPasteBtn" class="primary">Apply Paste</button>
-            <button id="clearPasteBtn" class="secondary">Clear Paste Box</button>
-            <button id="focusPasteBtn" class="secondary">Focus Paste Box</button>
-          </div>
+        <div class="grid-wrap">
+          <div id="gridBoard" class="grid-board" aria-label="Editable 7 by 20 board"></div>
         </div>
       </div>
 
@@ -318,9 +324,9 @@
     const LOGO_SRC = "file_00000000e35071fda5e92d9996ac3621.png";
 
     const TYPE = {
-      BLOCK: "block",
       EMPTY: "empty",
       NUMBER: "number",
+      BLOCK: "block",
       BUBBLE: "bubble",
       SHAFT: "shaft"
     };
@@ -341,7 +347,6 @@
     const gridBoard = document.getElementById("gridBoard");
     const canvas = document.getElementById("boardCanvas");
     const ctx = canvas.getContext("2d");
-    const pasteArea = document.getElementById("pasteArea");
 
     let activeTool = TOOL.NUMBER;
     let selectedRow = 0;
@@ -349,11 +354,15 @@
 
     let model = {
       title: "Gate 1",
-      gateType: "normal",
+      gateType: "standard",
       grid: [],
       redPath: [],
       bluePaths: []
     };
+
+    function setStatus(msg) {
+      statusEl.textContent = msg;
+    }
 
     function makeCellEmpty() {
       return { type: TYPE.EMPTY };
@@ -363,10 +372,6 @@
       return Array.from({ length: ROWS }, () =>
         Array.from({ length: COLS }, () => makeCellEmpty())
       );
-    }
-
-    function setStatus(msg) {
-      statusEl.textContent = msg;
     }
 
     function coordKey(r, c) {
@@ -413,13 +418,20 @@
 
     function serializeCell(cell) {
       switch (cell.type) {
+        case TYPE.EMPTY: return "";
+        case TYPE.NUMBER: return String(cell.value);
         case TYPE.BLOCK: return "X";
         case TYPE.BUBBLE: return "B";
         case TYPE.SHAFT: return "Shaft";
-        case TYPE.EMPTY: return "";
-        case TYPE.NUMBER: return String(cell.value);
         default: return "";
       }
+    }
+
+    function normalizeCellDisplay(cell) {
+      if (cell.type === TYPE.NUMBER) return String(cell.value);
+      if (cell.type === TYPE.BUBBLE) return "B";
+      if (cell.type === TYPE.SHAFT) return "S";
+      return "";
     }
 
     function copyBoardText() {
@@ -431,44 +443,124 @@
       });
     }
 
+    function renderBoardUI() {
+      [...gridBoard.children].forEach(node => {
+        const r = Number(node.dataset.r);
+        const c = Number(node.dataset.c);
+        const cell = model.grid[r][c];
+        node.className = `cell ${cell.type}`;
+        node.textContent = normalizeCellDisplay(cell);
+        node.setAttribute("data-type", cell.type);
+        if (r === selectedRow && c === selectedCol) {
+          node.classList.add("selected");
+        }
+      });
+    }
+
+    function selectCell(r, c, focus = false) {
+      selectedRow = r;
+      selectedCol = c;
+      updateSelectedCellDisplay();
+      renderBoardUI();
+      if (focus) {
+        const node = gridBoard.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+        if (node) node.focus();
+      }
+    }
+
     function buildBoardUI() {
       gridBoard.innerHTML = "";
       for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "cell";
-          btn.dataset.r = r;
-          btn.dataset.c = c;
-          btn.addEventListener("click", () => {
-            selectedRow = r;
-            selectedCol = c;
-            updateSelectedCellDisplay();
+          const cell = document.createElement("div");
+          cell.className = "cell empty";
+          cell.contentEditable = "true";
+          cell.spellcheck = false;
+          cell.dataset.r = r;
+          cell.dataset.c = c;
 
-            if (activeTool === TOOL.NUMBER) {
-              renderBoardUI();
-            } else {
+          cell.addEventListener("focus", () => {
+            selectCell(r, c, false);
+          });
+
+          cell.addEventListener("click", () => {
+            selectCell(r, c, false);
+            if (activeTool !== TOOL.NUMBER) {
               applyToolAt(r, c);
             }
           });
-          gridBoard.appendChild(btn);
+
+          cell.addEventListener("keydown", (e) => {
+            if (activeTool !== TOOL.NUMBER) {
+              e.preventDefault();
+              return;
+            }
+
+            if (e.key === "Enter") {
+              e.preventDefault();
+              return;
+            }
+
+            if (e.key === "Backspace" || e.key === "Delete") {
+              e.preventDefault();
+              model.grid[r][c] = { type: TYPE.EMPTY };
+              model.redPath = [];
+              model.bluePaths = [];
+              renderBoardUI();
+              renderPreview();
+              return;
+            }
+
+            if (/^[0-9]$/.test(e.key)) {
+              e.preventDefault();
+              const current = model.grid[r][c].type === TYPE.NUMBER ? String(model.grid[r][c].value) : "";
+              const next = (current + e.key).slice(0, 2);
+              const n = Number(next);
+              if (Number.isFinite(n) && n > 0) {
+                model.grid[r][c] = { type: TYPE.NUMBER, value: n };
+                model.redPath = [];
+                model.bluePaths = [];
+                renderBoardUI();
+                renderPreview();
+              }
+              return;
+            }
+
+            if (e.key.length === 1) {
+              e.preventDefault();
+            }
+          });
+
+          cell.addEventListener("paste", (e) => {
+            e.preventDefault();
+            const text = e.clipboardData?.getData("text/plain") || "";
+            pasteIntoBoard(text, r, c);
+          });
+
+          cell.addEventListener("input", () => {
+            if (activeTool !== TOOL.NUMBER) {
+              renderBoardUI();
+              return;
+            }
+            const text = cell.textContent.trim();
+            if (!text) {
+              model.grid[r][c] = { type: TYPE.EMPTY };
+            } else {
+              const n = Number(text.replace(/[^\d]/g, ""));
+              if (Number.isFinite(n) && n > 0) {
+                model.grid[r][c] = { type: TYPE.NUMBER, value: n };
+              }
+            }
+            model.redPath = [];
+            model.bluePaths = [];
+            renderBoardUI();
+            renderPreview();
+          });
+
+          gridBoard.appendChild(cell);
         }
       }
       renderBoardUI();
-    }
-
-    function renderBoardUI() {
-      [...gridBoard.children].forEach(btn => {
-        const r = Number(btn.dataset.r);
-        const c = Number(btn.dataset.c);
-        const cell = model.grid[r][c];
-        btn.className = `cell ${cell.type}`;
-        if (r === selectedRow && c === selectedCol) btn.classList.add("selected");
-        btn.textContent =
-          cell.type === TYPE.NUMBER ? String(cell.value) :
-          cell.type === TYPE.BUBBLE ? "B" :
-          cell.type === TYPE.SHAFT ? "S" : "";
-      });
     }
 
     function toggleSpecialTile(r, c, type) {
@@ -540,9 +632,9 @@
       });
     }
 
-    function pasteIntoBoard(text) {
+    function pasteIntoBoard(text, startR = selectedRow, startC = selectedCol) {
       if (!text.trim()) {
-        setStatus("Paste box is empty.");
+        setStatus("Clipboard was empty.");
         return;
       }
 
@@ -551,8 +643,8 @@
 
       for (let rOff = 0; rOff < rows.length; rOff++) {
         for (let cOff = 0; cOff < rows[rOff].length; cOff++) {
-          const r = selectedRow + rOff;
-          const c = selectedCol + cOff;
+          const r = startR + rOff;
+          const c = startC + cOff;
           if (!inBounds(r, c)) continue;
 
           const raw = String(rows[rOff][cOff] ?? "").trim();
@@ -568,9 +660,10 @@
 
       model.redPath = [];
       model.bluePaths = [];
+      selectCell(startR, startC, false);
       renderBoardUI();
       renderPreview();
-      setStatus(`Pasted values starting at Row ${selectedRow + 1}, Col ${selectedCol + 1}. Updated ${placed} cells.`);
+      setStatus(`Pasted values starting at Row ${startR + 1}, Col ${startC + 1}. Updated ${placed} cells.`);
     }
 
     function usedRowsInfo() {
@@ -608,502 +701,4 @@
 
       const fallback = [];
       for (let c = 0; c < COLS; c++) {
-        if (isTraversable(grid[0][c])) fallback.push([0, c]);
-      }
-      return fallback;
-    }
-
-    function findBubbles(grid) {
-      const out = [];
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (grid[r][c].type === TYPE.BUBBLE) out.push([r, c]);
-        }
-      }
-      return out;
-    }
-
-    function findShaftClusters(grid) {
-      const seen = new Set();
-      const clusters = [];
-
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (grid[r][c].type !== TYPE.SHAFT) continue;
-          const startKey = coordKey(r, c);
-          if (seen.has(startKey)) continue;
-
-          const stack = [[r, c]];
-          const cells = [];
-
-          while (stack.length) {
-            const [rr, cc] = stack.pop();
-            const k = coordKey(rr, cc);
-            if (seen.has(k)) continue;
-            if (!inBounds(rr, cc)) continue;
-            if (grid[rr][cc].type !== TYPE.SHAFT) continue;
-            seen.add(k);
-            cells.push([rr, cc]);
-            stack.push([rr - 1, cc], [rr + 1, cc], [rr, cc - 1], [rr, cc + 1]);
-          }
-
-          clusters.push(cells);
-        }
-      }
-
-      return clusters;
-    }
-
-    function shaftTouchPoints(grid, cluster) {
-      const set = new Set();
-      for (const [r, c] of cluster) {
-        for (const [rr, cc] of neighbors(r, c)) {
-          if (isTraversable(grid[rr][cc])) set.add(coordKey(rr, cc));
-        }
-      }
-      return [...set].map(parseKey);
-    }
-
-    function dijkstra(grid, startNodes, goalNodes, extraFree = new Set()) {
-      const goalSet = new Set(goalNodes.map(([r, c]) => coordKey(r, c)));
-      const dist = new Map();
-      const steps = new Map();
-      const prev = new Map();
-      const queue = [];
-
-      for (const [r, c] of startNodes) {
-        const k = coordKey(r, c);
-        dist.set(k, 0);
-        steps.set(k, 0);
-        queue.push({ r, c, cost: 0, len: 0 });
-      }
-
-      while (queue.length) {
-        queue.sort((a, b) => (a.cost !== b.cost ? a.cost - b.cost : a.len - b.len));
-        const cur = queue.shift();
-        const ck = coordKey(cur.r, cur.c);
-        if (cur.cost !== dist.get(ck) || cur.len !== steps.get(ck)) continue;
-
-        if (goalSet.has(ck)) {
-          const path = [];
-          let walk = ck;
-          while (walk) {
-            path.push(parseKey(walk));
-            walk = prev.get(walk);
-          }
-          return path.reverse();
-        }
-
-        for (const [nr, nc] of neighbors(cur.r, cur.c)) {
-          const nk = coordKey(nr, nc);
-          const cell = grid[nr][nc];
-          if (!isTraversable(cell)) continue;
-
-          const add = extraFree.has(nk) ? 0 : cellCost(cell);
-          const nextCost = cur.cost + add;
-          const nextLen = cur.len + 1;
-          const oldCost = dist.get(nk);
-          const oldLen = steps.get(nk);
-
-          const better =
-            oldCost === undefined ||
-            nextCost < oldCost ||
-            (nextCost === oldCost && nextLen < oldLen);
-
-          if (better) {
-            dist.set(nk, nextCost);
-            steps.set(nk, nextLen);
-            prev.set(nk, ck);
-            queue.push({ r: nr, c: nc, cost: nextCost, len: nextLen });
-          }
-        }
-      }
-
-      return null;
-    }
-
-    function pathCost(grid, path, extraFree = new Set()) {
-      if (!path || !path.length) return Infinity;
-      let cost = 0;
-      for (let i = 1; i < path.length; i++) {
-        const [r, c] = path[i];
-        const k = coordKey(r, c);
-        if (!extraFree.has(k)) cost += cellCost(grid[r][c]);
-      }
-      return cost;
-    }
-
-    function uniquePath(path) {
-      if (!path || !path.length) return [];
-      const out = [path[0]];
-      for (let i = 1; i < path.length; i++) {
-        const [r1, c1] = out[out.length - 1];
-        const [r2, c2] = path[i];
-        if (r1 !== r2 || c1 !== c2) out.push(path[i]);
-      }
-      return out;
-    }
-
-    function assignBubbleHandling(grid, starts, gateGoals, bubbles) {
-      const directRed = dijkstra(grid, starts, gateGoals);
-      if (!directRed) throw new Error("No valid red path.");
-
-      let best = {
-        cost: pathCost(grid, directRed),
-        redPath: uniquePath(directRed),
-        redHandled: new Set()
-      };
-
-      for (const bubble of bubbles) {
-        const toBubble = dijkstra(grid, starts, [bubble]);
-        if (!toBubble) continue;
-
-        const bubbleToGate = dijkstra(grid, [bubble], gateGoals);
-        if (!bubbleToGate) continue;
-
-        const merged = uniquePath([...toBubble, ...bubbleToGate.slice(1)]);
-        const cost = pathCost(grid, merged);
-
-        if (cost < best.cost) {
-          best = {
-            cost,
-            redPath: merged,
-            redHandled: new Set([coordKey(bubble[0], bubble[1])])
-          };
-        }
-      }
-
-      return best;
-    }
-
-    function solveBoard(grid, gateType) {
-      const starts = candidateStartCells(grid);
-      if (!starts.length) throw new Error("No valid start cells one row below used map.");
-
-      const gates = gateAttackCells(grid, gateType);
-      if (!gates.length) throw new Error("No valid gate attack cells.");
-
-      const bubbles = findBubbles(grid);
-      const redDecision = assignBubbleHandling(grid, starts, gates, bubbles);
-      const redPath = uniquePath(redDecision.redPath);
-      const redSet = new Set(redPath.map(([r, c]) => coordKey(r, c)));
-
-      const remainingBubbles = bubbles.filter(([r, c]) => !redDecision.redHandled.has(coordKey(r, c)));
-
-      const shafts = findShaftClusters(grid);
-      const bluePaths = [];
-      const blueStarts = starts.concat(redPath);
-
-      for (const cluster of shafts) {
-        const touches = shaftTouchPoints(grid, cluster);
-        const path = dijkstra(grid, blueStarts, touches, redSet);
-        if (path) bluePaths.push(uniquePath(path));
-      }
-
-      for (const bubble of remainingBubbles) {
-        const path = dijkstra(grid, blueStarts, [bubble], redSet);
-        if (path) bluePaths.push(uniquePath(path));
-      }
-
-      return { redPath, bluePaths };
-    }
-
-    function shaftRects(grid) {
-      return findShaftClusters(grid).map(cells => {
-        const rows = cells.map(([r]) => r);
-        const cols = cells.map(([, c]) => c);
-        return {
-          minR: Math.min(...rows),
-          maxR: Math.max(...rows),
-          minC: Math.min(...cols),
-          maxC: Math.max(...cols)
-        };
-      });
-    }
-
-    function cellCenter(renderRow, c) {
-      return {
-        x: PAD + c * CELL + CELL / 2,
-        y: TITLE_H + PAD + renderRow * CELL + CELL / 2
-      };
-    }
-
-    function drawSinglePath(path, color, width, rowOffset) {
-      if (!path || path.length < 2) return;
-
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-
-      ctx.lineWidth = width + 6;
-      ctx.strokeStyle = "#000";
-      ctx.beginPath();
-      let p = cellCenter(path[0][0] - rowOffset, path[0][1]);
-      ctx.moveTo(p.x, p.y);
-      for (let i = 1; i < path.length; i++) {
-        p = cellCenter(path[i][0] - rowOffset, path[i][1]);
-        ctx.lineTo(p.x, p.y);
-      }
-      ctx.stroke();
-
-      ctx.lineWidth = width;
-      ctx.strokeStyle = color;
-      ctx.beginPath();
-      p = cellCenter(path[0][0] - rowOffset, path[0][1]);
-      ctx.moveTo(p.x, p.y);
-      for (let i = 1; i < path.length; i++) {
-        p = cellCenter(path[i][0] - rowOffset, path[i][1]);
-        ctx.lineTo(p.x, p.y);
-      }
-      ctx.stroke();
-    }
-
-    function drawLegend(canvasHeight) {
-      const y = canvasHeight - 28;
-
-      ctx.lineWidth = 18;
-      ctx.strokeStyle = "#000";
-      ctx.beginPath();
-      ctx.moveTo(32, y);
-      ctx.lineTo(112, y);
-      ctx.stroke();
-
-      ctx.lineWidth = 12;
-      ctx.strokeStyle = "#ef4444";
-      ctx.beginPath();
-      ctx.moveTo(32, y);
-      ctx.lineTo(112, y);
-      ctx.stroke();
-
-      ctx.fillStyle = "#111";
-      ctx.font = "700 18px system-ui";
-      ctx.textAlign = "left";
-      ctx.fillText("1st Strongest Z", 124, y + 6);
-
-      ctx.lineWidth = 18;
-      ctx.strokeStyle = "#000";
-      ctx.beginPath();
-      ctx.moveTo(360, y);
-      ctx.lineTo(440, y);
-      ctx.stroke();
-
-      ctx.lineWidth = 12;
-      ctx.strokeStyle = "#2563eb";
-      ctx.beginPath();
-      ctx.moveTo(360, y);
-      ctx.lineTo(440, y);
-      ctx.stroke();
-
-      ctx.fillStyle = "#111";
-      ctx.fillText("2nd Strongest Z", 452, y + 6);
-    }
-
-    function drawHeaderLogoAndTitle() {
-      const img = new Image();
-      img.onload = () => {
-        const maxW = 420;
-        const maxH = 170;
-        const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
-        const w = img.width * ratio;
-        const h = img.height * ratio;
-        const x = (canvas.width - w) / 2;
-        const y = 8;
-        ctx.drawImage(img, x, y, w, h);
-
-        ctx.fillStyle = "#111";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.font = "700 42px system-ui";
-        ctx.fillText(model.title.toUpperCase(), canvas.width / 2, 210);
-      };
-      img.src = LOGO_SRC;
-    }
-
-    function renderPreview() {
-      model.title = titleInput.value.trim() || "Gate";
-      model.gateType = gateTypeEl.value;
-
-      const info = usedRowsInfo();
-      const startRenderRow = Math.max(0, info.minRow === ROWS ? 0 : info.minRow);
-      const endRenderRow = Math.max(info.startRow, info.maxRow >= 0 ? info.maxRow : 0);
-      const visibleRows = Math.max(4, endRenderRow - startRenderRow + 1);
-
-      canvas.width = COLS * CELL + PAD * 2;
-      canvas.height = visibleRows * CELL + PAD * 2 + TITLE_H + LEGEND_H;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      drawHeaderLogoAndTitle();
-
-      for (let r = startRenderRow; r <= endRenderRow; r++) {
-        const rr = r - startRenderRow;
-        for (let c = 0; c < COLS; c++) {
-          const x = PAD + c * CELL;
-          const y = TITLE_H + PAD + rr * CELL;
-          const cell = model.grid[r][c];
-
-          if (cell.type === TYPE.SHAFT) continue;
-
-          if (cell.type === TYPE.BLOCK) {
-            ctx.fillStyle = "#000";
-            ctx.fillRect(x, y, CELL, CELL);
-            ctx.strokeStyle = "#bbb";
-            ctx.strokeRect(x, y, CELL, CELL);
-          } else if (cell.type === TYPE.BUBBLE) {
-            ctx.fillStyle = "#7fe7ff";
-            ctx.fillRect(x, y, CELL, CELL);
-            ctx.strokeStyle = "#3cb8cf";
-            ctx.strokeRect(x, y, CELL, CELL);
-            ctx.fillStyle = "#111";
-            ctx.font = "700 28px system-ui";
-            ctx.textAlign = "center";
-            ctx.fillText("B", x + CELL / 2, y + CELL / 2);
-          } else {
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(x, y, CELL, CELL);
-            ctx.strokeStyle = "#ccc";
-            ctx.strokeRect(x, y, CELL, CELL);
-            if (cell.type === TYPE.NUMBER) {
-              ctx.fillStyle = "#111";
-              ctx.font = "700 28px system-ui";
-              ctx.textAlign = "center";
-              ctx.fillText(String(cell.value), x + CELL / 2, y + CELL / 2);
-            }
-          }
-        }
-      }
-
-      for (const rect of shaftRects(model.grid)) {
-        if (rect.maxR < startRenderRow || rect.minR > endRenderRow) continue;
-
-        const x = PAD + rect.minC * CELL;
-        const y = TITLE_H + PAD + (rect.minR - startRenderRow) * CELL;
-        const w = (rect.maxC - rect.minC + 1) * CELL;
-        const h = (rect.maxR - rect.minR + 1) * CELL;
-
-        ctx.fillStyle = "#39FF14";
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = "#0a8f00";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x, y, w, h);
-        ctx.fillStyle = "#111";
-        ctx.font = "700 24px system-ui";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("Shaft", x + w / 2, y + h / 2);
-      }
-
-      for (const path of model.bluePaths) drawSinglePath(path, "#2563eb", 10, startRenderRow);
-      drawSinglePath(model.redPath, "#ef4444", 12, startRenderRow);
-      drawLegend(canvas.height);
-    }
-
-    function clearBoard() {
-      model.grid = makeBlankGrid();
-      model.redPath = [];
-      model.bluePaths = [];
-      titleInput.value = "Gate";
-      renderBoardUI();
-      renderPreview();
-      setStatus("Board cleared.");
-    }
-
-    function clearPathsOnly() {
-      model.redPath = [];
-      model.bluePaths = [];
-      renderPreview();
-      setStatus("Paths cleared.");
-    }
-
-    function solve() {
-      try {
-        model.title = titleInput.value.trim() || "Gate";
-        model.gateType = gateTypeEl.value;
-        const solved = solveBoard(model.grid, model.gateType);
-        model.redPath = solved.redPath;
-        model.bluePaths = solved.bluePaths;
-        renderPreview();
-        setStatus("Solved.");
-      } catch (err) {
-        setStatus(err.message || String(err));
-      }
-    }
-
-    function downloadPNG() {
-      const a = document.createElement("a");
-      a.href = canvas.toDataURL("image/png");
-      a.download = `${(titleInput.value || "ZM-Pathfinder").replace(/\s+/g, "_")}.png`;
-      a.click();
-    }
-
-    function loadSampleGate1() {
-      clearBoard();
-      titleInput.value = "Gate 1";
-      gateTypeEl.value = "normal";
-
-      const sample = [
-        [8,9,11,9,12,8,9],
-        [10,"X",8,"X",7,11,7],
-        [8,7,9,6,9,6,"X"],
-        ["X",8,6,8,"B","S","S"],
-        ["X",6,7,6,5,"S","S"],
-        ["X",5,4,5,"X","S","S"],
-        ["X",4,5,4,5,4,6],
-        ["S","S",4,5,4,"X",5],
-        ["S","S",3,4,3,5,4],
-        ["S","S",2,"",2,4,3],
-        [1,2,"","","",3,""]
-      ];
-
-      for (let r = 0; r < sample.length; r++) {
-        for (let c = 0; c < COLS; c++) {
-          const v = sample[r][c];
-          if (v === "X") model.grid[r][c] = { type: TYPE.BLOCK };
-          else if (v === "B") model.grid[r][c] = { type: TYPE.BUBBLE };
-          else if (v === "S") model.grid[r][c] = { type: TYPE.SHAFT };
-          else if (v === "" || v === undefined) model.grid[r][c] = { type: TYPE.EMPTY };
-          else model.grid[r][c] = { type: TYPE.NUMBER, value: Number(v) };
-        }
-      }
-
-      model.redPath = [];
-      model.bluePaths = [];
-      renderBoardUI();
-      renderPreview();
-      setStatus("Sample Gate 1 loaded.");
-    }
-
-    document.querySelectorAll(".tool").forEach(btn => {
-      btn.addEventListener("click", () => {
-        activeTool = btn.dataset.tool;
-        document.querySelectorAll(".tool").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-      });
-    });
-
-    document.getElementById("clearBtn").addEventListener("click", clearBoard);
-    document.getElementById("solveBtn").addEventListener("click", solve);
-    document.getElementById("downloadBtn").addEventListener("click", downloadPNG);
-    document.getElementById("sampleGate1Btn").addEventListener("click", loadSampleGate1);
-    document.getElementById("copyBoardBtn").addEventListener("click", copyBoardText);
-    document.getElementById("clearPathsBtn").addEventListener("click", clearPathsOnly);
-
-    document.getElementById("applyPasteBtn").addEventListener("click", () => pasteIntoBoard(pasteArea.value));
-    document.getElementById("clearPasteBtn").addEventListener("click", () => {
-      pasteArea.value = "";
-      setStatus("Paste box cleared.");
-    });
-    document.getElementById("focusPasteBtn").addEventListener("click", () => {
-      pasteArea.focus();
-      setStatus(`Paste box focused for Row ${selectedRow + 1}, Col ${selectedCol + 1}. Paste there, then tap Apply Paste.`);
-    });
-
-    model.grid = makeBlankGrid();
-    buildBoardUI();
-    updateSelectedCellDisplay();
-    renderPreview();
-    setStatus("Board ready. Tap a cell, paste into the visible paste box, then tap Apply Paste.");
-  </script>
-</body>
-</html>
+        if (isTraversable(grid[0][c])) 
