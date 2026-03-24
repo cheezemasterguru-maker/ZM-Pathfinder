@@ -17,8 +17,6 @@
       --bubble:#8fd3f7;
       --shaft:#98f44d;
       --empty:#d7d9df;
-      --white:#ffffff;
-      --black:#000000;
       --select:#f59e0b;
     }
 
@@ -32,32 +30,32 @@
     }
 
     .page{
-      max-width:900px;
+      max-width:860px;
       margin:0 auto;
-      padding:18px 14px 30px;
+      padding:14px 10px 24px;
     }
 
     .card{
       background:var(--panel);
       border:1px solid var(--line);
-      border-radius:24px;
-      padding:18px;
-      box-shadow:0 10px 30px rgba(0,0,0,.25);
+      border-radius:22px;
+      padding:14px;
+      box-shadow:0 10px 28px rgba(0,0,0,.24);
     }
 
     .hero{
       display:grid;
       justify-items:center;
-      gap:12px;
-      margin-bottom:14px;
+      gap:8px;
+      margin-bottom:12px;
     }
 
     .logo-shell{
-      width:min(100%, 420px);
+      width:min(100%, 360px);
       background:#0b1020;
       border:1px solid #2a3356;
-      border-radius:28px;
-      padding:18px;
+      border-radius:24px;
+      padding:14px;
       display:grid;
       place-items:center;
     }
@@ -65,33 +63,34 @@
     .logo{
       display:block;
       width:100%;
-      max-width:340px;
+      max-width:290px;
       height:auto;
       object-fit:contain;
     }
 
     h1{
       margin:0;
-      font-size:56px;
+      font-size:38px;
       line-height:1;
       font-weight:800;
-      letter-spacing:-1px;
+      letter-spacing:-.5px;
       text-align:center;
     }
 
     .controls-grid{
       display:grid;
       grid-template-columns:1fr 1fr;
-      gap:16px;
+      gap:12px;
       margin-top:8px;
     }
 
     .field label{
       display:block;
-      font-size:17px;
+      font-size:15px;
       font-weight:700;
-      margin-bottom:8px;
+      margin-bottom:6px;
       color:var(--text);
+      text-align:left;
     }
 
     .field input,
@@ -100,11 +99,11 @@
       width:100%;
       border:none;
       outline:none;
-      border-radius:18px;
-      padding:16px 18px;
+      border-radius:14px;
+      padding:12px 14px;
       background:var(--panel2);
       color:var(--text);
-      font-size:17px;
+      font-size:15px;
       border:1px solid #36406a;
     }
 
@@ -112,25 +111,19 @@
       color:#dde6ff;
     }
 
-    .field select{
-      appearance:auto;
-      -webkit-appearance:auto;
-      background:var(--panel2);
-    }
-
     .section-title{
-      margin:18px 0 10px;
-      font-size:28px;
+      margin:14px 0 8px;
+      font-size:22px;
       font-weight:800;
       text-align:left;
     }
 
     .help{
       color:var(--muted);
-      font-size:16px;
-      line-height:1.45;
+      font-size:14px;
+      line-height:1.4;
       text-align:left;
-      margin-bottom:12px;
+      margin-bottom:10px;
     }
 
     .kbd{
@@ -140,32 +133,32 @@
       border:1px solid #6170a8;
       background:#151c34;
       color:#f3f6ff;
-      font-size:15px;
+      font-size:13px;
     }
 
     .btn-grid{
       display:grid;
       grid-template-columns:repeat(3, 1fr);
-      gap:16px;
-      margin-top:14px;
+      gap:10px;
+      margin-top:12px;
     }
 
     .tool-grid{
       display:grid;
       grid-template-columns:repeat(3, 1fr);
-      gap:16px;
-      margin-top:10px;
-      max-width:700px;
+      gap:10px;
+      margin-top:8px;
+      max-width:620px;
     }
 
     button{
       border:none;
-      border-radius:22px;
-      padding:18px 14px;
-      font-size:19px;
+      border-radius:16px;
+      padding:10px 8px;
+      font-size:15px;
       font-weight:800;
       cursor:pointer;
-      min-height:88px;
+      min-height:56px;
       transition:transform .05s ease;
     }
 
@@ -182,33 +175,33 @@
     .btn-solve{background:var(--accent);color:#fff;}
 
     .tool-active{
-      box-shadow:inset 0 0 0 4px rgba(255,255,255,.25), 0 0 0 2px rgba(143,211,247,.25);
+      box-shadow:inset 0 0 0 3px rgba(255,255,255,.22), 0 0 0 2px rgba(143,211,247,.18);
     }
 
     .report{
-      margin-top:14px;
-      padding:16px 18px;
+      margin-top:12px;
+      padding:14px 16px;
       background:#131a30;
       border:1px solid #2a355f;
-      border-radius:18px;
+      border-radius:16px;
       font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size:16px;
+      font-size:14px;
       white-space:pre-wrap;
       color:#f3f6ff;
     }
 
     .editor-card{
-      margin-top:18px;
+      margin-top:16px;
       position:relative;
     }
 
     .sticky-tools{
       position:sticky;
-      top:10px;
+      top:8px;
       z-index:10;
       background:linear-gradient(180deg, rgba(23,27,46,1) 0%, rgba(23,27,46,1) 82%, rgba(23,27,46,0) 100%);
-      padding-bottom:14px;
-      border-radius:20px 20px 0 0;
+      padding-bottom:12px;
+      border-radius:18px 18px 0 0;
     }
 
     .grid-wrap{
@@ -219,20 +212,21 @@
     .grid{
       display:grid;
       grid-template-columns:repeat(7, 1fr);
-      gap:3px;
-      max-width:760px;
+      gap:2px;
+      max-width:620px;
       margin:0 auto;
+      background:#0b1020;
     }
 
     .cell{
-      min-height:78px;
+      min-height:48px;
       aspect-ratio:1/1;
       background:#ececef;
       color:#111;
       display:flex;
       align-items:center;
       justify-content:center;
-      font-size:22px;
+      font-size:16px;
       font-weight:800;
       user-select:none;
       -webkit-user-select:none;
@@ -242,7 +236,7 @@
     }
 
     .cell.selected{
-      box-shadow:inset 0 0 0 5px var(--select);
+      box-shadow:inset 0 0 0 4px var(--select);
     }
 
     .cell.block{
@@ -262,53 +256,61 @@
 
     @media (max-width:700px){
       .page{
-        padding:14px 10px 24px;
-      }
-
-      h1{
-        font-size:40px;
+        padding:12px 8px 20px;
       }
 
       .controls-grid{
         grid-template-columns:1fr 1fr;
-        gap:12px;
+        gap:10px;
+      }
+
+      h1{
+        font-size:34px;
+      }
+
+      .logo-shell{
+        width:min(100%, 330px);
+        padding:12px;
+      }
+
+      .logo{
+        max-width:270px;
       }
 
       .field label{
-        font-size:15px;
+        font-size:14px;
       }
 
       .field input,
       .field select,
       .paste-box{
-        font-size:15px;
-        padding:14px 14px;
-        border-radius:16px;
+        font-size:14px;
+        padding:10px 12px;
       }
 
       .section-title{
-        font-size:24px;
+        font-size:20px;
       }
 
       .help{
-        font-size:15px;
+        font-size:13px;
       }
 
       .btn-grid,
       .tool-grid{
-        gap:12px;
+        gap:8px;
       }
 
       button{
-        min-height:76px;
-        font-size:17px;
-        border-radius:18px;
-        padding:14px 10px;
+        min-height:52px;
+        font-size:14px;
+        border-radius:14px;
+        padding:9px 6px;
       }
 
       .cell{
-        min-height:58px;
-        font-size:18px;
+        min-height:46px;
+        font-size:15px;
       }
     }
   </style>
@@ -634,11 +636,3 @@
           cell.textContent = "S";
         } else if(val !== ""){
           cell.textContent = String(val);
-        }
-      });
-    }
-
-    init();
-  </script>
-</body>
-</html>
