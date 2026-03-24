@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V3 loaded");
+  console.log("ZM Solver V4 loaded");
 
-  const SOLVER_VERSION = "V3";
+  const SOLVER_VERSION = "V4";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -49,9 +49,7 @@
 
   function getGateGoals(grid, gateType) {
     const cols = gateType === "end" ? [2, 3, 4] : [1, 2, 3, 4, 5];
-    return cols
-      .map((c) => [0, c])
-      .filter(([r, c]) => isWalkableCell(grid, r, c));
+    return cols.map((c) => [0, c]).filter(([r, c]) => isWalkableCell(grid, r, c));
   }
 
   function getBubbles(grid) {
@@ -302,6 +300,59 @@
     return s;
   }
 
+  function buildForkDetours(grid, starts, goal) {
+    const base = dijkstra({ grid, starts, goals: [goal] });
+    if (!base || !base.path || base.path.length < 4) return [];
+
+    const detours = [];
+    const usedEdges = new Set();
+
+    for (let i = 1; i < base.path.length - 2; i++) {
+      const [r, c] = base.path[i];
+      const prev = base.path[i - 1];
+      const next = base.path[i + 1];
+
+      const neighbors = [
+        [r + 1, c],
+        [r - 1, c],
+        [r, c + 1],
+        [r, c - 1],
+      ];
+
+      let branchCount = 0;
+      for (const [nr, nc] of neighbors) {
+        if (isWalkableCell(grid, nr, nc)) branchCount++;
+      }
+      if (branchCount < 3) continue;
+
+      for (const [nr, nc] of neighbors) {
+        if (!isWalkableCell(grid, nr, nc)) continue;
+        if ((nr === prev[0] && nc === prev[1]) || (nr === next[0] && nc === next[1])) continue;
+
+        const block = new Set();
+        block.add(`${r},${c}->${next[0]},${next[1]}`);
+        block.add(`${next[0]},${next[1]}->${r},${c}`);
+
+        const key = Array.from(block).sort().join("|");
+        if (usedEdges.has(key)) continue;
+        usedEdges.add(key);
+
+        const alt = dijkstra({
+          grid,
+          starts,
+          goals: [goal],
+          blockedEdges: block
+        });
+
+        if (alt && alt.path && alt.path.length) {
+          detours.push(alt);
+        }
+      }
+    }
+
+    return detours;
+  }
+
   function addCandidate(candidates, candidate) {
     if (!candidate || !candidate.path || !candidate.path.length) return;
     candidates.push(candidate);
@@ -310,7 +361,6 @@
   function buildRedCandidates(grid, starts, gateGoals, bubbles) {
     const candidates = [];
 
-    // Standard direct routes
     for (const gateGoal of gateGoals) {
       const direct = dijkstra({ grid, starts, goals: [gateGoal] });
       if (direct) {
@@ -323,7 +373,6 @@
           gateGoal
         });
 
-        // Alternate direct: penalize the cheapest path cells a little
         const penalized = dijkstra({
           grid,
           starts,
@@ -341,7 +390,6 @@
           });
         }
 
-        // Alternate direct: block the exact edge sequence of the cheapest path
         const blocked = dijkstra({
           grid,
           starts,
@@ -358,10 +406,21 @@
             gateGoal
           });
         }
+
+        const forkDetours = buildForkDetours(grid, starts, gateGoal);
+        for (const fork of forkDetours) {
+          addCandidate(candidates, {
+            mode: "direct",
+            variant: "fork-detour",
+            redBubble: null,
+            path: uniquePath(fork.path),
+            redCost: fork.cost,
+            gateGoal
+          });
+        }
       }
     }
 
-    // Bubble routes
     for (const bubble of bubbles) {
       const a = dijkstra({ grid, starts, goals: [bubble] });
       if (!a) continue;
@@ -412,10 +471,21 @@
             gateGoal
           });
         }
+
+        const forkDetours = buildForkDetours(grid, [bubble], gateGoal);
+        for (const fork of forkDetours) {
+          addCandidate(candidates, {
+            mode: "via bubble",
+            variant: "fork-detour",
+            redBubble: bubble,
+            path: uniquePath(mergePaths(a.path, fork.path)),
+            redCost: a.cost + fork.cost,
+            gateGoal
+          });
+        }
       }
     }
 
-    // Dedupe identical red paths
     const seen = new Set();
     const deduped = candidates.filter((cand) => {
       const key = cand.path.map(([r, c]) => `${r},${c}`).join("|");
@@ -424,9 +494,8 @@
       return true;
     });
 
-    // Keep a wider but still bounded set
     deduped.sort((a, b) => a.redCost - b.redCost || a.path.length - b.path.length);
-    return deduped.slice(0, 24);
+    return deduped.slice(0, 36);
   }
 
   function pickBestShaftRouteOption(options) {
@@ -594,6 +663,25 @@
     };
   }
 
+  function buildDebugLines(evaluatedCandidates, limit = 8) {
+    const sorted = [...evaluatedCandidates].sort((a, b) => {
+      if (a.unresolvedTargets !== b.unresolvedTargets) return a.unresolvedTargets - b.unresolvedTargets;
+      return a.effectiveTotal - b.effectiveTotal;
+    });
+
+    const lines = [];
+    lines.push("top_candidates:");
+    sorted.slice(0, limit).forEach((cand, idx) => {
+      lines.push(
+        `${idx + 1}. mode=${cand.redMode} variant=${cand.redVariant} ` +
+        `red=${roundCost(cand.redCost)} blue=${roundCost(cand.blueCost)} ` +
+        `dep=${roundCost(cand.dependencyCost)} assist=${roundCost(cand.assistBonus)} ` +
+        `effective=${roundCost(cand.effectiveTotal)} unresolved=${cand.unresolvedTargets}`
+      );
+    });
+    return lines;
+  }
+
   function solveGrid({ grid, gateType = "standard" }) {
     const rows = grid.length;
     const cols = grid[0].length;
@@ -630,6 +718,7 @@
     }
 
     let best = null;
+    const evaluatedCandidates = [];
 
     for (const redCandidate of redCandidates) {
       const blueEval = evaluateOrderedBlueForRedCandidate(
@@ -663,6 +752,8 @@
         effectiveTotal
       };
 
+      evaluatedCandidates.push(candidate);
+
       if (!best) {
         best = candidate;
         continue;
@@ -690,6 +781,8 @@
       }
     }
 
+    const debugLines = buildDebugLines(evaluatedCandidates, 10);
+
     return {
       ok: true,
       rows,
@@ -714,6 +807,7 @@
       bubbles,
       unresolvedTargets: best.unresolvedTargets,
       redCandidateCount: redCandidates.length,
+      debugCandidates: debugLines,
       message:
         `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
         "solver_status: solved\n" +
@@ -728,7 +822,8 @@
         `red_candidate_count: ${redCandidates.length}\n` +
         `unresolved_targets: ${best.unresolvedTargets}\n` +
         `total_cost: ${roundCost(best.redCost + best.blueCost)}\n` +
-        `effective_total: ${roundCost(best.effectiveTotal)}`
+        `effective_total: ${roundCost(best.effectiveTotal)}\n\n` +
+        debugLines.join("\n")
     };
   }
 
