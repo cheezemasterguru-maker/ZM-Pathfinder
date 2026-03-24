@@ -23,7 +23,6 @@
     }
 
     *{box-sizing:border-box}
-
     body{
       margin:0;
       background:var(--bg);
@@ -137,10 +136,7 @@
       font-weight:800;
       cursor:pointer;
       min-height:40px;
-      transition:transform .05s ease;
     }
-
-    button:active{ transform:scale(.99); }
 
     .btn-white{background:#fff;color:#111;}
     .btn-black{background:#000;color:#fff;border:1px solid #444b66;}
@@ -183,14 +179,14 @@
       padding-bottom:4px;
     }
 
-    .grid{
+    /* This is the critical part that keeps the grid visible */
+    #grid{
       display:grid;
       grid-template-columns:repeat(7, minmax(0, 1fr));
       gap:2px;
       max-width:560px;
       margin:0 auto;
       background:#0b1020;
-      min-height:820px;
     }
 
     .cell{
@@ -272,7 +268,7 @@
       .help{ font-size:12px; }
       .btn-grid,.tool-grid{ gap:8px; }
       button{ min-height:38px; font-size:12px; padding:6px 5px; }
-      .grid{ max-width:100%; min-height:780px; }
+      #grid{ max-width:100%; }
       .cell{ min-height:38px; font-size:13px; }
       .cell input.cell-editor{ font-size:13px; }
     }
@@ -337,7 +333,7 @@
       </div>
 
       <div class="grid-wrap">
-        <div id="grid" class="grid"></div>
+        <div id="grid"></div>
       </div>
     </div>
 
@@ -389,7 +385,7 @@
           d.className = "cell";
           d.dataset.r = String(r);
           d.dataset.c = String(c);
-          d.addEventListener("click", () => clickCell(r, c));
+          d.onclick = () => clickCell(r, c);
           g.appendChild(d);
         }
       }
@@ -455,7 +451,7 @@
       input.focus();
       input.select();
 
-      input.addEventListener("blur", () => {
+      input.onblur = () => {
         const raw = input.value.trim();
         if(raw === ""){
           grid[r][c] = "";
@@ -465,13 +461,11 @@
         resetSolve();
         render();
         renderPreview();
-      });
+      };
 
-      input.addEventListener("keydown", (e) => {
-        if(e.key === "Enter"){
-          input.blur();
-        }
-      });
+      input.onkeydown = (e) => {
+        if(e.key === "Enter") input.blur();
+      };
     }
 
     async function pasteFromClipboard(){
@@ -691,4 +685,81 @@
       }
 
       while(open.length){
-        open.sort((a,b) =>
+        open.sort((a,b) => a.cost !== b.cost ? a.cost - b.cost : a.len - b.len);
+        const cur = open.shift();
+
+        if(cur.cost !== dist[cur.r][cur.c] || cur.len !== steps[cur.r][cur.c]) continue;
+
+        if(goalSet.has(`${cur.r},${cur.c}`)){
+          const path = [];
+          let rr = cur.r;
+          let cc = cur.c;
+          while(rr !== null && cc !== null){
+            path.push([rr,cc]);
+            const p = prev[rr][cc];
+            if(!p) break;
+            rr = p[0];
+            cc = p[1];
+          }
+          path.reverse();
+          return { path, cost: cur.cost, goal:[cur.r,cur.c] };
+        }
+
+        const neigh = [[cur.r+1,cur.c],[cur.r-1,cur.c],[cur.r,cur.c+1],[cur.r,cur.c-1]];
+        for(const [nr,nc] of neigh){
+          if(!isWalkable(nr,nc)) continue;
+          const add = freeCells.has(`${nr},${nc}`) ? 0 : cellWeight(nr,nc);
+          const newCost = cur.cost + add;
+          const newLen = cur.len + 1;
+
+          if(newCost < dist[nr][nc] || (newCost === dist[nr][nc] && newLen < steps[nr][nc])){
+            dist[nr][nc] = newCost;
+            steps[nr][nc] = newLen;
+            prev[nr][nc] = [cur.r,cur.c];
+            open.push({r:nr,c:nc,cost:newCost,len:newLen});
+          }
+        }
+      }
+
+      return null;
+    }
+
+    function pathSet(path){
+      const set = new Set();
+      for(const [r,c] of path) set.add(`${r},${c}`);
+      return set;
+    }
+
+    function mergePaths(a, b){
+      if(!a || !a.length) return b ? [...b] : [];
+      if(!b || !b.length) return [...a];
+      return [...a, ...b.slice(1)];
+    }
+
+    function uniquePath(path){
+      const out = [];
+      for(const [r,c] of path){
+        if(!out.length || out[out.length-1][0] !== r || out[out.length-1][1] !== c){
+          out.push([r,c]);
+        }
+      }
+      return out;
+    }
+
+    function solveBoard(){
+      const starts = getStartCells();
+      if(!starts.length){
+        setReport("No valid start cells one row below the lowest used row.");
+        return;
+      }
+
+      const gateGoals = getGateGoals();
+      if(!gateGoals.length){
+        setReport("No valid gate attack cells.");
+        return;
+      }
+
+      const bubbles = getBubbles();
+      const shaftClusters = getShaftClusters();
+
+      let bes
