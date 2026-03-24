@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ZM Pathfinder</title>
+  <script src="solver.js"></script>
   <style>
     :root{
       --bg:#0b1020;
@@ -305,16 +306,16 @@
       </div>
 
       <div class="btn-grid">
-        <button class="btn-action" id="clearBoardBtn">Clear Board</button>
-        <button class="btn-solve" id="solveBtn">Solve</button>
-        <button class="btn-action" id="downloadBtn">Download PNG</button>
+        <button class="btn-action" onclick="clearBoard()">Clear Board</button>
+        <button class="btn-solve" onclick="solveBoard()">Solve</button>
+        <button class="btn-action" onclick="downloadPNG()">Download PNG</button>
 
-        <button class="btn-action" id="sampleBtn">Sample Grid</button>
-        <button class="btn-action" id="pasteBtn">Paste From Clipboard</button>
-        <button class="btn-action" id="pasteHelpBtn">Paste Help</button>
+        <button class="btn-action" onclick="loadSampleGrid()">Sample Grid</button>
+        <button class="btn-action" onclick="pasteFromClipboard()">Paste From Clipboard</button>
+        <button class="btn-action" onclick="setReport('Tap a cell, then paste from clipboard.')">Paste Help</button>
       </div>
 
-      <div id="report" class="report">2-file version loaded. Grid editor and solver are separated.</div>
+      <div id="report" class="report">Ready. Grid and solver are wired together.</div>
     </div>
 
     <div class="card editor-card">
@@ -325,10 +326,10 @@
         </div>
 
         <div class="tool-grid">
-          <button id="tool-number" class="btn-white tool-active">Number</button>
-          <button id="tool-block" class="btn-black">Block</button>
-          <button id="tool-bubble" class="btn-bubble">Bubble</button>
-          <button id="tool-shaft" class="btn-shaft">Shaft</button>
+          <button id="tool-number" class="btn-white tool-active" onclick="setTool('number')">Number</button>
+          <button id="tool-block" class="btn-black" onclick="setTool('block')">Block</button>
+          <button id="tool-bubble" class="btn-bubble" onclick="setTool('bubble')">Bubble</button>
+          <button id="tool-shaft" class="btn-shaft" onclick="setTool('shaft')">Shaft</button>
         </div>
       </div>
 
@@ -345,7 +346,6 @@
     </div>
   </div>
 
-  <script src="solver.js"></script>
   <script>
     const ROWS = 20;
     const COLS = 7;
@@ -353,20 +353,48 @@
     let grid = [];
     let tool = "number";
     let lastSelected = { r: 0, c: 0 };
-    let solveState = ZMSolver.createEmptySolveState();
-
-    const reportEl = document.getElementById("report");
-    const gridEl = document.getElementById("grid");
-    const titleInput = document.getElementById("titleInput");
-    const gateTypeEl = document.getElementById("gateType");
-    const previewCanvas = document.getElementById("previewCanvas");
+    let solveState = {
+      redPath: [],
+      bluePaths: [],
+      shaftEntryDots: [],
+      shaftClusters: [],
+      solved: false,
+      message: "No solve yet."
+    };
 
     function setReport(msg){
-      reportEl.textContent = msg;
+      document.getElementById("report").textContent = msg;
     }
 
     function resetSolve(){
-      solveState = ZMSolver.createEmptySolveState();
+      solveState = {
+        redPath: [],
+        bluePaths: [],
+        shaftEntryDots: [],
+        shaftClusters: [],
+        solved: false,
+        message: "No solve yet."
+      };
+    }
+
+    function init(){
+      const g = document.getElementById("grid");
+      g.innerHTML = "";
+      grid = Array.from({ length: ROWS }, () => Array(COLS).fill(""));
+
+      for(let r = 0; r < ROWS; r++){
+        for(let c = 0; c < COLS; c++){
+          const d = document.createElement("div");
+          d.className = "cell";
+          d.dataset.r = r;
+          d.dataset.c = c;
+          d.onclick = () => clickCell(r, c);
+          g.appendChild(d);
+        }
+      }
+
+      render();
+      renderPreview();
     }
 
     function setTool(nextTool){
@@ -375,22 +403,6 @@
         document.getElementById(`tool-${id}`).classList.remove("tool-active");
       });
       document.getElementById(`tool-${nextTool}`).classList.add("tool-active");
-    }
-
-    function buildGrid(){
-      gridEl.innerHTML = "";
-      grid = Array.from({ length: ROWS }, () => Array(COLS).fill(""));
-
-      for(let r = 0; r < ROWS; r++){
-        for(let c = 0; c < COLS; c++){
-          const cell = document.createElement("div");
-          cell.className = "cell";
-          cell.dataset.r = r;
-          cell.dataset.c = c;
-          cell.addEventListener("click", () => clickCell(r, c));
-          gridEl.appendChild(cell);
-        }
-      }
     }
 
     function clickCell(r, c){
@@ -417,12 +429,12 @@
       }
 
       resetSolve();
-      renderGrid();
+      render();
       renderPreview();
     }
 
     function activateInlineNumberEditor(r, c){
-      renderGrid();
+      render();
 
       const target = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
       if(!target) return;
@@ -434,11 +446,10 @@
       input.className = "cell-editor";
       input.value = typeof grid[r][c] === "number" ? String(grid[r][c]) : "";
       target.appendChild(input);
-
       input.focus();
       input.select();
 
-      input.addEventListener("blur", () => {
+      input.onblur = () => {
         const raw = input.value.trim();
         if(raw === ""){
           grid[r][c] = "";
@@ -446,20 +457,20 @@
           grid[r][c] = Number(raw);
         }
         resetSolve();
-        renderGrid();
+        render();
         renderPreview();
-      });
+      };
 
-      input.addEventListener("keydown", (e) => {
+      input.onkeydown = (e) => {
         if(e.key === "Enter") input.blur();
-      });
+      };
     }
 
     async function pasteFromClipboard(){
       try{
         const text = await navigator.clipboard.readText();
         applyText(text);
-      } catch (err){
+      } catch(e){
         setReport("Clipboard access was blocked by the browser. Copy again, tap a cell, then retry Paste From Clipboard.");
       }
     }
@@ -501,7 +512,7 @@
       });
 
       resetSolve();
-      renderGrid();
+      render();
       renderPreview();
       setReport(`Pasted into board starting at Row ${startR + 1}, Col ${startC + 1}.`);
     }
@@ -513,15 +524,15 @@
         }
       }
       resetSolve();
-      renderGrid();
+      render();
       renderPreview();
       setReport("Board cleared.");
     }
 
     function loadSampleGrid(){
       clearBoard();
-      gateTypeEl.value = "standard";
-      titleInput.value = "Gate 1";
+      document.getElementById("gateType").value = "standard";
+      document.getElementById("titleInput").value = "Gate 1";
 
       const sample = [
         [8,9,11,9,12,8,9],
@@ -544,32 +555,43 @@
       }
 
       resetSolve();
-      renderGrid();
+      render();
       renderPreview();
       setReport("Sample Grid loaded.");
     }
 
     function solveBoard(){
-      const result = ZMSolver.solve({
+      if(!window.ZMPathfinderSolver || typeof window.ZMPathfinderSolver.solveGrid !== "function"){
+        setReport("solver.js is missing or not loaded.");
+        return;
+      }
+
+      const result = window.ZMPathfinderSolver.solveGrid({
         grid,
-        rows: ROWS,
-        cols: COLS,
-        gateType: gateTypeEl.value
+        gateType: document.getElementById("gateType").value
       });
 
-      if(!result.ok){
-        setReport(result.message);
-        solveState = ZMSolver.createEmptySolveState();
+      if(!result || !result.ok){
+        resetSolve();
+        setReport(result && result.message ? result.message : "Solver failed.");
         renderPreview();
         return;
       }
 
-      solveState = result.solveState;
-      setReport(result.report);
+      solveState = {
+        redPath: result.redPath || [],
+        bluePaths: result.bluePaths || [],
+        shaftEntryDots: result.shaftEntryDots || [],
+        shaftClusters: result.shaftClusters || [],
+        solved: true,
+        message: result.message || "Solved."
+      };
+
+      setReport(result.message || "Solved.");
       renderPreview();
     }
 
-    function renderGrid(){
+    function render(){
       const cells = document.querySelectorAll("#grid .cell");
       cells.forEach(cell => {
         const r = Number(cell.dataset.r);
@@ -598,60 +620,264 @@
     }
 
     function renderPreview(){
-      const ctx = previewCanvas.getContext("2d");
-      const title = (titleInput.value || "Gate").toUpperCase();
+      const canvas = document.getElementById("previewCanvas");
+      const ctx = canvas.getContext("2d");
 
-      ZMSolver.renderPreview({
-        canvas: previewCanvas,
-        ctx,
-        grid,
-        rows: ROWS,
-        cols: COLS,
-        solveState,
-        title,
-        logoSrc: "file_00000000e35071fda5e92d9996ac3621.png"
-      });
+      const cell = 86;
+      const pad = 22;
+      const topPad = 170;
+
+      const usedRows = [];
+      for(let r = 0; r < ROWS; r++){
+        for(let c = 0; c < COLS; c++){
+          if(grid[r][c] !== ""){
+            usedRows.push(r);
+            break;
+          }
+        }
+      }
+
+      const minRow = usedRows.length ? Math.min(...usedRows) : 0;
+      const maxFilled = usedRows.length ? Math.max(...usedRows) : 4;
+      const maxRow = Math.min(ROWS - 1, maxFilled + 1);
+      const visibleRows = Math.max(6, maxRow - minRow + 1);
+
+      canvas.width = pad * 2 + cell * COLS;
+      canvas.height = topPad + visibleRows * cell + 120;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const logo = new Image();
+      logo.onload = () => {
+        const maxW = 280;
+        const maxH = 100;
+        const ratio = Math.min(maxW / logo.width, maxH / logo.height, 1);
+        const w = logo.width * ratio;
+        const h = logo.height * ratio;
+        ctx.drawImage(logo, (canvas.width - w) / 2, 10, w, h);
+
+        ctx.fillStyle = "#111";
+        ctx.font = "700 34px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText((document.getElementById("titleInput").value || "Gate").toUpperCase(), canvas.width / 2, 140);
+
+        drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow);
+      };
+      logo.src = "file_00000000e35071fda5e92d9996ac3621.png";
+
+      if (logo.complete) {
+        ctx.fillStyle = "#111";
+        ctx.font = "700 34px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText((document.getElementById("titleInput").value || "Gate").toUpperCase(), canvas.width / 2, 140);
+        drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow);
+      }
+    }
+
+    function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
+      const rowOffset = minRow;
+
+      for(let r = minRow; r <= maxRow; r++){
+        for(let c = 0; c < COLS; c++){
+          const x = pad + c * cell;
+          const y = topPad + (r - rowOffset) * cell;
+          const val = grid[r][c];
+
+          if(val === "S") continue;
+
+          if(val === "X"){
+            ctx.fillStyle = "#000";
+          } else if(val === "B"){
+            ctx.fillStyle = "#8fd3f7";
+          } else {
+            ctx.fillStyle = "#ececef";
+          }
+
+          ctx.fillRect(x, y, cell, cell);
+          ctx.strokeStyle = "#171b2e";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x, y, cell, cell);
+
+          if(val === "B"){
+            ctx.fillStyle = "#111";
+            ctx.font = "700 28px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("B", x + cell/2, y + cell/2);
+          } else if(typeof val === "number"){
+            ctx.fillStyle = "#111";
+            ctx.font = "700 28px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(String(val), x + cell/2, y + cell/2);
+          }
+        }
+      }
+
+      const shafts = solveState.shaftClusters && solveState.shaftClusters.length
+        ? solveState.shaftClusters
+        : getShaftClustersFromGrid();
+
+      for(const cluster of shafts){
+        const rows = cluster.map(v => v[0]);
+        const cols = cluster.map(v => v[1]);
+        const minR = Math.min(...rows);
+        const maxR = Math.max(...rows);
+        const minC = Math.min(...cols);
+        const maxC = Math.max(...cols);
+
+        if(maxR < minRow || minR > maxRow) continue;
+
+        const x = pad + minC * cell;
+        const y = topPad + (minR - rowOffset) * cell;
+        const w = (maxC - minC + 1) * cell;
+        const h = (maxR - minR + 1) * cell;
+
+        ctx.fillStyle = "#98f44d";
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = "#171b2e";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, w, h);
+
+        ctx.fillStyle = "#111";
+        ctx.font = "700 26px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("Shaft", x + w/2, y + h/2);
+      }
+
+      for(const path of solveState.bluePaths){
+        drawPath(ctx, path, "#2563eb", 10, cell, pad, topPad, rowOffset);
+      }
+      drawPath(ctx, solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset);
+
+      for(const [r,c] of solveState.shaftEntryDots){
+        const x = pad + c * cell + cell/2;
+        const y = topPad + (r - rowOffset) * cell + cell/2;
+        ctx.fillStyle = "#2563eb";
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const ly = ctx.canvas.height - 35;
+
+      ctx.lineCap = "round";
+      ctx.lineWidth = 16;
+      ctx.strokeStyle = "#000";
+      ctx.beginPath();
+      ctx.moveTo(36, ly);
+      ctx.lineTo(112, ly);
+      ctx.stroke();
+
+      ctx.lineWidth = 10;
+      ctx.strokeStyle = "#ef4444";
+      ctx.beginPath();
+      ctx.moveTo(36, ly);
+      ctx.lineTo(112, ly);
+      ctx.stroke();
+
+      ctx.fillStyle = "#111";
+      ctx.font = "700 18px Arial";
+      ctx.textAlign = "left";
+      ctx.fillText("1st Strongest Z", 126, ly + 6);
+
+      ctx.lineWidth = 16;
+      ctx.strokeStyle = "#000";
+      ctx.beginPath();
+      ctx.moveTo(370, ly);
+      ctx.lineTo(446, ly);
+      ctx.stroke();
+
+      ctx.lineWidth = 10;
+      ctx.strokeStyle = "#2563eb";
+      ctx.beginPath();
+      ctx.moveTo(370, ly);
+      ctx.lineTo(446, ly);
+      ctx.stroke();
+
+      ctx.fillStyle = "#111";
+      ctx.fillText("2nd Strongest Z", 460, ly + 6);
+    }
+
+    function getShaftClustersFromGrid(){
+      const seen = new Set();
+      const clusters = [];
+
+      for(let r = 0; r < ROWS; r++){
+        for(let c = 0; c < COLS; c++){
+          if(grid[r][c] !== "S") continue;
+          const key = `${r},${c}`;
+          if(seen.has(key)) continue;
+
+          const stack = [[r,c]];
+          const cluster = [];
+
+          while(stack.length){
+            const [rr,cc] = stack.pop();
+            const k = `${rr},${cc}`;
+            if(rr < 0 || cc < 0 || rr >= ROWS || cc >= COLS) continue;
+            if(grid[rr][cc] !== "S" || seen.has(k)) continue;
+            seen.add(k);
+            cluster.push([rr,cc]);
+            stack.push([rr+1,cc],[rr-1,cc],[rr,cc+1],[rr,cc-1]);
+          }
+
+          clusters.push(cluster);
+        }
+      }
+
+      return clusters;
+    }
+
+    function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
+      if(!path || path.length < 2) return;
+
+      function center(pt){
+        return {
+          x: pad + pt[1] * cell + cell / 2,
+          y: topPad + (pt[0] - rowOffset) * cell + cell / 2
+        };
+      }
+
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      ctx.lineWidth = width + 5;
+      ctx.strokeStyle = "#000";
+      ctx.beginPath();
+      let p = center(path[0]);
+      ctx.moveTo(p.x, p.y);
+      for(let i = 1; i < path.length; i++){
+        p = center(path[i]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+
+      ctx.lineWidth = width;
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      p = center(path[0]);
+      ctx.moveTo(p.x, p.y);
+      for(let i = 1; i < path.length; i++){
+        p = center(path[i]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
     }
 
     function downloadPNG(){
       renderPreview();
       setTimeout(() => {
-        const url = previewCanvas.toDataURL("image/png");
+        const canvas = document.getElementById("previewCanvas");
+        const url = canvas.toDataURL("image/png");
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${(titleInput.value || "zm-pathfinder").replace(/\s+/g, "-").toLowerCase()}.png`;
+        a.download = `${(document.getElementById("titleInput").value || "zm-pathfinder").replace(/\s+/g, "-").toLowerCase()}.png`;
         a.click();
       }, 120);
-    }
-
-    function wireEvents(){
-      document.getElementById("tool-number").addEventListener("click", () => setTool("number"));
-      document.getElementById("tool-block").addEventListener("click", () => setTool("block"));
-      document.getElementById("tool-bubble").addEventListener("click", () => setTool("bubble"));
-      document.getElementById("tool-shaft").addEventListener("click", () => setTool("shaft"));
-
-      document.getElementById("clearBoardBtn").addEventListener("click", clearBoard);
-      document.getElementById("solveBtn").addEventListener("click", solveBoard);
-      document.getElementById("downloadBtn").addEventListener("click", downloadPNG);
-      document.getElementById("sampleBtn").addEventListener("click", loadSampleGrid);
-      document.getElementById("pasteBtn").addEventListener("click", pasteFromClipboard);
-      document.getElementById("pasteHelpBtn").addEventListener("click", () => {
-        setReport("Tap a cell, then paste from clipboard.");
-      });
-
-      titleInput.addEventListener("input", renderPreview);
-      gateTypeEl.addEventListener("change", () => {
-        resetSolve();
-        renderPreview();
-      });
-    }
-
-    function init(){
-      buildGrid();
-      wireEvents();
-      renderGrid();
-      renderPreview();
-      setReport("2-file version loaded. Grid editor and solver are separated.");
     }
 
     window.addEventListener("load", init);
