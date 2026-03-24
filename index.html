@@ -52,7 +52,8 @@ button {
 }
 
 .cell {
-  background: #ddd;
+  background: #f0f0f0;
+  color: #111;
   aspect-ratio: 1;
   display:flex;
   align-items:center;
@@ -62,8 +63,19 @@ button {
 }
 
 .cell.block { background:#000; color:#fff; }
-.cell.bubble { background:#7dd3fc; }
-.cell.shaft { background:#7CFC00; }
+.cell.bubble { background:#7dd3fc; color:#000; }
+.cell.shaft { background:#7CFC00; color:#000; }
+
+/* paste box */
+.paste-box {
+  width: 90%;
+  max-width: 500px;
+  height: 80px;
+  margin: 10px auto;
+  border-radius: 10px;
+  border: none;
+  padding: 10px;
+}
 </style>
 </head>
 
@@ -80,6 +92,11 @@ button {
   <button class="empty" onclick="setTool('empty')">Empty</button>
 </div>
 
+<!-- MOBILE SAFE PASTE -->
+<textarea id="pasteBox" class="paste-box" placeholder="Paste from Sheets here if direct paste doesn’t work"></textarea>
+<br>
+<button onclick="applyPaste()">Paste Into Grid</button>
+
 <div id="grid" class="grid"></div>
 
 <script>
@@ -89,7 +106,7 @@ const COLS = 7;
 let grid = [];
 let tool = "number";
 
-// BUILD GRID
+// INIT GRID
 function init() {
   const g = document.getElementById("grid");
   g.innerHTML = "";
@@ -117,7 +134,7 @@ function init() {
 
 function setTool(t){ tool=t; }
 
-// CLICK LOGIC
+// CLICK
 function handleClick(r,c){
   if(tool==="number") return;
 
@@ -148,7 +165,7 @@ function handleClick(r,c){
   render();
 }
 
-// TYPING (manual numbers)
+// TYPING
 function handleTyping(e){
   const el = e.target;
   const r = el.dataset.r;
@@ -169,16 +186,33 @@ function handleTyping(e){
   render();
 }
 
-// PASTE (FULL GRID SUPPORT)
+// DIRECT PASTE (may fail on mobile)
 function handlePaste(e){
-  e.preventDefault();
+  try {
+    const text = e.clipboardData.getData("text");
+    applyText(text, e.target);
+  } catch {}
+}
 
-  const text = e.clipboardData.getData("text");
+// FALLBACK PASTE
+function applyPaste(){
+  const text = document.getElementById("pasteBox").value;
+  applyText(text);
+}
+
+// CORE PASTE LOGIC
+function applyText(text, startCell){
+  if(!text) return;
+
   const rows = text.trim().split("\n");
 
-  const start = e.target;
-  const startR = Number(start.dataset.r);
-  const startC = Number(start.dataset.c);
+  let startR = 0;
+  let startC = 0;
+
+  if(startCell){
+    startR = Number(startCell.dataset.r);
+    startC = Number(startCell.dataset.c);
+  }
 
   rows.forEach((row,ri)=>{
     const cols = row.split(/\t|,/);
