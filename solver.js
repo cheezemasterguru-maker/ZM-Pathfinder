@@ -5,6 +5,10 @@
     return Math.pow(2, 10) * Math.pow(1.6, n - 10);
   }
 
+  function roundCost(n) {
+    return Math.round(n * 100) / 100;
+  }
+
   function isWalkableCell(grid, r, c) {
     if (r < 0 || c < 0 || r >= grid.length || c >= grid[0].length) return false;
     const v = grid[r][c];
@@ -213,14 +217,25 @@
     return [...path, entryCell];
   }
 
-  function roundCost(n) {
-    return Math.round(n * 100) / 100;
+  function getPathEndpoints(path) {
+    if (!path || !path.length) return [];
+    return [path[path.length - 1]];
+  }
+
+  function sortShaftClustersBottomToTop(clusters) {
+    return [...clusters].sort((a, b) => {
+      const aBottom = Math.max(...a.map(([r]) => r));
+      const bBottom = Math.max(...b.map(([r]) => r));
+      if (aBottom !== bBottom) return bBottom - aBottom;
+      const aTop = Math.min(...a.map(([r]) => r));
+      const bTop = Math.min(...b.map(([r]) => r));
+      return bTop - aTop;
+    });
   }
 
   function buildRedCandidates(grid, starts, gateGoals, bubbles) {
     const candidates = [];
 
-    // direct to each gate cell individually
     for (const gateGoal of gateGoals) {
       const direct = dijkstra({ grid, starts, goals: [gateGoal] });
       if (direct) {
@@ -234,7 +249,6 @@
       }
     }
 
-    // via each bubble, then to each gate cell
     for (const bubble of bubbles) {
       const a = dijkstra({ grid, starts, goals: [bubble] });
       if (!a) continue;
@@ -253,7 +267,6 @@
       }
     }
 
-    // dedupe identical red paths
     const seen = new Set();
     return candidates.filter((cand) => {
       const key = cand.path.map(([r, c]) => `${r},${c}`).join("|");
@@ -263,15 +276,17 @@
     });
   }
 
-  function evaluateBlueForRedCandidate(grid, starts, redCandidate, shaftClusters, bubbles) {
-    const freeRed = pathSet(redCandidate.path);
+  function evaluateOrderedBlueForRedCandidate(grid, starts, redCandidate, shaftClustersOrdered, bubbles) {
     const bluePaths = [];
     const shaftEntryDots = [];
     const attackPoints = [];
     let blueCost = 0;
     let unresolved = 0;
 
-    for (const cluster of shaftClusters) {
+    const reusable = new Set([...pathSet(redCandidate.path)]);
+    let frontierStarts = starts.concat(redCandidate.path);
+
+    for (const cluster of shaftClustersOrdered) {
       const info = getShaftAttackInfo(grid, cluster);
       if (!info.attacks.length) {
         unresolved++;
@@ -280,9 +295,9 @@
 
       const shaftRoute = dijkstra({
         grid,
-        starts: starts.concat(redCandidate.path),
+        starts: frontierStarts,
         goals: info.attacks,
-        freeCells: freeRed,
+        freeCells: reusable,
       });
 
       if (!shaftRoute) {
@@ -290,17 +305,24 @@
         continue;
       }
 
-      attackPoints.push(shaftRoute.goal);
-
       const entry = info.entryMap.get(`${shaftRoute.goal[0]},${shaftRoute.goal[1]}`);
-      if (entry) {
-        shaftEntryDots.push(entry);
-        bluePaths.push(appendEntryStep(shaftRoute.path, entry));
-      } else {
-        bluePaths.push(shaftRoute.path);
-      }
+      const finalPath = entry ? appendEntryStep(shaftRoute.path, entry) : shaftRoute.path;
+
+      bluePaths.push(finalPath);
+      attackPoints.push(shaftRoute.goal);
+      if (entry) shaftEntryDots.push(entry);
 
       blueCost += shaftRoute.cost;
+
+      for (const [r, c] of finalPath) {
+        reusable.add(`${r},${c}`);
+      }
+
+      frontierStarts = frontierStarts
+        .concat(finalPath)
+        .concat(getPathEndpoints(finalPath));
+
+      frontierStarts = dedupeCells(frontierStarts);
     }
 
     const redBubbleKey = redCandidate.redBubble
@@ -313,14 +335,24 @@
 
       const bubbleRoute = dijkstra({
         grid,
-        starts: starts.concat(redCandidate.path),
+        starts: frontierStarts,
         goals: [bubble],
-        freeCells: freeRed,
+        freeCells: reusable,
       });
 
       if (bubbleRoute) {
         bluePaths.push(bubbleRoute.path);
         blueCost += bubbleRoute.cost;
+
+        for (const [r, c] of bubbleRoute.path) {
+          reusable.add(`${r},${c}`);
+        }
+
+        frontierStarts = frontierStarts
+          .concat(bubbleRoute.path)
+          .concat(getPathEndpoints(bubbleRoute.path));
+
+        frontierStarts = dedupeCells(frontierStarts);
       } else {
         unresolved++;
       }
@@ -333,6 +365,18 @@
       blueCost,
       unresolved
     };
+  }
+
+  function dedupeCells(cells) {
+    const seen = new Set();
+    const out = [];
+    for (const [r, c] of cells) {
+      const key = `${r},${c}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push([r, c]);
+    }
+    return out;
   }
 
   function solveGrid({ grid, gateType = "standard" }) {
@@ -359,6 +403,7 @@
 
     const bubbles = getBubbles(grid);
     const shaftClusters = getShaftClusters(grid);
+    const shaftClustersOrdered = sortShaftClustersBottomToTop(shaftClusters);
 
     const redCandidates = buildRedCandidates(grid, starts, gateGoals, bubbles);
     if (!redCandidates.length) {
@@ -372,11 +417,11 @@
     let best = null;
 
     for (const redCandidate of redCandidates) {
-      const blueEval = evaluateBlueForRedCandidate(
+      const blueEval = evaluateOrderedBlueForRedCandidate(
         grid,
         starts,
         redCandidate,
-        shaftClusters,
+        shaftClustersOrdered,
         bubbles
       );
 
@@ -436,7 +481,7 @@
       bluePaths: best.bluePaths,
       blueCost: roundCost(best.blueCost),
       totalCost: roundCost(best.totalCost),
-      shaftClusters,
+      shaftClusters: shaftClustersOrdered,
       shaftEntryDots: best.shaftEntryDots,
       attackPoints: best.attackPoints,
       bubbles,
@@ -447,7 +492,7 @@
         `red_cost: ${roundCost(best.redCost)}\n` +
         `blue_cost: ${roundCost(best.blueCost)}\n` +
         `bubble_count: ${bubbles.length}\n` +
-        `shaft_count: ${shaftClusters.length}\n` +
+        `shaft_count: ${shaftClustersOrdered.length}\n` +
         `unresolved_targets: ${best.unresolvedTargets}\n` +
         `total_cost: ${roundCost(best.totalCost)}`
     };
