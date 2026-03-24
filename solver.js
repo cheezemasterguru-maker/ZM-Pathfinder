@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V2 loaded");
+  console.log("ZM Solver V3 loaded");
 
-  const SOLVER_VERSION = "V2";
+  const SOLVER_VERSION = "V3";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -126,7 +126,7 @@
     return { attacks, entryMap };
   }
 
-  function dijkstra({ grid, starts, goals, freeCells = new Set() }) {
+  function dijkstra({ grid, starts, goals, freeCells = new Set(), blockedEdges = new Set(), penaltyCells = new Map() }) {
     if (!starts.length || !goals.length) return null;
 
     const rows = grid.length;
@@ -174,7 +174,12 @@
       for (const [nr, nc] of neighbors) {
         if (!isWalkableCell(grid, nr, nc)) continue;
 
-        const nextCost = cur.cost + cellWeight(grid, nr, nc, freeCells);
+        const edgeKey1 = `${cur.r},${cur.c}->${nr},${nc}`;
+        const edgeKey2 = `${nr},${nc}->${cur.r},${cur.c}`;
+        if (blockedEdges.has(edgeKey1) || blockedEdges.has(edgeKey2)) continue;
+
+        const penalty = penaltyCells.get(`${nr},${nc}`) || 0;
+        const nextCost = cur.cost + cellWeight(grid, nr, nc, freeCells) + penalty;
         const nextLen = cur.len + 1;
 
         if (
@@ -270,47 +275,158 @@
     return score;
   }
 
+  function pathTouchesAnyStart(path, starts) {
+    const startSet = new Set(starts.map(([r, c]) => `${r},${c}`));
+    for (const [r, c] of path || []) {
+      if (startSet.has(`${r},${c}`)) return true;
+    }
+    return false;
+  }
+
+  function buildPenaltyCellsFromPath(path, amount) {
+    const m = new Map();
+    for (const [r, c] of path || []) {
+      m.set(`${r},${c}`, amount);
+    }
+    return m;
+  }
+
+  function buildBlockedEdgesFromPath(path) {
+    const s = new Set();
+    for (let i = 0; i < (path || []).length - 1; i++) {
+      const [r1, c1] = path[i];
+      const [r2, c2] = path[i + 1];
+      s.add(`${r1},${c1}->${r2},${c2}`);
+      s.add(`${r2},${c2}->${r1},${c1}`);
+    }
+    return s;
+  }
+
+  function addCandidate(candidates, candidate) {
+    if (!candidate || !candidate.path || !candidate.path.length) return;
+    candidates.push(candidate);
+  }
+
   function buildRedCandidates(grid, starts, gateGoals, bubbles) {
     const candidates = [];
 
+    // Standard direct routes
     for (const gateGoal of gateGoals) {
       const direct = dijkstra({ grid, starts, goals: [gateGoal] });
       if (direct) {
-        candidates.push({
+        addCandidate(candidates, {
           mode: "direct",
+          variant: "base",
           redBubble: null,
           path: uniquePath(direct.path),
           redCost: direct.cost,
           gateGoal
         });
+
+        // Alternate direct: penalize the cheapest path cells a little
+        const penalized = dijkstra({
+          grid,
+          starts,
+          goals: [gateGoal],
+          penaltyCells: buildPenaltyCellsFromPath(direct.path, 0.35)
+        });
+        if (penalized) {
+          addCandidate(candidates, {
+            mode: "direct",
+            variant: "penalized",
+            redBubble: null,
+            path: uniquePath(penalized.path),
+            redCost: penalized.cost,
+            gateGoal
+          });
+        }
+
+        // Alternate direct: block the exact edge sequence of the cheapest path
+        const blocked = dijkstra({
+          grid,
+          starts,
+          goals: [gateGoal],
+          blockedEdges: buildBlockedEdgesFromPath(direct.path)
+        });
+        if (blocked) {
+          addCandidate(candidates, {
+            mode: "direct",
+            variant: "blocked",
+            redBubble: null,
+            path: uniquePath(blocked.path),
+            redCost: blocked.cost,
+            gateGoal
+          });
+        }
       }
     }
 
+    // Bubble routes
     for (const bubble of bubbles) {
       const a = dijkstra({ grid, starts, goals: [bubble] });
       if (!a) continue;
 
       for (const gateGoal of gateGoals) {
         const b = dijkstra({ grid, starts: [bubble], goals: [gateGoal] });
-        if (!b) continue;
+        if (b) {
+          addCandidate(candidates, {
+            mode: "via bubble",
+            variant: "base",
+            redBubble: bubble,
+            path: uniquePath(mergePaths(a.path, b.path)),
+            redCost: a.cost + b.cost,
+            gateGoal
+          });
+        }
 
-        candidates.push({
-          mode: "via bubble",
-          redBubble: bubble,
-          path: uniquePath(mergePaths(a.path, b.path)),
-          redCost: a.cost + b.cost,
-          gateGoal
+        const bPenalized = dijkstra({
+          grid,
+          starts: [bubble],
+          goals: [gateGoal],
+          penaltyCells: b ? buildPenaltyCellsFromPath(b.path, 0.35) : new Map()
         });
+        if (bPenalized) {
+          addCandidate(candidates, {
+            mode: "via bubble",
+            variant: "penalized",
+            redBubble: bubble,
+            path: uniquePath(mergePaths(a.path, bPenalized.path)),
+            redCost: a.cost + bPenalized.cost,
+            gateGoal
+          });
+        }
+
+        const bBlocked = dijkstra({
+          grid,
+          starts: [bubble],
+          goals: [gateGoal],
+          blockedEdges: b ? buildBlockedEdgesFromPath(b.path) : new Set()
+        });
+        if (bBlocked) {
+          addCandidate(candidates, {
+            mode: "via bubble",
+            variant: "blocked",
+            redBubble: bubble,
+            path: uniquePath(mergePaths(a.path, bBlocked.path)),
+            redCost: a.cost + bBlocked.cost,
+            gateGoal
+          });
+        }
       }
     }
 
+    // Dedupe identical red paths
     const seen = new Set();
-    return candidates.filter((cand) => {
+    const deduped = candidates.filter((cand) => {
       const key = cand.path.map(([r, c]) => `${r},${c}`).join("|");
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
+
+    // Keep a wider but still bounded set
+    deduped.sort((a, b) => a.redCost - b.redCost || a.path.length - b.path.length);
+    return deduped.slice(0, 24);
   }
 
   function pickBestShaftRouteOption(options) {
@@ -321,14 +437,6 @@
       return a.route.len - b.route.len;
     });
     return options[0];
-  }
-
-  function pathTouchesAnyStart(path, starts) {
-    const startSet = new Set(starts.map(([r, c]) => `${r},${c}`));
-    for (const [r, c] of path || []) {
-      if (startSet.has(`${r},${c}`)) return true;
-    }
-    return false;
   }
 
   function evaluateOrderedBlueForRedCandidate(grid, starts, redCandidate, shaftClustersOrdered, bubbles) {
@@ -380,7 +488,7 @@
           }
         }
 
-        const assistA = countAdjacentSharedOpens(redCandidate.path, finalA) * 0.15;
+        const assistA = countAdjacentSharedOpens(redCandidate.path, finalA) * 0.35;
 
         routeOptions.push({
           kind: "cumulative",
@@ -403,7 +511,7 @@
       if (routeB) {
         const entryB = info.entryMap.get(`${routeB.goal[0]},${routeB.goal[1]}`);
         const finalB = entryB ? appendEntryStep(routeB.path, entryB) : routeB.path;
-        const assistB = countAdjacentSharedOpens(redCandidate.path, finalB) * 0.15;
+        const assistB = countAdjacentSharedOpens(redCandidate.path, finalB) * 0.35;
 
         routeOptions.push({
           kind: "base",
@@ -540,6 +648,7 @@
 
       const candidate = {
         redMode: redCandidate.mode,
+        redVariant: redCandidate.variant,
         redBubble: redCandidate.redBubble,
         redPath: redCandidate.path,
         redCost: redCandidate.redCost,
@@ -589,6 +698,7 @@
       startRow,
       solverVersion: SOLVER_VERSION,
       redMode: best.redMode,
+      redVariant: best.redVariant,
       redBubble: best.redBubble,
       redPath: best.redPath,
       redCost: roundCost(best.redCost),
@@ -603,16 +713,19 @@
       attackPoints: best.attackPoints,
       bubbles,
       unresolvedTargets: best.unresolvedTargets,
+      redCandidateCount: redCandidates.length,
       message:
         `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
         "solver_status: solved\n" +
         `red_mode: ${best.redMode}\n` +
+        `red_variant: ${best.redVariant}\n` +
         `red_cost: ${roundCost(best.redCost)}\n` +
         `blue_cost: ${roundCost(best.blueCost)}\n` +
         `dependency_cost: ${roundCost(best.dependencyCost)}\n` +
         `assist_bonus: ${roundCost(best.assistBonus)}\n` +
         `bubble_count: ${bubbles.length}\n` +
         `shaft_count: ${shaftClustersOrdered.length}\n` +
+        `red_candidate_count: ${redCandidates.length}\n` +
         `unresolved_targets: ${best.unresolvedTargets}\n` +
         `total_cost: ${roundCost(best.redCost + best.blueCost)}\n` +
         `effective_total: ${roundCost(best.effectiveTotal)}`
