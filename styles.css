@@ -113,40 +113,37 @@ h1{
   margin-top:8px;
 }
 
-.map-loader-grid.compact-loader{
-  grid-template-columns:1fr;
+.compact-loader{
+  display:flex;
+  flex-direction:column;
   gap:10px;
 }
 
 .loader-row{
-  display:grid;
-  grid-template-columns:1fr 1fr;
+  display:flex;
   gap:10px;
-  align-items:end;
+  align-items:flex-end;
+}
+
+.loader-row .field{
+  margin:0;
+  min-width:0;
 }
 
 #eventTypeField{
-  min-width:0;
+  flex:0 0 34%;
 }
 
 #eventNameField{
-  min-width:0;
+  flex:1 1 66%;
+}
+
+#eventMineField{
+  width:100%;
 }
 
 #eventChamberField{
-  min-width:0;
-}
-
-#loadMapBtn{
-  width:100%;
-  min-height:42px;
-  background:#facc15;
-  color:#111827;
-  border:1px solid #eab308;
-}
-
-#loadMapBtn:hover{
-  background:#eab308;
+  flex:1 1 auto;
 }
 
 .map-loader-actions{
@@ -227,6 +224,19 @@ button{
 .btn-solve{background:var(--accent);color:#fff;}
 .btn-danger{background:var(--danger);color:#fff;}
 .btn-success{background:var(--success);color:#fff;}
+
+#loadMapBtn{
+  flex:0 0 160px;
+  width:160px;
+  min-height:42px;
+  background:#facc15;
+  color:#111827;
+  border:1px solid #eab308;
+}
+
+#loadMapBtn:hover{
+  background:#eab308;
+}
 
 .tool-active{
   box-shadow:inset 0 0 0 3px rgba(255,255,255,.22), 0 0 0 2px rgba(143,211,247,.18);
@@ -486,8 +496,7 @@ canvas{
   h1{ font-size:30px; }
   .logo{ max-width:270px; }
   .controls-grid{ grid-template-columns:1fr 1fr; gap:8px; }
-  .map-loader-grid{ grid-template-columns:1fr; gap:8px; }
-  .loader-row{ grid-template-columns:1fr 1fr; gap:8px; }
+  .map-loader-grid{ grid-template-columns:1fr 1fr; gap:8px; }
   .field label{ font-size:13px; }
   .field input,.field select{ font-size:13px; padding:9px 10px; }
   .section-title{ font-size:18px; }
@@ -498,9 +507,20 @@ canvas{
   .cell{ min-height:38px; font-size:13px; }
   .cell input.cell-editor{ font-size:13px; }
   .modal-actions{ grid-template-columns:1fr; }
+  #loadMapBtn{
+    flex:0 0 148px;
+    width:148px;
+  }
 }
 
 @media (max-width:520px){
-  .controls-grid{ grid-template-columns:1fr; }
-  .loader-row{ grid-template-columns:1fr; }
+  .controls-grid{ grid-template-columns:1fr 1fr; }
+  .map-loader-grid{ grid-template-columns:1fr 1fr; }
+  #eventTypeField{ flex:0 0 34%; }
+  #eventNameField{ flex:1 1 66%; }
+  #eventChamberField{ flex:1 1 auto; }
+  #loadMapBtn{
+    flex:0 0 140px;
+    width:140px;
+  }
 }
