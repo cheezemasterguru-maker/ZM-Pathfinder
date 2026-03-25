@@ -307,7 +307,8 @@ window.ZM_MAP_DATA = {
       },
 
       "Graveyard": null
-    }
+    },
+    
   "Volcano Awakening": {
   "Chamber 1": {
     title: "Volcano Awakening - Chamber 1",
