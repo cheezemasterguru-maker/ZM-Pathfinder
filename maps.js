@@ -1,4 +1,4 @@
-endZM_MAP_LIBRARY = {
+window.ZM_MAP_LIBRARY = {
   Main: {
     "Essence Cave": ["Chamber 1", "Chamber 2", "Chamber 3", "Graveyard"],
     "Treasure Trove of Gems": ["Chamber 1", "Chamber 2", "Chamber 3", "Graveyard"],
@@ -111,7 +111,7 @@ window.ZM_MAP_DATA = {
         title: "Treasures in Ice - Chamber 2",
         gateType: "standard",
         grid: [
-          [21, 24, 23, 21, 18, 17, "X"],
+          [21, 24, 23, 21, 18, 17, ""],
           [20, 22, 23, 24, "X", "S", "S"],
           [19, 21, 20, 22, 17, "S", "S"],
           [18, 22, "B", 18, 21, "S", "S"],
@@ -145,7 +145,7 @@ window.ZM_MAP_DATA = {
 
       "Chamber 4": {
         title: "Treasures in Ice - Chamber 4",
-        gateType: "standard",
+        gateType: "end",
         grid: [
           [42, 32, 37, 41, 43, 32, 46],
           [40, 31, 44, "X", 33, 42, 31],
@@ -159,6 +159,83 @@ window.ZM_MAP_DATA = {
           ["X", "X", "X", 32, "B", "S", "S"],
           ["X", 33, 26, 27, 28, "X", "X"],
           ["X", 26, 32, 26, "X", "X", "X"]
+        ]
+      },
+
+      "Graveyard": null
+    },
+
+    "Excavations in the Sand": {
+      "Chamber 1": {
+        title: "Excavations in the Sand - Chamber 1",
+        gateType: "standard",
+        grid: [
+          [9, 12, 11, 9, 8, 10, "X"],
+          [8, 9, 8, 11, "X", "S", "S"],
+          ["X", 8, 7, 9, 7, "S", "S"],
+          ["X", 7, "B", 7, 5, "S", "S"],
+          ["S", "S", 7, 5, 6, "X", 5],
+          ["S", "S", 6, 7, 4, 5, 4],
+          ["S", "S", 5, 4, 5, 4, 5],
+          ["X", 5, 4, 3, 4, 3, "X"],
+          ["X", 4, 3, 4, 3, "S", "S"],
+          ["X", 3, "X", 3, 2, "S", "S"],
+          ["X", 3, "", "", 1, "S", "S"]
+        ]
+      },
+
+      "Chamber 2": {
+        title: "Excavations in the Sand - Chamber 2",
+        gateType: "standard",
+        grid: [
+          ["X", 15, 17, 14, 17, 15, 17],
+          ["X", 14, 13, 18, 13, 16, 12],
+          ["S", "S", 19, 12, "X", 14, 13],
+          ["S", "S", "B", 20, "X", "S", "S"],
+          ["S", "S", 17, 14, 13, "S", "S"],
+          [14, 16, 15, 16, 15, "S", "S"],
+          [15, 12, 13, 9, 10, 15, 16],
+          ["X", 14, 11, 12, "X", 11, "B"],
+          ["S", "S", 10, 9, 8, 14, 9],
+          ["S", "S", 8, 8, 9, 8, 13],
+          ["S", "S", "", 8, 8, "X", "X"]
+        ]
+      },
+
+      "Chamber 3": {
+        title: "Excavations in the Sand - Chamber 3",
+        gateType: "standard",
+        grid: [
+          [20, 23, 28, 27, 24, 22, "X"],
+          [26, 27, 20, 21, 26, "S", "S"],
+          [22, "X", 19, 25, 23, "S", "S"],
+          [25, 21, 24, 22, "X", "S", "S"],
+          [20, 19, 18, 24, 16, 14, 20],
+          ["S", "S", 22, "B", 24, 15, 22],
+          ["S", "S", 17, 22, 14, "X", 19],
+          ["S", "S", 21, 16, 18, 17, 16],
+          [20, 19, "X", "B", 15, "S", "S"],
+          [18, 17, 16, 15, 13, "S", "S"],
+          ["", 16, "X", 12, "", "S", "S"]
+        ]
+      },
+
+      "Chamber 4": {
+        title: "Excavations in the Sand - Chamber 4",
+        gateType: "standard",
+        grid: [
+          ["X",29, 31, 28, 37, 38, 35],
+          ["X",32, 27, 32, 29, 36, 32],
+          ["X",28, 33, 26, 31, "X", 33],
+          [36, 30, 35, 34, 30, 35, 31],
+          [29, 32, "X", 31, 33, 32, "B"],
+          ["X", "X", "X", 29, 35, 28, "X"],
+          ["S", "S", 33, 34, 27, 33, "X"],
+          ["S", "S", 29, 31, 33, 28, "X"],
+          ["S", "S", 26, 32, 29, 26, "X"],
+          [27, 27, 28, 24, "B", 27, 30],
+          [29, "X", 23, 22, "X", "X", 26],
+          ["X", "", "", 21, "X", "X", 22]
         ]
       },
 
