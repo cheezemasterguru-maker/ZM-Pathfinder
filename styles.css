@@ -461,4 +461,15 @@ canvas{
   .cell{ min-height:38px; font-size:13px; }
   .cell input.cell-editor{ font-size:13px; }
   .modal-actions{ grid-template-columns:1fr; }
+
+/* Load Map button (yellow) */
+#loadMapBtn {
+  background: #facc15;
+  color: #111827;
+  border: 1px solid #eab308;
+}
+
+#loadMapBtn:hover {
+  background: #eab308;
+}
 }
