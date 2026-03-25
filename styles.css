@@ -113,6 +113,42 @@ h1{
   margin-top:8px;
 }
 
+.map-loader-grid.compact-loader{
+  grid-template-columns:1fr;
+  gap:10px;
+}
+
+.loader-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  align-items:end;
+}
+
+#eventTypeField{
+  min-width:0;
+}
+
+#eventNameField{
+  min-width:0;
+}
+
+#eventChamberField{
+  min-width:0;
+}
+
+#loadMapBtn{
+  width:100%;
+  min-height:42px;
+  background:#facc15;
+  color:#111827;
+  border:1px solid #eab308;
+}
+
+#loadMapBtn:hover{
+  background:#eab308;
+}
+
 .map-loader-actions{
   display:grid;
   grid-template-columns:1fr;
@@ -451,6 +487,7 @@ canvas{
   .logo{ max-width:270px; }
   .controls-grid{ grid-template-columns:1fr 1fr; gap:8px; }
   .map-loader-grid{ grid-template-columns:1fr; gap:8px; }
+  .loader-row{ grid-template-columns:1fr 1fr; gap:8px; }
   .field label{ font-size:13px; }
   .field input,.field select{ font-size:13px; padding:9px 10px; }
   .section-title{ font-size:18px; }
@@ -461,15 +498,9 @@ canvas{
   .cell{ min-height:38px; font-size:13px; }
   .cell input.cell-editor{ font-size:13px; }
   .modal-actions{ grid-template-columns:1fr; }
-
-/* Load Map button (yellow) */
-#loadMapBtn {
-  background: #facc15;
-  color: #111827;
-  border: 1px solid #eab308;
 }
 
-#loadMapBtn:hover {
-  background: #eab308;
-}
+@media (max-width:520px){
+  .controls-grid{ grid-template-columns:1fr; }
+  .loader-row{ grid-template-columns:1fr; }
 }
