@@ -1,4 +1,4 @@
-window.ZM_MAP_LIBRARY = {
+endZM_MAP_LIBRARY = {
   Main: {
     "Essence Cave": ["Chamber 1", "Chamber 2", "Chamber 3", "Graveyard"],
     "Treasure Trove of Gems": ["Chamber 1", "Chamber 2", "Chamber 3", "Graveyard"],
@@ -145,7 +145,7 @@ window.ZM_MAP_DATA = {
 
       "Chamber 4": {
         title: "Treasures in Ice - Chamber 4",
-        gateType: "end",
+        gateType: "standard",
         grid: [
           [42, 32, 37, 41, 43, 32, 46],
           [40, 31, 44, "X", 33, 42, 31],
