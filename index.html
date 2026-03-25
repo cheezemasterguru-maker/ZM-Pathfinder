@@ -6,12 +6,12 @@
   <title>ZM Pathfinder</title>
   <link rel="stylesheet" href="styles.css?v=1" />
   <script src="help.js?v=3"></script>
-<script src="map-library.js?v=1"></script>
-<script src="map-data.js?v=1"></script>
-<script src="map-validator.js?v=1"></script>
-<script src="solver.js?v=4.5"></script>
-<script src="auth.js?v=1" defer></script>
-<script src="app.js?v=3" defer></script>
+  <script src="map-library.js?v=1"></script>
+  <script src="map-data.js?v=1"></script>
+  <script src="map-validator.js?v=1"></script>
+  <script src="solver.js?v=4.5"></script>
+  <script src="auth.js?v=2" defer></script>
+  <script src="app.js?v=3" defer></script>
 </head>
 <body>
   <div id="appShell" class="app-shell locked">
@@ -48,21 +48,23 @@
 
         <div id="mapLoaderSection" class="hidden">
           <div class="section-title">Map Loader</div>
-          <div class="help">Admin-only while in development. Choose a stored map path, then press <b>Load Map</b> to place it into the grid.</div>
+          <div class="help">Choose a stored map path, then press <b>Load Map</b> to place it into the grid. Loaded maps can still be edited afterward.</div>
 
-          <div class="map-loader-grid">
-            <div class="field" id="eventTypeField">
-              <label for="eventTypeSelect">Event Type</label>
-              <select id="eventTypeSelect" onchange="handleEventTypeChange()">
-                <option value="">Select Event Type</option>
-              </select>
-            </div>
+          <div class="map-loader-grid compact-loader">
+            <div class="loader-row">
+              <div class="field" id="eventTypeField">
+                <label for="eventTypeSelect">Event Type</label>
+                <select id="eventTypeSelect" onchange="handleEventTypeChange()">
+                  <option value="">Select Event Type</option>
+                </select>
+              </div>
 
-            <div class="field hidden" id="eventNameField">
-              <label for="eventNameSelect">Event Name</label>
-              <select id="eventNameSelect" onchange="handleEventNameChange()">
-                <option value="">Select Event Name</option>
-              </select>
+              <div class="field hidden" id="eventNameField">
+                <label for="eventNameSelect">Event Name</label>
+                <select id="eventNameSelect" onchange="handleEventNameChange()">
+                  <option value="">Select Event Name</option>
+                </select>
+              </div>
             </div>
 
             <div class="field hidden" id="eventMineField">
@@ -72,16 +74,16 @@
               </select>
             </div>
 
-            <div class="field hidden" id="eventChamberField">
-              <label for="eventChamberSelect">Event Chamber</label>
-              <select id="eventChamberSelect" onchange="handleEventChamberChange()">
-                <option value="">Select Event Chamber</option>
-              </select>
-            </div>
-          </div>
+            <div class="loader-row">
+              <div class="field hidden" id="eventChamberField">
+                <label for="eventChamberSelect">Event Chamber</label>
+                <select id="eventChamberSelect" onchange="handleEventChamberChange()">
+                  <option value="">Select Event Chamber</option>
+                </select>
+              </div>
 
-          <div class="map-loader-actions">
-            <button id="loadMapBtn" class="btn-action hidden" onclick="loadSelectedMap()">Load Map</button>
+              <button id="loadMapBtn" class="btn-action hidden" onclick="loadSelectedMap()">Load Map</button>
+            </div>
           </div>
         </div>
 
