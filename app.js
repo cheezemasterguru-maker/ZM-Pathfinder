@@ -1,9 +1,9 @@
 const MAX_ROWS = 20;
-const STANDARD_ROWS = 13;
+const MINED_ROWS = 13;
 const COLS = 7;
 
 let grid = [];
-let currentRowCount = STANDARD_ROWS;
+let currentRowCount = MINED_ROWS;
 let tool = "number";
 let lastSelected = { r: 0, c: 0 };
 let selectedMapPath = null;
@@ -18,11 +18,11 @@ let solveState = {
   message: "No solve yet."
 };
 
-function setReport(msg) {
+function setReport(msg){
   document.getElementById("report").textContent = msg;
 }
 
-function resetSolve() {
+function resetSolve(){
   solveState = {
     redPath: [],
     bluePaths: [],
@@ -33,53 +33,62 @@ function resetSolve() {
   };
 }
 
-function initGridData() {
+function initGridData(){
   grid = Array.from({ length: MAX_ROWS }, () => Array(COLS).fill(""));
 }
 
-function isGraveyardValue(value) {
+function isGraveyardValue(value){
   return String(value || "").trim().toLowerCase() === "graveyard";
 }
 
-function setBoardRowCount(nextRows) {
-  currentRowCount = nextRows === MAX_ROWS ? MAX_ROWS : STANDARD_ROWS;
+function getRowsForContextFromSelection(){
+  const chamber = document.getElementById("eventChamberSelect")?.value || "";
+  return isGraveyardValue(chamber) ? MAX_ROWS : MINED_ROWS;
+}
+
+function getRowsForContextFromTitle(){
+  const title = document.getElementById("titleInput")?.value || "";
+  return title.toLowerCase().includes("graveyard") ? MAX_ROWS : MINED_ROWS;
+}
+
+function setBoardRowCount(nextRows){
+  currentRowCount = nextRows === MAX_ROWS ? MAX_ROWS : MINED_ROWS;
   render();
   renderPreview();
 }
 
-function ensureBoardRowCountFromCurrentContext() {
-  const chamber = document.getElementById("eventChamberSelect")?.value || "";
-  const title = document.getElementById("titleInput")?.value || "";
-  const isGraveyard = isGraveyardValue(chamber) || title.toLowerCase().includes("graveyard");
-  setBoardRowCount(isGraveyard ? MAX_ROWS : STANDARD_ROWS);
+function ensureBoardRowCountFromCurrentContext(){
+  const rowsFromSelection = getRowsForContextFromSelection();
+  const rowsFromTitle = getRowsForContextFromTitle();
+  setBoardRowCount(rowsFromSelection === MAX_ROWS || rowsFromTitle === MAX_ROWS ? MAX_ROWS : MINED_ROWS);
 }
 
-function getVisibleGridSlice() {
+function getVisibleGridSlice(){
   return grid.slice(0, currentRowCount).map(row => [...row]);
 }
 
-function loadHelpContent() {
+function loadHelpContent(){
   if (window.ZM_HELP) {
     document.getElementById("shortHelpText").innerHTML = window.ZM_HELP.shortHelp || "";
     document.getElementById("solverHelpBody").innerHTML = window.ZM_HELP.modalHelp || "";
   }
 }
 
-function openSolverHelp() {
+function openSolverHelp(){
   document.getElementById("solverHelpOverlay").classList.add("show");
 }
 
-function closeSolverHelp() {
+function closeSolverHelp(){
   document.getElementById("solverHelpOverlay").classList.remove("show");
 }
 
-function populateEventTypeSelect() {
+function populateEventTypeSelect(){
   const select = document.getElementById("eventTypeSelect");
   select.innerHTML = '<option value="">Select Event Type</option>';
 
-  if (!window.ZM_MAPS) return;
+  if (!window.ZM_MAP_LIBRARY) return;
 
-  Object.keys(window.ZM_MAPS).forEach(key => {
+  Object.keys(window.ZM_MAP_LIBRARY).forEach(key => {
     const option = document.createElement("option");
     option.value = key;
     option.textContent = key;
@@ -87,7 +96,7 @@ function populateEventTypeSelect() {
   });
 }
 
-function resetMapLoaderBelow(level) {
+function resetMapLoaderBelow(level){
   const eventNameField = document.getElementById("eventNameField");
   const eventMineField = document.getElementById("eventMineField");
   const eventChamberField = document.getElementById("eventChamberField");
@@ -116,21 +125,20 @@ function resetMapLoaderBelow(level) {
   loadMapBtn.classList.add("hidden");
 }
 
-function handleEventTypeChange() {
+function handleEventTypeChange(){
   const eventType = document.getElementById("eventTypeSelect").value;
   const eventNameField = document.getElementById("eventNameField");
   const eventNameSelect = document.getElementById("eventNameSelect");
 
   resetMapLoaderBelow(1);
-
-  if (!eventType || !window.ZM_MAPS || !window.ZM_MAPS[eventType]) {
+  if (!eventType || !window.ZM_MAP_LIBRARY || !window.ZM_MAP_LIBRARY[eventType]) {
     ensureBoardRowCountFromCurrentContext();
     return;
   }
 
   eventNameField.classList.remove("hidden");
 
-  Object.keys(window.ZM_MAPS[eventType]).forEach(name => {
+  Object.keys(window.ZM_MAP_LIBRARY[eventType]).forEach(name => {
     const option = document.createElement("option");
     option.value = name;
     option.textContent = name;
@@ -140,7 +148,7 @@ function handleEventTypeChange() {
   ensureBoardRowCountFromCurrentContext();
 }
 
-function handleEventNameChange() {
+function handleEventNameChange(){
   const eventType = document.getElementById("eventTypeSelect").value;
   const eventName = document.getElementById("eventNameSelect").value;
 
@@ -150,7 +158,6 @@ function handleEventNameChange() {
   const eventChamberSelect = document.getElementById("eventChamberSelect");
 
   resetMapLoaderBelow(2);
-
   if (!eventType || !eventName) {
     ensureBoardRowCountFromCurrentContext();
     return;
@@ -159,7 +166,7 @@ function handleEventNameChange() {
   if (eventType === "Main") {
     eventChamberField.classList.remove("hidden");
 
-    const chambers = Object.keys(window.ZM_MAPS?.Main?.[eventName] || {});
+    const chambers = window.ZM_MAP_LIBRARY?.Main?.[eventName] || [];
     chambers.forEach(chamber => {
       const option = document.createElement("option");
       option.value = chamber;
@@ -169,8 +176,8 @@ function handleEventNameChange() {
   } else if (eventType === "Legacy") {
     eventMineField.classList.remove("hidden");
 
-    const mines = Object.keys(window.ZM_MAPS?.Legacy?.[eventName] || {});
-    mines.forEach(mineName => {
+    const mines = window.ZM_MAP_LIBRARY?.Legacy?.[eventName] || {};
+    Object.keys(mines).forEach(mineName => {
       const option = document.createElement("option");
       option.value = mineName;
       option.textContent = mineName;
@@ -181,14 +188,13 @@ function handleEventNameChange() {
   ensureBoardRowCountFromCurrentContext();
 }
 
-function handleEventMineChange() {
+function handleEventMineChange(){
   const eventName = document.getElementById("eventNameSelect").value;
   const eventMine = document.getElementById("eventMineSelect").value;
   const eventChamberField = document.getElementById("eventChamberField");
   const eventChamberSelect = document.getElementById("eventChamberSelect");
 
   resetMapLoaderBelow(3);
-
   if (!eventName || !eventMine) {
     ensureBoardRowCountFromCurrentContext();
     return;
@@ -196,7 +202,7 @@ function handleEventMineChange() {
 
   eventChamberField.classList.remove("hidden");
 
-  const chambers = Object.keys(window.ZM_MAPS?.Legacy?.[eventName]?.[eventMine] || {});
+  const chambers = window.ZM_MAP_LIBRARY?.Legacy?.[eventName]?.[eventMine] || [];
   chambers.forEach(chamber => {
     const option = document.createElement("option");
     option.value = chamber;
@@ -207,7 +213,7 @@ function handleEventMineChange() {
   ensureBoardRowCountFromCurrentContext();
 }
 
-function buildAutoTitle() {
+function buildAutoTitle(){
   const eventType = document.getElementById("eventTypeSelect").value;
   const eventName = document.getElementById("eventNameSelect").value;
   const eventMine = document.getElementById("eventMineSelect").value;
@@ -226,7 +232,7 @@ function buildAutoTitle() {
   return eventChamber;
 }
 
-function handleEventChamberChange() {
+function handleEventChamberChange(){
   const loadMapBtn = document.getElementById("loadMapBtn");
   const eventType = document.getElementById("eventTypeSelect").value;
   const eventName = document.getElementById("eventNameSelect").value;
@@ -260,76 +266,48 @@ function handleEventChamberChange() {
   ensureBoardRowCountFromCurrentContext();
 }
 
-function handleTitleInputChange() {
+function handleTitleInputChange(){
   currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
   ensureBoardRowCountFromCurrentContext();
 }
 
-function getSelectedMapRecord() {
-  if (!selectedMapPath || !window.ZM_MAPS) return null;
+function getSelectedMapRecord(){
+  if (!selectedMapPath || !window.ZM_MAP_DATA) return null;
 
   if (selectedMapPath.eventType === "Main") {
-    return window.ZM_MAPS?.Main?.[selectedMapPath.eventName]?.[selectedMapPath.eventChamber] || null;
+    return window.ZM_MAP_DATA?.Main?.[selectedMapPath.eventName]?.[selectedMapPath.eventChamber] || null;
   }
 
   if (selectedMapPath.eventType === "Legacy") {
-    return window.ZM_MAPS?.Legacy?.[selectedMapPath.eventName]?.[selectedMapPath.eventMine]?.[selectedMapPath.eventChamber] || null;
+    return window.ZM_MAP_DATA?.Legacy?.[selectedMapPath.eventName]?.[selectedMapPath.eventMine]?.[selectedMapPath.eventChamber] || null;
   }
 
   return null;
 }
 
-function normalizeMapGrid(sourceGrid, rowCount) {
-  const out = Array.from({ length: MAX_ROWS }, () => Array(COLS).fill(""));
-
-  for (let r = 0; r < Math.min(sourceGrid.length, rowCount); r++) {
-    for (let c = 0; c < Math.min(sourceGrid[r].length, COLS); c++) {
-      let val = sourceGrid[r][c];
-
-      if (val === "block") val = "X";
-      if (val === "bubble") val = "B";
-
-      // expand shaft anchors only
-      if (val === "shaft") {
-        for (let dr = 0; dr < 3; dr++) {
-          for (let dc = 0; dc < 2; dc++) {
-            const rr = r + dr;
-            const cc = c + dc;
-            if (rr < rowCount && cc < COLS) {
-              out[rr][cc] = "S";
-            }
-          }
-        }
-      } else {
-        if (val !== null && val !== undefined) {
-          out[r][c] = val;
-        }
-      }
-    }
-  }
-
-  return out;
-}
-
-function loadSelectedMap() {
+function loadSelectedMap(){
   const mapRecord = getSelectedMapRecord();
   if (!mapRecord) {
     setReport("Selected map data was not found in maps.js.");
     return;
   }
 
-  const isGraveyard = !!mapRecord.isGraveyard || isGraveyardValue(selectedMapPath?.eventChamber);
-  const rowCount = isGraveyard ? MAX_ROWS : STANDARD_ROWS;
-
   clearBoard(false);
-  currentRowCount = rowCount;
 
   const autoTitle = buildAutoTitle();
   currentPreviewTitle = mapRecord.title || autoTitle || "Loaded Map";
   document.getElementById("titleInput").value = currentPreviewTitle;
-  document.getElementById("gateType").value = mapRecord.type || "standard";
+  document.getElementById("gateType").value = mapRecord.gateType || "standard";
 
-  grid = normalizeMapGrid(mapRecord.grid || [], rowCount);
+  const isGraveyard = isGraveyardValue(selectedMapPath?.eventChamber);
+  setBoardRowCount(isGraveyard ? MAX_ROWS : MINED_ROWS);
+
+  const sourceGrid = mapRecord.grid || [];
+  for (let r = 0; r < Math.min(sourceGrid.length, MAX_ROWS); r++) {
+    for (let c = 0; c < Math.min(sourceGrid[r].length, COLS); c++) {
+      grid[r][c] = sourceGrid[r][c];
+    }
+  }
 
   resetSolve();
   render();
@@ -337,7 +315,7 @@ function loadSelectedMap() {
   setReport(`Loaded map: ${currentPreviewTitle}`);
 }
 
-function setTool(nextTool) {
+function setTool(nextTool){
   tool = nextTool;
   ["number","block","bubble","shaft"].forEach(id => {
     document.getElementById(`tool-${id}`).classList.remove("tool-active");
@@ -345,13 +323,13 @@ function setTool(nextTool) {
   document.getElementById(`tool-${nextTool}`).classList.add("tool-active");
 }
 
-function render() {
+function render(){
   const gridEl = document.getElementById("grid");
   gridEl.style.gridTemplateColumns = `repeat(${COLS}, minmax(0, 1fr))`;
   gridEl.innerHTML = "";
 
-  for (let r = 0; r < currentRowCount; r++) {
-    for (let c = 0; c < COLS; c++) {
+  for(let r = 0; r < currentRowCount; r++){
+    for(let c = 0; c < COLS; c++){
       const cell = document.createElement("div");
       const val = grid[r][c];
 
@@ -360,19 +338,19 @@ function render() {
       cell.dataset.c = c;
       cell.onclick = () => clickCell(r, c);
 
-      if (r === lastSelected.r && c === lastSelected.c) {
+      if(r === lastSelected.r && c === lastSelected.c){
         cell.classList.add("selected");
       }
 
-      if (val === "X") {
+      if(val === "X"){
         cell.classList.add("block");
-      } else if (val === "B") {
+      } else if(val === "B"){
         cell.classList.add("bubble");
         cell.textContent = "B";
-      } else if (val === "S") {
+      } else if(val === "S"){
         cell.classList.add("shaft");
         cell.textContent = "S";
-      } else if (typeof val === "number") {
+      } else if(typeof val === "number"){
         cell.textContent = String(val);
       }
 
@@ -381,26 +359,26 @@ function render() {
   }
 }
 
-function clickCell(r, c) {
+function clickCell(r, c){
   if (r >= currentRowCount) return;
   lastSelected = { r, c };
 
-  if (tool === "number") {
+  if(tool === "number"){
     activateInlineNumberEditor(r, c);
     return;
   }
 
-  if (tool === "block") {
+  if(tool === "block"){
     grid[r][c] = grid[r][c] === "X" ? "" : "X";
-  } else if (tool === "bubble") {
+  } else if(tool === "bubble"){
     grid[r][c] = grid[r][c] === "B" ? "" : "B";
-  } else if (tool === "shaft") {
+  } else if(tool === "shaft"){
     const removing = grid[r][c] === "S";
-    for (let dr = 0; dr < 3; dr++) {
-      for (let dc = 0; dc < 2; dc++) {
+    for(let dr = 0; dr < 3; dr++){
+      for(let dc = 0; dc < 2; dc++){
         const rr = r + dr;
         const cc = c + dc;
-        if (rr < currentRowCount && grid[rr] && grid[rr][cc] !== undefined) {
+        if(rr < currentRowCount && grid[rr] && grid[rr][cc] !== undefined){
           grid[rr][cc] = removing ? "" : "S";
         }
       }
@@ -412,11 +390,11 @@ function clickCell(r, c) {
   renderPreview();
 }
 
-function activateInlineNumberEditor(r, c) {
+function activateInlineNumberEditor(r, c){
   render();
 
   const target = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-  if (!target) return;
+  if(!target) return;
 
   target.innerHTML = "";
   const input = document.createElement("input");
@@ -430,9 +408,9 @@ function activateInlineNumberEditor(r, c) {
 
   input.onblur = () => {
     const raw = input.value.trim();
-    if (raw === "") {
+    if(raw === ""){
       grid[r][c] = "";
-    } else if (!isNaN(raw) && Number(raw) > 0) {
+    } else if(!isNaN(raw) && Number(raw) > 0){
       grid[r][c] = Number(raw);
     }
     resetSolve();
@@ -441,7 +419,7 @@ function activateInlineNumberEditor(r, c) {
   };
 
   input.onkeydown = (e) => {
-    if (e.key === "Enter") input.blur();
+    if(e.key === "Enter") input.blur();
   };
 }
 
@@ -453,46 +431,46 @@ function parseClipboard(text) {
     .map(row => row.split("\t"));
 }
 
-async function pasteFromClipboard() {
-  try {
+async function pasteFromClipboard(){
+  try{
     const text = await navigator.clipboard.readText();
     applyText(text);
-  } catch (e) {
+  } catch(e){
     setReport("Clipboard access was blocked by the browser. Copy again, tap a cell, then retry Paste From Clipboard.");
   }
 }
 
-function applyText(text) {
-  if (!text) return;
+function applyText(text){
+  if(!text) return;
 
   const data = parseClipboard(text);
   const startR = lastSelected.r;
   const startC = lastSelected.c;
 
-  for (let ri = 0; ri < data.length; ri++) {
-    for (let ci = 0; ci < data[ri].length; ci++) {
+  for(let ri = 0; ri < data.length; ri++){
+    for(let ci = 0; ci < data[ri].length; ci++){
       const r = startR + ri;
       const c = startC + ci;
-      if (r >= currentRowCount) continue;
-      if (!grid[r] || grid[r][c] === undefined) continue;
+      if(r >= currentRowCount) continue;
+      if(!grid[r] || grid[r][c] === undefined) continue;
 
       const raw = data[ri][ci];
       const val = String(raw ?? "");
 
-      if (val === "") {
+      if(val === ""){
         continue;
-      } else if (!isNaN(val)) {
+      } else if(!isNaN(val)){
         grid[r][c] = Number(val);
-      } else if (val.toUpperCase() === "X" || val.toLowerCase() === "block") {
+      } else if(val.toUpperCase() === "X"){
         grid[r][c] = "X";
-      } else if (val.toUpperCase() === "B" || val.toLowerCase() === "bubble") {
+      } else if(val.toUpperCase() === "B"){
         grid[r][c] = "B";
-      } else if (val.toUpperCase() === "S" || val.toUpperCase() === "SHAFT" || val.toLowerCase() === "shaft") {
-        for (let dr = 0; dr < 3; dr++) {
-          for (let dc = 0; dc < 2; dc++) {
+      } else if(val.toUpperCase() === "S" || val.toUpperCase() === "SHAFT"){
+        for(let dr = 0; dr < 3; dr++){
+          for(let dc = 0; dc < 2; dc++){
             const rr = r + dr;
             const cc = c + dc;
-            if (rr < currentRowCount && grid[rr] && grid[rr][cc] !== undefined) {
+            if(rr < currentRowCount && grid[rr] && grid[rr][cc] !== undefined){
               grid[rr][cc] = "S";
             }
           }
@@ -507,25 +485,25 @@ function applyText(text) {
   setReport(`Pasted into board starting at Row ${startR + 1}, Col ${startC + 1}.`);
 }
 
-function clearBoard(updateReport = true) {
-  for (let r = 0; r < MAX_ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
+function clearBoard(updateReport = true){
+  for(let r = 0; r < MAX_ROWS; r++){
+    for(let c = 0; c < COLS; c++){
       grid[r][c] = "";
     }
   }
-  currentRowCount = STANDARD_ROWS;
+  currentRowCount = MINED_ROWS;
   resetSolve();
   render();
   renderPreview();
   if (updateReport) setReport("Board cleared.");
 }
 
-function loadSampleGrid() {
+function loadSampleGrid(){
   clearBoard(false);
   document.getElementById("gateType").value = "standard";
   document.getElementById("titleInput").value = "Gate 1";
   currentPreviewTitle = "Gate 1";
-  currentRowCount = STANDARD_ROWS;
+  currentRowCount = MINED_ROWS;
 
   const sample = [
     [8,9,11,9,12,8,9],
@@ -541,8 +519,8 @@ function loadSampleGrid() {
     [1,2,"","","",3,""]
   ];
 
-  for (let r = 0; r < sample.length; r++) {
-    for (let c = 0; c < COLS; c++) {
+  for(let r = 0; r < sample.length; r++){
+    for(let c = 0; c < COLS; c++){
       grid[r][c] = sample[r][c] === undefined ? "" : sample[r][c];
     }
   }
@@ -553,8 +531,8 @@ function loadSampleGrid() {
   setReport("Sample Grid loaded.");
 }
 
-function solveBoard() {
-  if (!window.ZMPathfinderSolver || typeof window.ZMPathfinderSolver.solveGrid !== "function") {
+function solveBoard(){
+  if(!window.ZMPathfinderSolver || typeof window.ZMPathfinderSolver.solveGrid !== "function"){
     setReport("solver.js is missing or not loaded.");
     return;
   }
@@ -564,7 +542,7 @@ function solveBoard() {
     gateType: document.getElementById("gateType").value
   });
 
-  if (!result || !result.ok) {
+  if(!result || !result.ok){
     resetSolve();
     setReport(result && result.message ? result.message : "Solver failed.");
     renderPreview();
@@ -584,7 +562,7 @@ function solveBoard() {
   renderPreview();
 }
 
-function renderPreview() {
+function renderPreview(){
   const canvas = document.getElementById("previewCanvas");
   const ctx = canvas.getContext("2d");
 
@@ -593,9 +571,9 @@ function renderPreview() {
   const topPad = 170;
 
   const usedRows = [];
-  for (let r = 0; r < currentRowCount; r++) {
-    for (let c = 0; c < COLS; c++) {
-      if (grid[r][c] !== "") {
+  for(let r = 0; r < currentRowCount; r++){
+    for(let c = 0; c < COLS; c++){
+      if(grid[r][c] !== ""){
         usedRows.push(r);
         break;
       }
@@ -638,20 +616,20 @@ function renderPreview() {
   drawEverything();
 }
 
-function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow) {
+function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
   const rowOffset = minRow;
 
-  for (let r = minRow; r <= maxRow; r++) {
-    for (let c = 0; c < COLS; c++) {
+  for(let r = minRow; r <= maxRow; r++){
+    for(let c = 0; c < COLS; c++){
       const x = pad + c * cell;
       const y = topPad + (r - rowOffset) * cell;
       const val = grid[r][c];
 
-      if (val === "S") continue;
+      if(val === "S") continue;
 
-      if (val === "X") {
+      if(val === "X"){
         ctx.fillStyle = "#000";
-      } else if (val === "B") {
+      } else if(val === "B"){
         ctx.fillStyle = "#8fd3f7";
       } else {
         ctx.fillStyle = "#ececef";
@@ -662,13 +640,13 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow) {
       ctx.lineWidth = 2;
       ctx.strokeRect(x, y, cell, cell);
 
-      if (val === "B") {
+      if(val === "B"){
         ctx.fillStyle = "#111";
         ctx.font = "700 28px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("B", x + cell/2, y + cell/2);
-      } else if (typeof val === "number") {
+      } else if(typeof val === "number"){
         ctx.fillStyle = "#111";
         ctx.font = "700 28px Arial";
         ctx.textAlign = "center";
@@ -682,7 +660,7 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow) {
     ? solveState.shaftClusters
     : getShaftClustersFromGrid();
 
-  for (const cluster of shafts) {
+  for(const cluster of shafts){
     const rows = cluster.map(v => v[0]);
     const cols = cluster.map(v => v[1]);
     const minR = Math.min(...rows);
@@ -690,7 +668,7 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow) {
     const minC = Math.min(...cols);
     const maxC = Math.max(...cols);
 
-    if (maxR < minRow || minR > maxRow) continue;
+    if(maxR < minRow || minR > maxRow) continue;
 
     const x = pad + minC * cell;
     const y = topPad + (minR - rowOffset) * cell;
@@ -710,7 +688,7 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow) {
     ctx.fillText("Shaft", x + w/2, y + h/2);
   }
 
-  for (const path of solveState.bluePaths) {
+  for(const path of solveState.bluePaths){
     drawPath(ctx, path, "#2563eb", 10, cell, pad, topPad, rowOffset);
   }
   drawPath(ctx, solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset);
@@ -755,27 +733,27 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow) {
   ctx.fillText("2nd Strongest Z", 460, ly + 6);
 }
 
-function getShaftClustersFromGrid() {
+function getShaftClustersFromGrid(){
   const seen = new Set();
   const clusters = [];
 
-  for (let r = 0; r < currentRowCount; r++) {
-    for (let c = 0; c < COLS; c++) {
-      if (grid[r][c] !== "S") continue;
+  for(let r = 0; r < currentRowCount; r++){
+    for(let c = 0; c < COLS; c++){
+      if(grid[r][c] !== "S") continue;
       const key = `${r},${c}`;
-      if (seen.has(key)) continue;
+      if(seen.has(key)) continue;
 
-      const stack = [[r, c]];
+      const stack = [[r,c]];
       const cluster = [];
 
-      while (stack.length) {
-        const [rr, cc] = stack.pop();
+      while(stack.length){
+        const [rr,cc] = stack.pop();
         const k = `${rr},${cc}`;
-        if (rr < 0 || cc < 0 || rr >= currentRowCount || cc >= COLS) continue;
-        if (grid[rr][cc] !== "S" || seen.has(k)) continue;
+        if(rr < 0 || cc < 0 || rr >= currentRowCount || cc >= COLS) continue;
+        if(grid[rr][cc] !== "S" || seen.has(k)) continue;
         seen.add(k);
-        cluster.push([rr, cc]);
-        stack.push([rr+1, cc], [rr-1, cc], [rr, cc+1], [rr, cc-1]);
+        cluster.push([rr,cc]);
+        stack.push([rr+1,cc],[rr-1,cc],[rr,cc+1],[rr,cc-1]);
       }
 
       clusters.push(cluster);
@@ -785,10 +763,10 @@ function getShaftClustersFromGrid() {
   return clusters;
 }
 
-function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
-  if (!path || path.length < 2) return;
+function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
+  if(!path || path.length < 2) return;
 
-  function center(pt) {
+  function center(pt){
     return {
       x: pad + pt[1] * cell + cell / 2,
       y: topPad + (pt[0] - rowOffset) * cell + cell / 2
@@ -803,7 +781,7 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
   ctx.beginPath();
   let p = center(path[0]);
   ctx.moveTo(p.x, p.y);
-  for (let i = 1; i < path.length; i++) {
+  for(let i = 1; i < path.length; i++){
     p = center(path[i]);
     ctx.lineTo(p.x, p.y);
   }
@@ -814,14 +792,14 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
   ctx.beginPath();
   p = center(path[0]);
   ctx.moveTo(p.x, p.y);
-  for (let i = 1; i < path.length; i++) {
+  for(let i = 1; i < path.length; i++){
     p = center(path[i]);
     ctx.lineTo(p.x, p.y);
   }
   ctx.stroke();
 }
 
-function downloadPNG() {
+function downloadPNG(){
   renderPreview();
   setTimeout(() => {
     const canvas = document.getElementById("previewCanvas");
@@ -833,7 +811,7 @@ function downloadPNG() {
   }, 160);
 }
 
-function init() {
+function init(){
   initGridData();
   currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
   loadHelpContent();
