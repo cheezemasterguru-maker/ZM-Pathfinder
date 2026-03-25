@@ -86,28 +86,28 @@ window.ZM_MAP_LIBRARY = {
   }
 };
 
-// Put your real map boards here.
-// Structure:
-// Main -> Event Name -> Event Chamber -> map record
-// Legacy -> Event Name -> Event Mine -> Event Chamber -> map record
 window.ZM_MAP_DATA = {
   Main: {
-    "Essence Cave": {
+    "Treasures in Ice": {
       "Chamber 1": {
-        title: "Essence Cave - Chamber 1",
+        title: "Treasures in Ice - Chamber 1",
         gateType: "standard",
         grid: [
-          [8,9,11,9,12,8,9],
-          [10,"X",8,"X",7,11,7],
-          [8,7,9,6,9,6,"X"],
-          ["X",8,6,8,"B","S","S"],
-          ["X",6,7,6,5,"S","S"],
-          ["X",5,4,5,"X","S","S"],
-          ["X",4,5,4,5,4,6],
-          ["S","S",4,5,4,"X",5],
-          ["S","S",3,4,3,5,4],
-          ["S","S",2,"",2,4,3],
-          [1,2,"","","",3,""]
+          [8, 9, 11, 9, 12, 8, 9],
+          [10, "X", 8, "X", 7, 11, 7],
+          [8, 7, 9, 6, 9, 6, "X"],
+
+          ["X", 8, 6, 8, "B", "S", "S"],
+          ["X", 6, 7, 6, 5, "S", "S"],
+          ["X", 5, 4, 5, "X", "S", "S"],
+
+          ["X", 4, 5, 4, 5, 4, 6],
+
+          ["S", "S", 4, 5, 4, "X", 5],
+          ["S", "S", 3, 4, 3, 5, 4],
+          ["S", "S", 2, "", 2, 4, 3],
+
+          [1, 2, "", "", "", 3, ""]
         ]
       }
     }
