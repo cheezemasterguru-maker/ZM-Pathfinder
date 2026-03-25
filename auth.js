@@ -111,12 +111,11 @@ function updateUserUI(){
 
     if (window.currentTester.isAdmin) {
       addBtn.classList.remove("hidden");
-      mapLoaderSection.classList.remove("hidden");
     } else {
       addBtn.classList.add("hidden");
-      mapLoaderSection.classList.add("hidden");
     }
 
+    mapLoaderSection.classList.remove("hidden");
     logoutBtn.classList.remove("hidden");
   } else {
     badge.textContent = "Not logged in";
