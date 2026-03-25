@@ -14,7 +14,8 @@ const DEFAULT_TESTERS = [
   { name: "XCONN6286", id: "12507785", isAdmin: false },
   { name: "FS1997", id: "19770641", isAdmin: false },
   { name: "bball523", id: "891092", isAdmin: false },
-  { name: "Norsixa", id: "22673958", isAdmin: false }
+  { name: "Norsixa", id: "22673958", isAdmin: false },
+  { name: "TheDude", id: "20750358", isAdmin: false }
 ];
 
 window.currentTester = null;
