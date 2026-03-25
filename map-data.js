@@ -459,7 +459,8 @@ window.ZM_MAP_DATA = {
   },
 
   "Graveyard": null
-},
+    }
+  },
 
   Legacy: {}
 };
