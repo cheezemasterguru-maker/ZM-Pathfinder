@@ -2,13 +2,13 @@ window.ZM_MAP_LIBRARY = {
   Main: {
     "Essence Cave": ["Chamber 1", "Chamber 2", "Chamber 3", "Graveyard"],
     "Treasure Trove of Gems": ["Chamber 1", "Chamber 2", "Chamber 3", "Graveyard"],
-       "Excavations in the Sand": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard
+    "Excavations in the Sand": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
     "Sweet Valley": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
     "Treasures in Ice": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
     "Moon Odyssey": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
     "Volcano Awakening": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
- "Grand Canyon": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
-                                },
+     "Grand Canyon": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
+  },
 
   Legacy: {
     "Love Story": {
