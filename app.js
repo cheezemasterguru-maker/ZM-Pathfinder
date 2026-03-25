@@ -82,18 +82,43 @@ function closeSolverHelp(){
   document.getElementById("solverHelpOverlay").classList.remove("show");
 }
 
+function hasAnyMainMapData(eventName){
+  const chamberList = window.ZM_MAP_LIBRARY?.Main?.[eventName] || [];
+  return chamberList.some(chamber => !!window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber]);
+}
+
+function hasAnyLegacyMineData(eventName, mineName){
+  const chamberList = window.ZM_MAP_LIBRARY?.Legacy?.[eventName]?.[mineName] || [];
+  return chamberList.some(chamber => !!window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName]?.[chamber]);
+}
+
+function hasAnyLegacyEventData(eventName){
+  const mines = window.ZM_MAP_LIBRARY?.Legacy?.[eventName] || {};
+  return Object.keys(mines).some(mineName => hasAnyLegacyMineData(eventName, mineName));
+}
+
 function populateEventTypeSelect(){
   const select = document.getElementById("eventTypeSelect");
   select.innerHTML = '<option value="">Select Event Type</option>';
 
-  if (!window.ZM_MAP_LIBRARY) return;
+  if (!window.ZM_MAP_LIBRARY || !window.ZM_MAP_DATA) return;
 
-  Object.keys(window.ZM_MAP_LIBRARY).forEach(key => {
+  const mainHasData = Object.keys(window.ZM_MAP_LIBRARY.Main || {}).some(eventName => hasAnyMainMapData(eventName));
+  const legacyHasData = Object.keys(window.ZM_MAP_LIBRARY.Legacy || {}).some(eventName => hasAnyLegacyEventData(eventName));
+
+  if (mainHasData) {
     const option = document.createElement("option");
-    option.value = key;
-    option.textContent = key;
+    option.value = "Main";
+    option.textContent = "Main";
     select.appendChild(option);
-  });
+  }
+
+  if (legacyHasData) {
+    const option = document.createElement("option");
+    option.value = "Legacy";
+    option.textContent = "Legacy";
+    select.appendChild(option);
+  }
 }
 
 function resetMapLoaderBelow(level){
@@ -136,9 +161,22 @@ function handleEventTypeChange(){
     return;
   }
 
+  let validNames = [];
+
+  if (eventType === "Main") {
+    validNames = Object.keys(window.ZM_MAP_LIBRARY.Main || {}).filter(eventName => hasAnyMainMapData(eventName));
+  } else if (eventType === "Legacy") {
+    validNames = Object.keys(window.ZM_MAP_LIBRARY.Legacy || {}).filter(eventName => hasAnyLegacyEventData(eventName));
+  }
+
+  if (!validNames.length) {
+    ensureBoardRowCountFromCurrentContext();
+    return;
+  }
+
   eventNameField.classList.remove("hidden");
 
-  Object.keys(window.ZM_MAP_LIBRARY[eventType]).forEach(name => {
+  validNames.forEach(name => {
     const option = document.createElement("option");
     option.value = name;
     option.textContent = name;
@@ -164,9 +202,17 @@ function handleEventNameChange(){
   }
 
   if (eventType === "Main") {
+    const chambers = (window.ZM_MAP_LIBRARY?.Main?.[eventName] || []).filter(chamber => {
+      return !!window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber];
+    });
+
+    if (!chambers.length) {
+      ensureBoardRowCountFromCurrentContext();
+      return;
+    }
+
     eventChamberField.classList.remove("hidden");
 
-    const chambers = window.ZM_MAP_LIBRARY?.Main?.[eventName] || [];
     chambers.forEach(chamber => {
       const option = document.createElement("option");
       option.value = chamber;
@@ -174,10 +220,18 @@ function handleEventNameChange(){
       eventChamberSelect.appendChild(option);
     });
   } else if (eventType === "Legacy") {
+    const validMines = Object.keys(window.ZM_MAP_LIBRARY?.Legacy?.[eventName] || {}).filter(mineName => {
+      return hasAnyLegacyMineData(eventName, mineName);
+    });
+
+    if (!validMines.length) {
+      ensureBoardRowCountFromCurrentContext();
+      return;
+    }
+
     eventMineField.classList.remove("hidden");
 
-    const mines = window.ZM_MAP_LIBRARY?.Legacy?.[eventName] || {};
-    Object.keys(mines).forEach(mineName => {
+    validMines.forEach(mineName => {
       const option = document.createElement("option");
       option.value = mineName;
       option.textContent = mineName;
@@ -200,9 +254,17 @@ function handleEventMineChange(){
     return;
   }
 
+  const chambers = (window.ZM_MAP_LIBRARY?.Legacy?.[eventName]?.[eventMine] || []).filter(chamber => {
+    return !!window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine]?.[chamber];
+  });
+
+  if (!chambers.length) {
+    ensureBoardRowCountFromCurrentContext();
+    return;
+  }
+
   eventChamberField.classList.remove("hidden");
 
-  const chambers = window.ZM_MAP_LIBRARY?.Legacy?.[eventName]?.[eventMine] || [];
   chambers.forEach(chamber => {
     const option = document.createElement("option");
     option.value = chamber;
