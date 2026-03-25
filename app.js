@@ -67,6 +67,14 @@ function getVisibleGridSlice(){
   return grid.slice(0, currentRowCount).map(row => [...row]);
 }
 
+function runLoadedGridIntegrityCheck(gridToCheck, titleText = "Loaded Grid"){
+  if (!window.ZMMapValidator || typeof window.ZMMapValidator.validateSingleLoadedGrid !== "function") {
+    return { ok: true, errors: [] };
+  }
+
+  return window.ZMMapValidator.validateSingleLoadedGrid(gridToCheck, titleText);
+}
+
 function loadHelpContent(){
   if (window.ZM_HELP) {
     document.getElementById("shortHelpText").innerHTML = window.ZM_HELP.shortHelp || "";
@@ -365,6 +373,13 @@ function loadSelectedMap(){
   setBoardRowCount(isGraveyard ? MAX_ROWS : MINED_ROWS);
 
   const sourceGrid = mapRecord.grid || [];
+
+  const integrity = runLoadedGridIntegrityCheck(sourceGrid, currentPreviewTitle);
+  if (!integrity.ok) {
+    setReport(`Map integrity check failed: ${integrity.errors[0]}`);
+    return;
+  }
+
   for (let r = 0; r < Math.min(sourceGrid.length, MAX_ROWS); r++) {
     for (let c = 0; c < Math.min(sourceGrid[r].length, COLS); c++) {
       grid[r][c] = sourceGrid[r][c];
@@ -924,6 +939,15 @@ function init(){
   currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
   loadHelpContent();
   populateEventTypeSelect();
+
+  if (window.ZMMapValidator && typeof window.ZMMapValidator.validateMainMapData === "function") {
+    const allErrors = window.ZMMapValidator.validateMainMapData(window.ZM_MAP_DATA);
+    if (allErrors.length) {
+      console.error("Map data integrity errors:", allErrors);
+      setReport(`Map data integrity warning: ${allErrors[0]}`);
+    }
+  }
+
   render();
   renderPreview();
   initAccessControl();
