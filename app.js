@@ -603,11 +603,24 @@ function renderPreview(){
       ctx.drawImage(logo, (canvas.width - w) / 2, 10, w, h);
 
       ctx.fillStyle = "#111";
-      ctx.font = "700 34px Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "alphabetic";
-      ctx.fillText((currentPreviewTitle || document.getElementById("titleInput").value || "Gate").toUpperCase(), canvas.width / 2, 140);
+ctx.textAlign = "center";
+ctx.textBaseline = "alphabetic";
 
+const rawTitle = currentPreviewTitle || document.getElementById("titleInput").value || "Gate";
+const parts = rawTitle.split(" - ");
+
+const line1 = (parts[0] || "").toUpperCase();
+const line2 = (parts[1] || "").toUpperCase();
+
+// First line (event name)
+ctx.font = "700 34px Arial";
+ctx.fillText(line1, canvas.width / 2, 130);
+
+// Second line (chamber / graveyard)
+if (line2) {
+  ctx.font = "700 28px Arial";
+  ctx.fillText(line2, canvas.width / 2, 165);
+}
       drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow);
     };
     logo.src = "file_00000000e35071fda5e92d9996ac3621.png";
