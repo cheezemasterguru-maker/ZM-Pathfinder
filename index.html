@@ -114,6 +114,21 @@
       margin-top:8px;
     }
 
+    .map-loader-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-top:8px;
+    }
+
+    .map-loader-actions{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:8px;
+      margin-top:10px;
+      max-width:240px;
+    }
+
     .field label{
       display:block;
       font-size:14px;
@@ -164,21 +179,6 @@
       gap:8px;
       margin-top:8px;
       max-width:620px;
-    }
-
-    .map-loader-grid{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
-      margin-top:8px;
-    }
-
-    .map-loader-actions{
-      display:grid;
-      grid-template-columns:1fr;
-      gap:8px;
-      margin-top:10px;
-      max-width:240px;
     }
 
     button{
@@ -488,6 +488,9 @@
           </div>
         </div>
 
+        <div class="section-title">How the input grid works</div>
+        <div id="shortHelpText" class="help"></div>
+
         <div class="controls-grid">
           <div class="field">
             <label for="titleInput">Title</label>
@@ -507,14 +510,14 @@
           <div class="help">Admin-only while in development. Choose a stored map path, then press <b>Load Map</b> to place it into the grid.</div>
 
           <div class="map-loader-grid">
-            <div class="field">
+            <div class="field" id="eventTypeField">
               <label for="eventTypeSelect">Event Type</label>
               <select id="eventTypeSelect" onchange="handleEventTypeChange()">
                 <option value="">Select Event Type</option>
               </select>
             </div>
 
-            <div class="field">
+            <div class="field" id="eventNameField" style="display:none;">
               <label for="eventNameSelect">Event Name</label>
               <select id="eventNameSelect" onchange="handleEventNameChange()">
                 <option value="">Select Event Name</option>
@@ -528,7 +531,7 @@
               </select>
             </div>
 
-            <div class="field">
+            <div class="field" id="eventChamberField" style="display:none;">
               <label for="eventChamberSelect">Event Chamber</label>
               <select id="eventChamberSelect" onchange="handleEventChamberChange()">
                 <option value="">Select Event Chamber</option>
@@ -540,9 +543,6 @@
             <button id="loadMapBtn" class="btn-action" style="display:none;" onclick="loadSelectedMap()">Load Map</button>
           </div>
         </div>
-
-        <div class="section-title">How the input grid works</div>
-        <div id="shortHelpText" class="help"></div>
 
         <div class="btn-grid">
           <button class="btn-action" onclick="clearBoard()">Clear Board</button>
@@ -970,21 +970,28 @@
     }
 
     function resetMapLoaderBelow(level){
+      const eventNameField = document.getElementById("eventNameField");
+      const eventMineField = document.getElementById("eventMineField");
+      const eventChamberField = document.getElementById("eventChamberField");
+
       const eventNameSelect = document.getElementById("eventNameSelect");
       const eventMineSelect = document.getElementById("eventMineSelect");
       const eventChamberSelect = document.getElementById("eventChamberSelect");
-      const eventMineField = document.getElementById("eventMineField");
       const loadMapBtn = document.getElementById("loadMapBtn");
 
       if (level <= 1) {
         eventNameSelect.innerHTML = '<option value="">Select Event Name</option>';
+        eventNameField.style.display = "none";
       }
+
       if (level <= 2) {
         eventMineSelect.innerHTML = '<option value="">Select Event Mine</option>';
         eventMineField.style.display = "none";
       }
+
       if (level <= 3) {
         eventChamberSelect.innerHTML = '<option value="">Select Event Chamber</option>';
+        eventChamberField.style.display = "none";
       }
 
       selectedMapPath = null;
@@ -993,10 +1000,13 @@
 
     function handleEventTypeChange(){
       const eventType = document.getElementById("eventTypeSelect").value;
+      const eventNameField = document.getElementById("eventNameField");
       const eventNameSelect = document.getElementById("eventNameSelect");
 
       resetMapLoaderBelow(1);
       if (!eventType || !window.ZM_MAP_LIBRARY || !window.ZM_MAP_LIBRARY[eventType]) return;
+
+      eventNameField.style.display = "block";
 
       Object.keys(window.ZM_MAP_LIBRARY[eventType]).forEach(name => {
         const option = document.createElement("option");
@@ -1009,14 +1019,18 @@
     function handleEventNameChange(){
       const eventType = document.getElementById("eventTypeSelect").value;
       const eventName = document.getElementById("eventNameSelect").value;
+
       const eventMineField = document.getElementById("eventMineField");
       const eventMineSelect = document.getElementById("eventMineSelect");
+      const eventChamberField = document.getElementById("eventChamberField");
       const eventChamberSelect = document.getElementById("eventChamberSelect");
 
       resetMapLoaderBelow(2);
       if (!eventType || !eventName) return;
 
       if (eventType === "Main") {
+        eventChamberField.style.display = "block";
+
         const chambers = window.ZM_MAP_LIBRARY?.Main?.[eventName] || [];
         chambers.forEach(chamber => {
           const option = document.createElement("option");
@@ -1026,6 +1040,7 @@
         });
       } else if (eventType === "Legacy") {
         eventMineField.style.display = "block";
+
         const mines = window.ZM_MAP_LIBRARY?.Legacy?.[eventName] || {};
         Object.keys(mines).forEach(mineName => {
           const option = document.createElement("option");
@@ -1039,10 +1054,13 @@
     function handleEventMineChange(){
       const eventName = document.getElementById("eventNameSelect").value;
       const eventMine = document.getElementById("eventMineSelect").value;
+      const eventChamberField = document.getElementById("eventChamberField");
       const eventChamberSelect = document.getElementById("eventChamberSelect");
 
       resetMapLoaderBelow(3);
       if (!eventName || !eventMine) return;
+
+      eventChamberField.style.display = "block";
 
       const chambers = window.ZM_MAP_LIBRARY?.Legacy?.[eventName]?.[eventMine] || [];
       chambers.forEach(chamber => {
@@ -1051,6 +1069,25 @@
         option.textContent = chamber;
         eventChamberSelect.appendChild(option);
       });
+    }
+
+    function buildAutoTitle(){
+      const eventType = document.getElementById("eventTypeSelect").value;
+      const eventName = document.getElementById("eventNameSelect").value;
+      const eventMine = document.getElementById("eventMineSelect").value;
+      const eventChamber = document.getElementById("eventChamberSelect").value;
+
+      if (!eventType || !eventName || !eventChamber) return null;
+
+      if (eventType === "Main") {
+        return `${eventName} - ${eventChamber}`;
+      }
+
+      if (eventType === "Legacy" && eventMine) {
+        return `${eventName} - ${eventMine} - ${eventChamber}`;
+      }
+
+      return eventChamber;
     }
 
     function handleEventChamberChange(){
@@ -1068,12 +1105,16 @@
       if (eventType === "Main") {
         selectedMapPath = { eventType, eventName, eventChamber };
         loadMapBtn.style.display = "inline-block";
-        return;
       }
 
       if (eventType === "Legacy" && eventMine) {
         selectedMapPath = { eventType, eventName, eventMine, eventChamber };
         loadMapBtn.style.display = "inline-block";
+      }
+
+      const autoTitle = buildAutoTitle();
+      if (autoTitle) {
+        document.getElementById("titleInput").value = autoTitle;
       }
     }
 
@@ -1100,7 +1141,8 @@
 
       clearBoard();
 
-      document.getElementById("titleInput").value = mapRecord.title || selectedMapPath.eventChamber || "Loaded Map";
+      const autoTitle = buildAutoTitle();
+      document.getElementById("titleInput").value = mapRecord.title || autoTitle || "Loaded Map";
       document.getElementById("gateType").value = mapRecord.gateType || "standard";
 
       const sourceGrid = mapRecord.grid || [];
@@ -1113,7 +1155,7 @@
       resetSolve();
       render();
       renderPreview();
-      setReport(`Loaded map: ${mapRecord.title || "Untitled Map"}`);
+      setReport(`Loaded map: ${mapRecord.title || autoTitle || "Untitled Map"}`);
     }
 
     function initAccessControl(){
