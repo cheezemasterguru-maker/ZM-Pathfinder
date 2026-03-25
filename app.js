@@ -568,7 +568,7 @@ function renderPreview(){
 
   const cell = 86;
   const pad = 22;
-  const topPad = 170;
+  const topPad = 145;
 
   const usedRows = [];
   for(let r = 0; r < currentRowCount; r++){
@@ -595,16 +595,38 @@ function renderPreview(){
   const drawEverything = () => {
     const logo = new Image();
     logo.onload = () => {
-      const maxW = 280;
-      const maxH = 100;
-      const ratio = Math.min(maxW / logo.width, maxH / logo.height, 1);
-      const w = logo.width * ratio;
-      const h = logo.height * ratio;
-      ctx.drawImage(logo, (canvas.width - w) / 2, 0, w, h);
+      const logoMaxW = 180;
+      const logoMaxH = 110;
+      const logoRatio = Math.min(logoMaxW / logo.width, logoMaxH / logo.height, 1);
+      const logoW = logo.width * logoRatio;
+      const logoH = logo.height * logoRatio;
 
-      ctx.fillStyle = "#111";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "alphabetic";
+      const headerY = 12;
+      const headerH = 118;
+
+      const logoBoxX = 26;
+      const logoBoxY = headerY;
+      const logoBoxW = 220;
+      const logoBoxH = headerH;
+
+      const titleBoxX = logoBoxX + logoBoxW + 16;
+      const titleBoxY = headerY;
+      const titleBoxW = canvas.width - titleBoxX - 26;
+      const titleBoxH = headerH;
+
+      ctx.drawImage(
+        logo,
+        logoBoxX + (logoBoxW - logoW) / 2,
+        logoBoxY + (logoBoxH - logoH) / 2,
+        logoW,
+        logoH
+      );
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(titleBoxX, titleBoxY, titleBoxW, titleBoxH);
+      ctx.strokeStyle = "#171b2e";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(titleBoxX, titleBoxY, titleBoxW, titleBoxH);
 
       const rawTitle = String(
         currentPreviewTitle || document.getElementById("titleInput").value || "Gate"
@@ -620,12 +642,16 @@ function renderPreview(){
         line2 = parts[parts.length - 1].toUpperCase();
       }
 
-      ctx.font = "700 26px Arial";
-      ctx.fillText(line1, canvas.width / 2, 145);
+      ctx.fillStyle = "#111";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      ctx.font = "700 22px Arial";
+      ctx.fillText(line1, titleBoxX + titleBoxW / 2, titleBoxY + 42);
 
       if (line2) {
-        ctx.font = "700 22px Arial";
-        ctx.fillText(line2, canvas.width / 2, 170);
+        ctx.font = "700 20px Arial";
+        ctx.fillText(line2, titleBoxX + titleBoxW / 2, titleBoxY + 78);
       }
 
       drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow);
