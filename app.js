@@ -600,27 +600,34 @@ function renderPreview(){
       const ratio = Math.min(maxW / logo.width, maxH / logo.height, 1);
       const w = logo.width * ratio;
       const h = logo.height * ratio;
-      ctx.drawImage(logo, (canvas.width - w) / 2, 10, w, h);
+      ctx.drawImage(logo, (canvas.width - w) / 2, 0, w, h);
 
       ctx.fillStyle = "#111";
-ctx.textAlign = "center";
-ctx.textBaseline = "alphabetic";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
 
-const rawTitle = currentPreviewTitle || document.getElementById("titleInput").value || "Gate";
-const parts = rawTitle.split(" - ");
+      const rawTitle = String(
+        currentPreviewTitle || document.getElementById("titleInput").value || "Gate"
+      ).trim();
 
-const line1 = (parts[0] || "").toUpperCase();
-const line2 = (parts[1] || "").toUpperCase();
+      const parts = rawTitle.split(" - ").map(s => s.trim()).filter(Boolean);
 
-// First line (event name)
-ctx.font = "700 34px Arial";
-ctx.fillText(line1, canvas.width / 2, 130);
+      let line1 = rawTitle.toUpperCase();
+      let line2 = "";
 
-// Second line (chamber / graveyard)
-if (line2) {
-  ctx.font = "700 28px Arial";
-  ctx.fillText(line2, canvas.width / 2, 165);
-}
+      if (parts.length >= 2) {
+        line1 = parts.slice(0, -1).join(" - ").toUpperCase();
+        line2 = parts[parts.length - 1].toUpperCase();
+      }
+
+      ctx.font = "700 26px Arial";
+      ctx.fillText(line1, canvas.width / 2, 145);
+
+      if (line2) {
+        ctx.font = "700 22px Arial";
+        ctx.fillText(line2, canvas.width / 2, 170);
+      }
+
       drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow);
     };
     logo.src = "file_00000000e35071fda5e92d9996ac3621.png";
