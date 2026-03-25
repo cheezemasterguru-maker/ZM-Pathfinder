@@ -111,7 +111,7 @@ window.ZM_MAP_DATA = {
         title: "Treasures in Ice - Chamber 2",
         gateType: "standard",
         grid: [
-          [21, 24, 23, 21, 18, 17, ""],
+          [21, 24, 23, 21, 18, 17, "X"],
           [20, 22, 23, 24, "X", "S", "S"],
           [19, 21, 20, 22, 17, "S", "S"],
           [18, 22, "B", 18, 21, "S", "S"],
