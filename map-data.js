@@ -556,6 +556,8 @@ window.ZM_MAP_DATA = {
   "Chamber 2": null,
   "Chamber 3": null,
   "Graveyard": null
-},
+}
+  },
 
-Legacy: {}
+  Legacy: {}
+};
