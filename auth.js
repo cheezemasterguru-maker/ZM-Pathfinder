@@ -1,6 +1,7 @@
 // ================================
-// EXISTING CONSTANTS (UNCHANGED)
+// ZM Pathfinder AUTH (ID ONLY FIX)
 // ================================
+
 const ADMIN_NAME = "CheezeMasterGuru";
 const ADMIN_ID = "7625451";
 
@@ -8,7 +9,7 @@ const TESTER_STORAGE_KEY = "zm_pathfinder_beta_testers";
 const SESSION_STORAGE_KEY = "zm_pathfinder_session";
 
 // ================================
-// DEFAULT TESTERS (UNCHANGED)
+// DEFAULT TESTERS
 // ================================
 const DEFAULT_TESTERS = [
   { name: "CheezeMasterGuru", id: "7625451", isAdmin: true },
@@ -28,7 +29,7 @@ const DEFAULT_TESTERS = [
 let testers = [];
 
 // ================================
-// LOAD TESTERS FROM STORAGE
+// LOAD TESTERS
 // ================================
 function loadTesters(){
   const saved = localStorage.getItem(TESTER_STORAGE_KEY);
@@ -49,7 +50,7 @@ function saveTesters(){
 }
 
 // ================================
-// 🔥 RESTORE LOGGED-IN USER (FIX)
+// RESTORE SESSION
 // ================================
 function restoreSession(){
   const saved = localStorage.getItem(SESSION_STORAGE_KEY);
@@ -60,14 +61,11 @@ function restoreSession(){
 
   try {
     const parsed = JSON.parse(saved);
-
-    // Re-link to tester list (important)
-    const match = testers.find(t => t.name === parsed.name && t.id === parsed.id);
+    const match = testers.find(t => t.id === parsed.id);
 
     if (match) {
       window.currentTester = match;
     } else {
-      // fallback if tester list changed
       window.currentTester = parsed;
     }
   } catch {
@@ -77,35 +75,33 @@ function restoreSession(){
 }
 
 // ================================
-// LOGIN
+// LOGIN (ID ONLY)
 // ================================
 function loginTester(){
-  const nameInput = document.getElementById("testerName");
   const idInput = document.getElementById("testerId");
-
-  const name = String(nameInput?.value || "").trim();
   const id = String(idInput?.value || "").trim();
 
-  if (!name || !id) {
-    alert("Enter name and ID.");
+  if (!id) {
+    alert("Enter Tester ID.");
     return;
   }
 
-  let tester = testers.find(t => t.name === name && t.id === id);
+  let tester = testers.find(t => t.id === id);
 
+  // If not found, auto-create
   if (!tester) {
     tester = {
-      name,
+      name: id === ADMIN_ID ? ADMIN_NAME : `User-${id}`,
       id,
-      isAdmin: name === ADMIN_NAME && id === ADMIN_ID
+      isAdmin: id === ADMIN_ID
     };
     testers.push(tester);
     saveTesters();
   }
 
-  tester.isAdmin = (tester.name === ADMIN_NAME && tester.id === ADMIN_ID);
+  tester.isAdmin = (tester.id === ADMIN_ID);
 
-  // 🔥 SAVE SESSION (THIS FIXES LOGIN LOOP)
+  // SAVE SESSION
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(tester));
   window.currentTester = tester;
 
@@ -141,12 +137,12 @@ function updateUserUI(){
 }
 
 // ================================
-// INIT ACCESS CONTROL
+// INIT
 // ================================
 function initAccessControl(){
-  loadTesters();        // load tester list
-  restoreSession();     // 🔥 restore login
-  updateUserUI();       // update UI
+  loadTesters();
+  restoreSession();
+  updateUserUI();
 }
 
 // ================================
