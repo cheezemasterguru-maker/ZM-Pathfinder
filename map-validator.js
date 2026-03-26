@@ -312,15 +312,7 @@ window.ZMMapValidator = (() => {
 
   function validateSingleLoadedGrid(grid, title = "Loaded Grid") {
     const errors = [];
-    const inferred = inferEventAndChamberFromTitle(title);
-
-    let expectedRows = null;
-    if (inferred.eventName && inferred.chamberName) {
-      expectedRows = getExpectedRowCount(inferred.eventName, inferred.chamberName);
-    }
-
-    errors.push(...validateGridShape(grid, title, expectedRows));
-
+    errors.push(...validateGridShape(grid, title, null));
     if (Array.isArray(grid)) {
       errors.push(...validateTiles(grid, title));
       errors.push(...validateShafts(grid, title));
