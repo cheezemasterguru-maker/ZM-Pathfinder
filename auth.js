@@ -1,27 +1,15 @@
-(function restoreUser(){
-  const saved = localStorage.getItem(TESTER_STORAGE_KEY);
-  if (saved) {
-    try {
-      window.currentTester = JSON.parse(saved);
-    } catch {
-      localStorage.removeItem(TESTER_STORAGE_KEY);
-    }
-  }
-})();
-(restoreUser restoreUser(){
-  const saved = localStorage.getItem(TESTER_STORAGE_KEY);
-  if (saved) {
-    try {
-      window.currentTester = JSON.parse(saved);
-    } catch {
-      localStorage.removeItem(TESTER_STORAGE_KEY);
-    }
-  }
-})();stonst ADMIN_NAME = "CheezeMasterGuru";
-const ADMIN_ID = "7625451";
-const TESTER_STORAGE_KEY = "zm_pathfinder_beta_testers";
-const SESSION_STORAGE_KEY = "zm_pathfinder_beta_session";
+// ================================
+// ZM Pathfinder - Auth System FIXED
+// ================================
 
+const ADMIN_NAME = "CheezeMasterGuru";
+const ADMIN_ID = "7625451";
+
+const TESTER_STORAGE_KEY = "zm_pathfinder_user";
+
+// ================================
+// DEFAULT TESTERS
+// ================================
 const DEFAULT_TESTERS = [
   { name: "CheezeMasterGuru", id: "7625451", isAdmin: true },
   { name: "AniLaBanani", id: "23358613", isAdmin: false },
@@ -31,292 +19,104 @@ const DEFAULT_TESTERS = [
   { name: "FatJesus", id: "16332297", isAdmin: false },
   { name: "Garon98", id: "4120350", isAdmin: false },
   { name: "XCONN6286", id: "12507785", isAdmin: false },
-  { name: "FS1997", id: "19770641", isAdmin: false },
-  { name: "bball523", id: "891092", isAdmin: false },
-  { name: "Norsixa", id: "22673958", isAdmin: false },
-  { name: "TheDude", id: "20750358", isAdmin: false }
+  { name: "FS1997", id: "19770641", isAdmin: false }
 ];
 
-window.currentTester = null;
+// ================================
+// STATE
+// ================================
+let testers = [...DEFAULT_TESTERS];
 
-function normalizeId(value){
-  return String(value || "").trim();
-}
+// ================================
+// RESTORE USER (RUNS ON LOAD)
+// ================================
+(function restoreUser(){
+  const saved = localStorage.getItem(TESTER_STORAGE_KEY);
+  if (saved) {
+    try {
+      window.currentTester = JSON.parse(saved);
+    } catch {
+      localStorage.removeItem(TESTER_STORAGE_KEY);
+      window.currentTester = null;
+    }
+  } else {
+    window.currentTester = null;
+  }
+})();
 
-function initializeTesters(){
-  let existing = [];
-  try{
-    existing = JSON.parse(localStorage.getItem(TESTER_STORAGE_KEY) || "[]");
-  } catch(e){
-    existing = [];
+// ================================
+// LOGIN
+// ================================
+function loginTester(name, id){
+  name = String(name || "").trim();
+  id = String(id || "").trim();
+
+  if (!name || !id) {
+    alert("Enter name and ID.");
+    return;
   }
 
-  if (!Array.isArray(existing)) existing = [];
+  let tester = testers.find(t => t.name === name && t.id === id);
 
-  const merged = [...existing];
-
-  DEFAULT_TESTERS.forEach(def => {
-    const exists = merged.some(t => normalizeId(t.id) === normalizeId(def.id));
-    if (!exists) merged.push(def);
-  });
-
-  const hasAdmin = merged.some(t => normalizeId(t.id) === normalizeId(ADMIN_ID));
-  if (!hasAdmin) {
-    merged.unshift({ name: ADMIN_NAME, id: ADMIN_ID, isAdmin: true });
+  // If not found, create new tester
+  if (!tester) {
+    tester = {
+      name,
+      id,
+      isAdmin: name === ADMIN_NAME && id === ADMIN_ID
+    };
+    testers.push(tester);
   }
 
-  localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(merged));
+  // Force admin check (always correct)
+  tester.isAdmin = (tester.name === ADMIN_NAME && tester.id === ADMIN_ID);
+
+  // SAVE + SET
+  localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(tester));
+  window.currentTester = tester;
+
+  updateUserUI();
 }
 
-function getStoredTesters(){
-  let testers = [];
-  try{
-    testers = JSON.parse(localStorage.getItem(TESTER_STORAGE_KEY) || "[]");
-  } catch(e){
-    testers = [];
-  }
-  return Array.isArray(testers) ? testers : [];
+// ================================
+// LOGOUT
+// ================================
+function logoutTester(){
+  localStorage.removeItem(TESTER_STORAGE_KEY);
+  window.currentTester = null;
+  updateUserUI();
 }
 
-function saveStoredTesters(testers){
-  localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(testers));
-}
-
-function getStoredSession(){
-  try{
-    return JSON.parse(localStorage.getItem(SESSION_STORAGE_KEY) || "null");
-  } catch(e){
-    return null;
-  }
-}
-
-function saveSession(session){
-  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-}
-
-function clearSession(){
-  localStorage.removeItem(SESSION_STORAGE_KEY);
-}
-
-function findTesterById(id){
-  const testers = getStoredTesters();
-  const wanted = normalizeId(id);
-  return testers.find(t => normalizeId(t.id) === wanted) || null;
-}
-
-function setLoginStatus(msg, ok = false){
-  const el = document.getElementById("loginStatus");
-  if (!el) return;
-  el.textContent = msg;
-  el.className = "status-text " + (msg ? (ok ? "status-ok" : "status-error") : "");
-}
-
-function setAddTesterStatus(msg, ok = false){
-  const el = document.getElementById("addTesterStatus");
-  if (!el) return;
-  el.textContent = msg;
-  el.className = "status-text " + (msg ? (ok ? "status-ok" : "status-error") : "");
-}
-
+// ================================
+// UI UPDATE
+// ================================
 function updateUserUI(){
   const badge = document.getElementById("loggedInBadge");
-  const addBtn = document.getElementById("addTesterBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const mapLoaderSection = document.getElementById("mapLoaderSection");
+  const loginSection = document.getElementById("loginSection");
+
+  if (!badge || !loginSection) return;
 
   if (window.currentTester) {
     badge.textContent = `Logged in as: ${window.currentTester.name} (${window.currentTester.id})`;
-    badge.className = "user-badge" + (window.currentTester.isAdmin ? " admin-badge" : "");
-
-    if (window.currentTester.isAdmin) {
-      addBtn.classList.remove("hidden");
-    } else {
-      addBtn.classList.add("hidden");
-    }
-
-    mapLoaderSection.classList.remove("hidden");
-    logoutBtn.classList.remove("hidden");
+    badge.classList.remove("hidden");
+    loginSection.classList.add("hidden");
   } else {
-    badge.textContent = "Not logged in";
-    badge.className = "user-badge";
-    addBtn.classList.add("hidden");
-    logoutBtn.classList.add("hidden");
-    mapLoaderSection.classList.add("hidden");
+    badge.classList.add("hidden");
+    loginSection.classList.remove("hidden");
   }
 }
 
-function unlockApp(){
-  document.getElementById("appShell").classList.remove("locked");
-  document.getElementById("loginOverlay").classList.remove("show");
-  updateUserUI();
-}
-
-function lockApp(){
-  document.getElementById("appShell").classList.add("locked");
-  document.getElementById("loginOverlay").classList.add("show");
-  updateUserUI();
-}
-
-function clearLoginField(){
-  document.getElementById("loginTesterId").value = "";
-  setLoginStatus("");
-}
-
-function loginTester(){
-  const id = normalizeId(document.getElementById("loginTesterId").value);
-
-  if (!id) {
-    setLoginStatus("Enter a tester ID.");
-    return;
-  }
-
-  const tester = findTesterById(id);
-  if (!tester) {
-    setLoginStatus("Tester ID not found.");
-    return;
-  }
-
-  window.currentTester = tester;
-  saveSession(tester);
-  setLoginStatus(`Welcome, ${tester.name}.`, true);
-  updateUserUI();
-
-  setTimeout(() => {
-    unlockApp();
-    clearLoginField();
-  }, 250);
-}
-
-function logoutTester(){
-  window.currentTester = null;
-  clearSession();
-  closeAddTesterModal();
-  closeSolverHelp();
-  lockApp();
-  setLoginStatus("");
-}
-
-function renderTesterList(){
-  const list = document.getElementById("testerList");
-  const testers = getStoredTesters();
-  list.innerHTML = "";
-
-  testers.forEach(tester => {
-    const item = document.createElement("div");
-    item.className = "tester-item";
-
-    const meta = document.createElement("div");
-    meta.className = "tester-meta";
-
-    const name = document.createElement("div");
-    name.className = "tester-name";
-    name.textContent = tester.name + (tester.isAdmin ? " (Admin)" : "");
-
-    const id = document.createElement("div");
-    id.className = "tester-id";
-    id.textContent = tester.id;
-
-    meta.appendChild(name);
-    meta.appendChild(id);
-    item.appendChild(meta);
-
-    if (!tester.isAdmin) {
-      const removeBtn = document.createElement("button");
-      removeBtn.className = "btn-danger";
-      removeBtn.textContent = "Remove";
-      removeBtn.onclick = () => removeBetaTester(tester.id);
-      item.appendChild(removeBtn);
-    }
-
-    list.appendChild(item);
-  });
-}
-
-function openAddTesterModal(){
-  if (!window.currentTester || !window.currentTester.isAdmin) return;
-
-  renderTesterList();
-  setAddTesterStatus("");
-  document.getElementById("adminIdInput").value = "";
-  document.getElementById("newTesterName").value = "";
-  document.getElementById("newTesterId").value = "";
-  document.getElementById("addTesterOverlay").classList.add("show");
-}
-
-function closeAddTesterModal(){
-  document.getElementById("addTesterOverlay").classList.remove("show");
-  setAddTesterStatus("");
-}
-
-function removeBetaTester(id){
-  if (!window.currentTester || !window.currentTester.isAdmin) return;
-
-  const testers = getStoredTesters().filter(t => normalizeId(t.id) !== normalizeId(id));
-  saveStoredTesters(testers);
-  renderTesterList();
-  setAddTesterStatus("Tester removed.", true);
-}
-
-function addBetaTester(){
-  const adminId = normalizeId(document.getElementById("adminIdInput").value);
-  const name = String(document.getElementById("newTesterName").value || "").trim();
-  const id = normalizeId(document.getElementById("newTesterId").value);
-
-  if (adminId !== normalizeId(ADMIN_ID)) {
-    setAddTesterStatus("Invalid admin ID.");
-    return;
-  }
-
-  if (!name || !id) {
-    setAddTesterStatus("Enter tester name and tester ID.");
-    return;
-  }
-
-  const testers = getStoredTesters();
-  const exists = testers.some(t => normalizeId(t.id) === id);
-
-  if (exists) {
-    setAddTesterStatus("Tester ID already exists.");
-    return;
-  }
-
-  testers.push({
-    name,
-    id,
-    isAdmin: false
-  });
-
-  saveStoredTesters(testers);
-  renderTesterList();
-  setAddTesterStatus(`Added tester locally: ${name} (${id})`, true);
-
-  document.getElementById("newTesterName").value = "";
-  document.getElementById("newTesterId").value = "";
-}
-
+// ================================
+// INIT ACCESS CONTROL
+// ================================
 function initAccessControl(){
-  initializeTesters();
-
-  const session = getStoredSession();
-  if (session) {
-    const tester = findTesterById(session.id);
-    if (tester) {
-      localStorage.setItem(TESTER_STORAGE_KEY, ...)
-window.currentTester = tester;
-      unlockApp();
-      return;
-    }
-  }
-
-  window.currentTester = null;
-  lockApp();
+  updateUserUI();
 }
 
+// ================================
+// GLOBAL EXPORTS
+// ================================
 window.loginTester = loginTester;
 window.logoutTester = logoutTester;
-window.clearLoginField = clearLoginField;
-window.openAddTesterModal = openAddTesterModal;
-window.closeAddTesterModal = closeAddTesterModal;
-window.addBetaTester = addBetaTester;
-window.initAccessControl = initAccessControl;
 window.updateUserUI = updateUserUI;
+window.initAccessControl = initAccessControl;
