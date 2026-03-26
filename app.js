@@ -630,7 +630,7 @@ function applyText(text){
 
   resetSolve();
   render();
-  renderPreview();
+  rendifview();
   setReport(`Pasted into board starting at Row ${startR + 1}, Col ${startC + 1}.`);
 }
 
@@ -1015,12 +1015,15 @@ function init(){
   loadHelpContent();
   populateEventTypeSelect();
 
-  if (window.ZMMapValidator && typeof window.ZMMapValidator.validateMainMapData === "function") {
-    const allErrors = window.ZMMapValidator.validateMainMapData(window.ZM_MAP_DATA);
-    if (allErrors.length) {
-      console.error("Map data integrity errors:", allErrors);
-      setReport(`Map data integrity warning: ${allErrors[0]}`);
-    }
+  if (!window.ZM_MAP_DATA) {
+  setReport("DEBUG: ZM_MAP_DATA is undefined");
+} else if (!window.ZM_MAP_DATA.Main) {
+  setReport("DEBUG: ZM_MAP_DATA exists but Main is missing");
+} else if (!window.ZM_MAP_DATA.Legacy) {
+  setReport("DEBUG: ZM_MAP_DATA exists but Legacy is missing");
+} else {
+  setReport("DEBUG: ZM_MAP_DATA loaded correctly");
+}
   }
 
   render();
