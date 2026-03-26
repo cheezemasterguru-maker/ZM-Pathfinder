@@ -1,198 +1,302 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ZM Pathfinder</title>
-  <link rel="stylesheet" href="styles.css?v=1.1" />
-  <script src="help.js?v=3"></script>
-  <script src="map-library.js?v=1"></script>
-  <script src="map-data.js?v=3"></script>
-  <script src="map-validator.js?v=1"></script>
-  <script src="solver.js?v=4.5"></script>
-  <script src="auth.js?v=1" defer></script>
-  <script src="app.js?v=4" defer></script>
-</head>
-<body>
-  <div id="appShell" class="app-shell locked">
-    <div class="page">
-      <div class="card">
-        <div class="hero">
-          <img src="file_00000000e35071fda5e92d9996ac3621.png" class="logo" alt="ZM Pathfinder Logo">
-          <h1>ZM Pathfinder</h1>
+const ADMIN_NAME = "CheezeMasterGuru";
+const ADMIN_ID = "7625451";
+const TESTER_STORAGE_KEY = "zm_pathfinder_beta_testers";
+const SESSION_STORAGE_KEY = "zm_pathfinder_beta_session";
 
-          <div class="top-meta">
-            <div id="loggedInBadge" class="user-badge">Not logged in</div>
-            <button id="addTesterBtn" class="btn-success hidden" onclick="openAddTesterModal()">Add Beta Tester</button>
-            <button id="logoutBtn" class="btn-danger hidden" onclick="logoutTester()">Logout</button>
-          </div>
-        </div>
+const DEFAULT_TESTERS = [
+  { name: "CheezeMasterGuru", id: "7625451", isAdmin: true },
+  { name: "AniLaBanani", id: "23358613", isAdmin: false },
+  { name: "ChristopherH", id: "17462546", isAdmin: false },
+  { name: "Azshannia", id: "13276937", isAdmin: false },
+  { name: "Sonlite", id: "19540845", isAdmin: false },
+  { name: "FatJesus", id: "16332297", isAdmin: false },
+  { name: "Garon98", id: "4120350", isAdmin: false },
+  { name: "XCONN6286", id: "12507785", isAdmin: false },
+  { name: "FS1997", id: "19770641", isAdmin: false },
+  { name: "bball523", id: "891092", isAdmin: false },
+  { name: "Norsixa", id: "22673958", isAdmin: false },
+  { name: "TheDude", id: "20750358", isAdmin: false }
+];
 
-        <div class="section-title">How the input grid works</div>
-        <div id="shortHelpText" class="help"></div>
+window.currentTester = null;
 
-        <div class="controls-grid">
-          <div class="field">
-            <label for="titleInput">Title</label>
-            <input id="titleInput" type="text" value="Gate 1" oninput="handleTitleInputChange()">
-          </div>
+function normalizeId(value){
+  return String(value || "").trim();
+}
 
-          <div class="field">
-            <label for="gateType">Gate type</label>
-            <select id="gateType" onchange="renderPreview()">
-              <option value="standard">Standard — 5 attack points</option>
-              <option value="end">End — 3 attack points</option>
-            </select>
-          </div>
-        </div>
+function initializeTesters(){
+  let existing = [];
+  try{
+    existing = JSON.parse(localStorage.getItem(TESTER_STORAGE_KEY) || "[]");
+  } catch(e){
+    existing = [];
+  }
 
-        <div id="mapLoaderSection" class="hidden">
-          <div class="section-title">Map Loader</div>
-          <div class="help">Choose a stored map path, then press <b>Load Map</b> to place it into the grid. Loaded maps can still be edited afterward.</div>
+  if (!Array.isArray(existing)) existing = [];
 
-          <div class="map-loader-grid compact-loader">
-            <div class="loader-row">
-              <div class="field" id="eventTypeField">
-                <label for="eventTypeSelect">Event Type</label>
-                <select id="eventTypeSelect" onchange="handleEventTypeChange()">
-                  <option value="">Select Event Type</option>
-                </select>
-              </div>
+  const merged = [...existing];
 
-              <div class="field hidden" id="eventNameField">
-                <label for="eventNameSelect">Event Name</label>
-                <select id="eventNameSelect" onchange="handleEventNameChange()">
-                  <option value="">Select Event Name</option>
-                </select>
-              </div>
-            </div>
+  DEFAULT_TESTERS.forEach(def => {
+    const exists = merged.some(t => normalizeId(t.id) === normalizeId(def.id));
+    if (!exists) merged.push(def);
+  });
 
-            <div class="field hidden" id="eventMineField">
-              <label for="eventMineSelect">Event Mine</label>
-              <select id="eventMineSelect" onchange="handleEventMineChange()">
-                <option value="">Select Event Mine</option>
-              </select>
-            </div>
+  const hasAdmin = merged.some(t => normalizeId(t.id) === normalizeId(ADMIN_ID));
+  if (!hasAdmin) {
+    merged.unshift({ name: ADMIN_NAME, id: ADMIN_ID, isAdmin: true });
+  }
 
-            <div class="loader-row">
-              <div class="field hidden" id="eventChamberField">
-                <label for="eventChamberSelect">Event Chamber</label>
-                <select id="eventChamberSelect" onchange="handleEventChamberChange()">
-                  <option value="">Select Event Chamber</option>
-                </select>
-              </div>
+  localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(merged));
+}
 
-              <button id="loadMapBtn" class="btn-action hidden" onclick="loadSelectedMap()">Load Map</button>
-            </div>
-          </div>
-        </div>
+function getStoredTesters(){
+  let testers = [];
+  try{
+    testers = JSON.parse(localStorage.getItem(TESTER_STORAGE_KEY) || "[]");
+  } catch(e){
+    testers = [];
+  }
+  return Array.isArray(testers) ? testers : [];
+}
 
-        <div class="btn-grid">
-          <button class="btn-action" onclick="clearBoard()">Clear Board</button>
-          <button class="btn-solve" onclick="solveBoard()">Solve</button>
-          <button class="btn-action" onclick="downloadPNG()">Download PNG</button>
+function saveStoredTesters(testers){
+  localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(testers));
+}
 
-          <button class="btn-action" onclick="loadSampleGrid()">Sample Grid</button>
-          <button class="btn-action" onclick="pasteFromClipboard()">Paste From Clipboard</button>
-          <button class="btn-action" onclick="openSolverHelp()">Solver Help</button>
-        </div>
+function getStoredSession(){
+  try{
+    return JSON.parse(localStorage.getItem(SESSION_STORAGE_KEY) || "null");
+  } catch(e){
+    return null;
+  }
+}
 
-        <div id="report" class="report">Ready. Grid and solver are wired together.</div>
-      </div>
+function saveSession(session){
+  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+}
 
-      <div class="card editor-card">
-        <div class="sticky-tools">
-          <div class="section-title" style="margin-top:0;">Editable Board</div>
-          <div class="help" style="margin-bottom:8px;">
-            Non-graveyard boards use 7×13. Graveyard boards use 7×20.
-          </div>
+function clearSession(){
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+}
 
-          <div class="tool-grid">
-            <button id="tool-number" class="btn-white tool-active" onclick="setTool('number')">Number</button>
-            <button id="tool-block" class="btn-black" onclick="setTool('block')">Block</button>
-            <button id="tool-bubble" class="btn-bubble" onclick="setTool('bubble')">Bubble</button>
-            <button id="tool-shaft" class="btn-shaft" onclick="setTool('shaft')">Shaft</button>
-          </div>
-        </div>
+function findTesterById(id){
+  const testers = getStoredTesters();
+  const wanted = normalizeId(id);
+  return testers.find(t => normalizeId(t.id) === wanted) || null;
+}
 
-        <div class="grid-wrap">
-          <div id="grid"></div>
-        </div>
-      </div>
+function setLoginStatus(msg, ok = false){
+  const el = document.getElementById("loginStatus");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = "status-text " + (msg ? (ok ? "status-ok" : "status-error") : "");
+}
 
-      <div class="card">
-        <div class="section-title" style="margin-top:0;">Preview</div>
-        <div class="preview-wrap">
-          <canvas id="previewCanvas" width="860" height="1280"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
+function setAddTesterStatus(msg, ok = false){
+  const el = document.getElementById("addTesterStatus");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = "status-text " + (msg ? (ok ? "status-ok" : "status-error") : "");
+}
 
-  <div id="loginOverlay" class="overlay show">
-    <div class="modal modal-box" onclick="event.stopPropagation()">
-      <h2>Beta Tester Login</h2>
-      <p>Enter your beta tester ID to unlock the solver.</p>
+function updateUserUI(){
+  const badge = document.getElementById("loggedInBadge");
+  const addBtn = document.getElementById("addTesterBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const mapLoaderSection = document.getElementById("mapLoaderSection");
 
-      <div class="modal-grid">
-        <div class="field">
-          <label for="loginTesterId">Tester ID</label>
-          <input id="loginTesterId" type="text" placeholder="Enter tester ID">
-        </div>
-      </div>
+  if (window.currentTester) {
+    badge.textContent = `Logged in as: ${window.currentTester.name} (${window.currentTester.id})`;
+    badge.className = "user-badge" + (window.currentTester.isAdmin ? " admin-badge" : "");
 
-      <div class="modal-actions">
-        <button class="btn-solve" onclick="loginTester()">Login</button>
-        <button class="btn-action" onclick="clearLoginField()">Clear</button>
-      </div>
+    if (window.currentTester.isAdmin) {
+      addBtn.classList.remove("hidden");
+    } else {
+      addBtn.classList.add("hidden");
+    }
 
-      <div id="loginStatus" class="status-text"></div>
-    </div>
-  </div>
+    mapLoaderSection.classList.remove("hidden");
+    logoutBtn.classList.remove("hidden");
+  } else {
+    badge.textContent = "Not logged in";
+    badge.className = "user-badge";
+    addBtn.classList.add("hidden");
+    logoutBtn.classList.add("hidden");
+    mapLoaderSection.classList.add("hidden");
+  }
+}
 
-  <div id="addTesterOverlay" class="overlay" onclick="closeAddTesterModal()">
-    <div class="modal modal-box" onclick="event.stopPropagation()">
-      <button class="modal-close" onclick="closeAddTesterModal()" aria-label="Close">×</button>
+function unlockApp(){
+  document.getElementById("appShell").classList.remove("locked");
+  document.getElementById("loginOverlay").classList.remove("show");
+  updateUserUI();
+}
 
-      <h2>Add Beta Tester</h2>
-      <p>Only the hard-coded admin account can add testers locally.</p>
+function lockApp(){
+  document.getElementById("appShell").classList.add("locked");
+  document.getElementById("loginOverlay").classList.add("show");
+  updateUserUI();
+}
 
-      <div class="modal-grid">
-        <div class="field">
-          <label for="adminIdInput">Admin ID</label>
-          <input id="adminIdInput" type="text" placeholder="Enter admin ID">
-        </div>
+function clearLoginField(){
+  document.getElementById("loginTesterId").value = "";
+  setLoginStatus("");
+}
 
-        <div class="field">
-          <label for="newTesterName">Tester Name</label>
-          <input id="newTesterName" type="text" placeholder="Enter tester name">
-        </div>
+function loginTester(){
+  const id = normalizeId(document.getElementById("loginTesterId").value);
 
-        <div class="field">
-          <label for="newTesterId">Tester ID</label>
-          <input id="newTesterId" type="text" placeholder="Enter tester ID">
-        </div>
-      </div>
+  if (!id) {
+    setLoginStatus("Enter a tester ID.");
+    return;
+  }
 
-      <div class="modal-actions">
-        <button class="btn-success" onclick="addBetaTester()">Add Tester</button>
-        <button class="btn-action" onclick="closeAddTesterModal()">Close</button>
-      </div>
+  const tester = findTesterById(id);
+  if (!tester) {
+    setLoginStatus("Tester ID not found.");
+    return;
+  }
 
-      <div id="addTesterStatus" class="status-text"></div>
-      <div class="tester-list" id="testerList"></div>
-    </div>
-  </div>
+  window.currentTester = tester;
+  saveSession(tester);
+  setLoginStatus(`Welcome, ${tester.name}.`, true);
+  updateUserUI();
 
-  <div id="solverHelpOverlay" class="overlay" onclick="closeSolverHelp()">
-    <div class="modal modal-box" onclick="event.stopPropagation()">
-      <button class="modal-close" onclick="closeSolverHelp()" aria-label="Close">×</button>
-      <h2>Solver Help</h2>
-      <div id="solverHelpBody" class="help-content"></div>
-      <div class="modal-actions">
-        <button class="btn-action" onclick="closeSolverHelp()">Close</button>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
+  setTimeout(() => {
+    unlockApp();
+    clearLoginField();
+  }, 250);
+}
+
+function logoutTester(){
+  window.currentTester = null;
+  clearSession();
+  closeAddTesterModal();
+  closeSolverHelp();
+  lockApp();
+  setLoginStatus("");
+}
+
+function renderTesterList(){
+  const list = document.getElementById("testerList");
+  const testers = getStoredTesters();
+  list.innerHTML = "";
+
+  testers.forEach(tester => {
+    const item = document.createElement("div");
+    item.className = "tester-item";
+
+    const meta = document.createElement("div");
+    meta.className = "tester-meta";
+
+    const name = document.createElement("div");
+    name.className = "tester-name";
+    name.textContent = tester.name + (tester.isAdmin ? " (Admin)" : "");
+
+    const id = document.createElement("div");
+    id.className = "tester-id";
+    id.textContent = tester.id;
+
+    meta.appendChild(name);
+    meta.appendChild(id);
+    item.appendChild(meta);
+
+    if (!tester.isAdmin) {
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "btn-danger";
+      removeBtn.textContent = "Remove";
+      removeBtn.onclick = () => removeBetaTester(tester.id);
+      item.appendChild(removeBtn);
+    }
+
+    list.appendChild(item);
+  });
+}
+
+function openAddTesterModal(){
+  if (!window.currentTester || !window.currentTester.isAdmin) return;
+
+  renderTesterList();
+  setAddTesterStatus("");
+  document.getElementById("adminIdInput").value = "";
+  document.getElementById("newTesterName").value = "";
+  document.getElementById("newTesterId").value = "";
+  document.getElementById("addTesterOverlay").classList.add("show");
+}
+
+function closeAddTesterModal(){
+  document.getElementById("addTesterOverlay").classList.remove("show");
+  setAddTesterStatus("");
+}
+
+function removeBetaTester(id){
+  if (!window.currentTester || !window.currentTester.isAdmin) return;
+
+  const testers = getStoredTesters().filter(t => normalizeId(t.id) !== normalizeId(id));
+  saveStoredTesters(testers);
+  renderTesterList();
+  setAddTesterStatus("Tester removed.", true);
+}
+
+function addBetaTester(){
+  const adminId = normalizeId(document.getElementById("adminIdInput").value);
+  const name = String(document.getElementById("newTesterName").value || "").trim();
+  const id = normalizeId(document.getElementById("newTesterId").value);
+
+  if (adminId !== normalizeId(ADMIN_ID)) {
+    setAddTesterStatus("Invalid admin ID.");
+    return;
+  }
+
+  if (!name || !id) {
+    setAddTesterStatus("Enter tester name and tester ID.");
+    return;
+  }
+
+  const testers = getStoredTesters();
+  const exists = testers.some(t => normalizeId(t.id) === id);
+
+  if (exists) {
+    setAddTesterStatus("Tester ID already exists.");
+    return;
+  }
+
+  testers.push({
+    name,
+    id,
+    isAdmin: false
+  });
+
+  saveStoredTesters(testers);
+  renderTesterList();
+  setAddTesterStatus(`Added tester locally: ${name} (${id})`, true);
+
+  document.getElementById("newTesterName").value = "";
+  document.getElementById("newTesterId").value = "";
+}
+
+function initAccessControl(){
+  initializeTesters();
+
+  const session = getStoredSession();
+  if (session) {
+    const tester = findTesterById(session.id);
+    if (tester) {
+      window.currentTester = tester;
+      unlockApp();
+      return;
+    }
+  }
+
+  window.currentTester = null;
+  lockApp();
+}
+
+window.loginTester = loginTester;
+window.logoutTester = logoutTester;
+window.clearLoginField = clearLoginField;
+window.openAddTesterModal = openAddTesterModal;
+window.closeAddTesterModal = closeAddTesterModal;
+window.addBetaTester = addBetaTester;
+window.initAccessControl = initAccessControl;
+window.updateUserUI = updateUserUI;
