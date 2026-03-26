@@ -33,7 +33,7 @@ window.ZM_HELP = {
       <p>Use <b>Map Loader</b> to load a stored board into the grid.</p>
       <p>Use the dropdowns in order:</p>
       <p><b>Event Type</b> → choose Main or Legacy.</p>
-      <p><b>Event Name</b> → choose the event or mine name.</p>
+      <p><b>Event Name</b> → choose the event name (they are always listed in the order they appear in-game with mod-week events always at the top).</p>
       <p><b>Event Mine</b> → appears only for Legacy events.</p>
       <p><b>Event Chamber</b> → choose the chamber or graveyard.</p>
       <p>The next menu appears only after the previous selection is made.</p>
