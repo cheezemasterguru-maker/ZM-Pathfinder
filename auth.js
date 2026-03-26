@@ -1,170 +1,198 @@
-// ==========================
-// ZM PATHFINDER AUTH SYSTEM
-// ==========================
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZM Pathfinder</title>
+  <link rel="stylesheet" href="styles.css?v=1.1" />
+  <script src="help.js?v=3"></script>
+  <script src="map-library.js?v=1"></script>
+  <script src="map-data.js?v=3"></script>
+  <script src="map-validator.js?v=1"></script>
+  <script src="solver.js?v=4.5"></script>
+  <script src="auth.js?v=1" defer></script>
+  <script src="app.js?v=4" defer></script>
+</head>
+<body>
+  <div id="appShell" class="app-shell locked">
+    <div class="page">
+      <div class="card">
+        <div class="hero">
+          <img src="file_00000000e35071fda5e92d9996ac3621.png" class="logo" alt="ZM Pathfinder Logo">
+          <h1>ZM Pathfinder</h1>
 
-const ADMIN_NAME = "CheezeMasterGuru";
-const ADMIN_ID = "7625451";
+          <div class="top-meta">
+            <div id="loggedInBadge" class="user-badge">Not logged in</div>
+            <button id="addTesterBtn" class="btn-success hidden" onclick="openAddTesterModal()">Add Beta Tester</button>
+            <button id="logoutBtn" class="btn-danger hidden" onclick="logoutTester()">Logout</button>
+          </div>
+        </div>
 
-const TESTER_STORAGE_KEY = "zm_pathfinder_beta_testers";
-const SESSION_STORAGE_KEY = "zm_session";
+        <div class="section-title">How the input grid works</div>
+        <div id="shortHelpText" class="help"></div>
 
-// ==========================
-// DEFAULT TESTERS (UNCHANGED)
-// ==========================
-const DEFAULT_TESTERS = [
-  { name: "CheezeMasterGuru", id: "7625451", isAdmin: true },
-  { name: "AniLaBanani", id: "23358613", isAdmin: true },
-  { name: "ChristopherH", id: "17462546", isAdmin: true },
-  { name: "Azshannia", id: "13276937", isAdmin: true },
-  { name: "Sonlite", id: "19540845", isAdmin: true },
-  { name: "FatJesus", id: "16332297", isAdmin: true },
-  { name: "Garon98", id: "4120350", isAdmin: true },
-  { name: "XCONN6286", id: "12507785", isAdmin: true },
-  { name: "FS1997", id: "19770641", isAdmin: true }
-];
+        <div class="controls-grid">
+          <div class="field">
+            <label for="titleInput">Title</label>
+            <input id="titleInput" type="text" value="Gate 1" oninput="handleTitleInputChange()">
+          </div>
 
-// ==========================
-// INTERNAL STATE
-// ==========================
-let testers = [];
+          <div class="field">
+            <label for="gateType">Gate type</label>
+            <select id="gateType" onchange="renderPreview()">
+              <option value="standard">Standard — 5 attack points</option>
+              <option value="end">End — 3 attack points</option>
+            </select>
+          </div>
+        </div>
 
-// ==========================
-// LOAD TESTERS
-// ==========================
-function loadTesters() {
-  try {
-    const saved = localStorage.getItem(TESTER_STORAGE_KEY);
-    testers = saved ? JSON.parse(saved) : DEFAULT_TESTERS.slice();
-  } catch {
-    testers = DEFAULT_TESTERS.slice();
-  }
-}
+        <div id="mapLoaderSection" class="hidden">
+          <div class="section-title">Map Loader</div>
+          <div class="help">Choose a stored map path, then press <b>Load Map</b> to place it into the grid. Loaded maps can still be edited afterward.</div>
 
-// ==========================
-// SAVE TESTERS
-// ==========================
-function saveTesters() {
-  localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(testers));
-}
+          <div class="map-loader-grid compact-loader">
+            <div class="loader-row">
+              <div class="field" id="eventTypeField">
+                <label for="eventTypeSelect">Event Type</label>
+                <select id="eventTypeSelect" onchange="handleEventTypeChange()">
+                  <option value="">Select Event Type</option>
+                </select>
+              </div>
 
-// ==========================
-// RESTORE SESSION (FIXES LOGIN LOOP)
-// ==========================
-function restoreSession() {
-  try {
-    const saved = localStorage.getItem(SESSION_STORAGE_KEY);
-    if (saved) {
-      window.currentTester = JSON.parse(saved);
-    }
-  } catch {
-    window.currentTester = null;
-  }
-}
+              <div class="field hidden" id="eventNameField">
+                <label for="eventNameSelect">Event Name</label>
+                <select id="eventNameSelect" onchange="handleEventNameChange()">
+                  <option value="">Select Event Name</option>
+                </select>
+              </div>
+            </div>
 
-// ==========================
-// LOGIN (ID ONLY)
-// ==========================
-function loginTester() {
-  const idInput = document.getElementById("testerIdInput");
-  if (!idInput) return;
+            <div class="field hidden" id="eventMineField">
+              <label for="eventMineSelect">Event Mine</label>
+              <select id="eventMineSelect" onchange="handleEventMineChange()">
+                <option value="">Select Event Mine</option>
+              </select>
+            </div>
 
-  const id = idInput.value.trim();
+            <div class="loader-row">
+              <div class="field hidden" id="eventChamberField">
+                <label for="eventChamberSelect">Event Chamber</label>
+                <select id="eventChamberSelect" onchange="handleEventChamberChange()">
+                  <option value="">Select Event Chamber</option>
+                </select>
+              </div>
 
-  if (!id) {
-    alert("Enter Tester ID.");
-    return;
-  }
+              <button id="loadMapBtn" class="btn-action hidden" onclick="loadSelectedMap()">Load Map</button>
+            </div>
+          </div>
+        </div>
 
-  const tester = testers.find(t => t.id === id);
+        <div class="btn-grid">
+          <button class="btn-action" onclick="clearBoard()">Clear Board</button>
+          <button class="btn-solve" onclick="solveBoard()">Solve</button>
+          <button class="btn-action" onclick="downloadPNG()">Download PNG</button>
 
-  if (!tester) {
-    alert("Tester not found.");
-    return;
-  }
+          <button class="btn-action" onclick="loadSampleGrid()">Sample Grid</button>
+          <button class="btn-action" onclick="pasteFromClipboard()">Paste From Clipboard</button>
+          <button class="btn-action" onclick="openSolverHelp()">Solver Help</button>
+        </div>
 
-  window.currentTester = tester;
+        <div id="report" class="report">Ready. Grid and solver are wired together.</div>
+      </div>
 
-  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(tester));
+      <div class="card editor-card">
+        <div class="sticky-tools">
+          <div class="section-title" style="margin-top:0;">Editable Board</div>
+          <div class="help" style="margin-bottom:8px;">
+            Non-graveyard boards use 7×13. Graveyard boards use 7×20.
+          </div>
 
-  updateUserUI();
-}
+          <div class="tool-grid">
+            <button id="tool-number" class="btn-white tool-active" onclick="setTool('number')">Number</button>
+            <button id="tool-block" class="btn-black" onclick="setTool('block')">Block</button>
+            <button id="tool-bubble" class="btn-bubble" onclick="setTool('bubble')">Bubble</button>
+            <button id="tool-shaft" class="btn-shaft" onclick="setTool('shaft')">Shaft</button>
+          </div>
+        </div>
 
-// ==========================
-// LOGOUT
-// ==========================
-function logoutTester() {
-  window.currentTester = null;
-  localStorage.removeItem(SESSION_STORAGE_KEY);
-  updateUserUI();
-}
+        <div class="grid-wrap">
+          <div id="grid"></div>
+        </div>
+      </div>
 
-// ==========================
-// ADD TESTER (ADMIN ONLY)
-// ==========================
-function addTester() {
-  if (!window.currentTester || !window.currentTester.isAdmin) {
-    alert("Admin only.");
-    return;
-  }
+      <div class="card">
+        <div class="section-title" style="margin-top:0;">Preview</div>
+        <div class="preview-wrap">
+          <canvas id="previewCanvas" width="860" height="1280"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  const name = prompt("Enter tester name:");
-  const id = prompt("Enter tester ID:");
+  <div id="loginOverlay" class="overlay show">
+    <div class="modal modal-box" onclick="event.stopPropagation()">
+      <h2>Beta Tester Login</h2>
+      <p>Enter your beta tester ID to unlock the solver.</p>
 
-  if (!name || !id) {
-    alert("Both name and ID required.");
-    return;
-  }
+      <div class="modal-grid">
+        <div class="field">
+          <label for="loginTesterId">Tester ID</label>
+          <input id="loginTesterId" type="text" placeholder="Enter tester ID">
+        </div>
+      </div>
 
-  if (testers.some(t => t.id === id)) {
-    alert("Tester already exists.");
-    return;
-  }
+      <div class="modal-actions">
+        <button class="btn-solve" onclick="loginTester()">Login</button>
+        <button class="btn-action" onclick="clearLoginField()">Clear</button>
+      </div>
 
-  testers.push({
-    name,
-    id,
-    isAdmin: false
-  });
+      <div id="loginStatus" class="status-text"></div>
+    </div>
+  </div>
 
-  saveTesters();
-  alert("Tester added.");
-}
+  <div id="addTesterOverlay" class="overlay" onclick="closeAddTesterModal()">
+    <div class="modal modal-box" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeAddTesterModal()" aria-label="Close">×</button>
 
-// ==========================
-// UI UPDATE
-// ==========================
-function updateUserUI() {
-  const badge = document.getElementById("loggedInBadge");
-  const appShell = document.getElementById("appShell");
+      <h2>Add Beta Tester</h2>
+      <p>Only the hard-coded admin account can add testers locally.</p>
 
-  if (window.currentTester) {
-    if (badge) {
-      badge.textContent = `Logged in as: ${window.currentTester.name} (${window.currentTester.id})`;
-    }
+      <div class="modal-grid">
+        <div class="field">
+          <label for="adminIdInput">Admin ID</label>
+          <input id="adminIdInput" type="text" placeholder="Enter admin ID">
+        </div>
 
-    appShell?.classList.remove("locked");
-  } else {
-    if (badge) {
-      badge.textContent = "";
-    }
+        <div class="field">
+          <label for="newTesterName">Tester Name</label>
+          <input id="newTesterName" type="text" placeholder="Enter tester name">
+        </div>
 
-    appShell?.classList.add("locked");
-  }
-}
+        <div class="field">
+          <label for="newTesterId">Tester ID</label>
+          <input id="newTesterId" type="text" placeholder="Enter tester ID">
+        </div>
+      </div>
 
-// ==========================
-// INIT
-// ==========================
-function initAccessControl() {
-  loadTesters();
-  restoreSession();
-  updateUserUI();
-}
+      <div class="modal-actions">
+        <button class="btn-success" onclick="addBetaTester()">Add Tester</button>
+        <button class="btn-action" onclick="closeAddTesterModal()">Close</button>
+      </div>
 
-// ==========================
-// EXPORTS
-// ==========================
-window.loginTester = loginTester;
-window.logoutTester = logoutTester;
-window.addTester = addTester;
-window.initAccessControl = initAccessControl;
+      <div id="addTesterStatus" class="status-text"></div>
+      <div class="tester-list" id="testerList"></div>
+    </div>
+  </div>
+
+  <div id="solverHelpOverlay" class="overlay" onclick="closeSolverHelp()">
+    <div class="modal modal-box" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeSolverHelp()" aria-label="Close">×</button>
+      <h2>Solver Help</h2>
+      <div id="solverHelpBody" class="help-content"></div>
+      <div class="modal-actions">
+        <button class="btn-action" onclick="closeSolverHelp()">Close</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
