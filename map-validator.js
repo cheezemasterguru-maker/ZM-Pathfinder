@@ -31,10 +31,10 @@ window.ZMMapValidator = (() => {
     const isGraveyard = isGraveyardName(chamberName);
 
     if (isSpecialSmallEvent(eventName)) {
-      return isGraveyard ? 16 : 11;
+      return isGraveyard ? 16 : 13;
     }
 
-    return isGraveyard ? 20 : 13;
+    return isGraveyard ? 20 : 15;
   }
 
   function inferEventAndChamberFromTitle(title) {
