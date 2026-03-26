@@ -1,3 +1,4 @@
+console.log("MAP DATA LOADED V999");
 window.ZM_MAP_DATA = {
   Main: {
     "Treasures in Ice": {
