@@ -1,5 +1,5 @@
 // ================================
-// ZM Pathfinder AUTH (ID ONLY FIX)
+// ZM Pathfinder AUTH (FINAL)
 // ================================
 
 const ADMIN_NAME = "CheezeMasterGuru";
@@ -27,6 +27,7 @@ const DEFAULT_TESTERS = [
 // STATE
 // ================================
 let testers = [];
+window.currentTester = null;
 
 // ================================
 // LOAD TESTERS
@@ -54,6 +55,7 @@ function saveTesters(){
 // ================================
 function restoreSession(){
   const saved = localStorage.getItem(SESSION_STORAGE_KEY);
+
   if (!saved) {
     window.currentTester = null;
     return;
@@ -88,7 +90,6 @@ function loginTester(){
 
   let tester = testers.find(t => t.id === id);
 
-  // If not found, auto-create
   if (!tester) {
     tester = {
       name: id === ADMIN_ID ? ADMIN_NAME : `User-${id}`,
@@ -101,7 +102,6 @@ function loginTester(){
 
   tester.isAdmin = (tester.id === ADMIN_ID);
 
-  // SAVE SESSION
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(tester));
   window.currentTester = tester;
 
@@ -137,13 +137,13 @@ function updateUserUI(){
 }
 
 // ================================
-// INIT
+// INIT (AUTO RUN)
 // ================================
-function initAccessControl(){
+(function initAuth(){
   loadTesters();
   restoreSession();
-  updateUserUI();
-}
+  window.addEventListener("load", updateUserUI);
+})();
 
 // ================================
 // EXPORTS
@@ -151,4 +151,3 @@ function initAccessControl(){
 window.loginTester = loginTester;
 window.logoutTester = logoutTester;
 window.updateUserUI = updateUserUI;
-window.initAccessControl = initAccessControl;
