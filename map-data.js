@@ -533,8 +533,6 @@ window.ZM_MAP_DATA = {
     [15,25,16,26,16,"X","X"],
     ["",15,24,15,"","X","X"]
 ]
-    }
-  }
 },
 
 "Treasure Trove of Gems": {
