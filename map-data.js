@@ -606,8 +606,9 @@ window.ZM_MAP_DATA = {
     ["X","X",11,21,12,22,12],
     ["X","X",18,10,"",11,""]
   ]
+
 }
-  },
+  },   // ← THIS closes Main
 
   Legacy: {}
 };
