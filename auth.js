@@ -4,7 +4,7 @@
     try {
       window.currentTester = JSON.parse(saved);
     } catch {
-      localStorage.removeItem("zm_user");
+      localStorage.removeItem(TESTER_STORAGE_KEY);
     }
   }
 })();stonst ADMIN_NAME = "CheezeMasterGuru";
@@ -291,7 +291,7 @@ function initAccessControl(){
   if (session) {
     const tester = findTesterById(session.id);
     if (tester) {
-      localStorage.setItem("zm_user", JSON.stringify(tester));
+      localStorage.setItem(TESTER_STORAGE_KEY, ...)
 window.currentTester = tester;
       unlockApp();
       return;
