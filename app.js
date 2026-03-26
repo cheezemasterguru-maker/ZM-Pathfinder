@@ -1015,21 +1015,22 @@ function init(){
   loadHelpContent();
   populateEventTypeSelect();
 
-  if (!window.ZM_MAP_DATA) {
-  setReport("DEBUG: ZM_MAP_DATA is undefined");
-} else if (!window.ZM_MAP_DATA.Main) {
-  setReport("DEBUG: ZM_MAP_DATA exists but Main is missing");
-} else if (!window.ZM_MAP_DATA.Legacy) {
-  setReport("DEBUG: ZM_MAP_DATA exists but Legacy is missing");
-} else {
-  setReport("DEBUG: ZM_MAP_DATA loaded correctly");
-}
-  }
-
   render();
   renderPreview();
   initAccessControl();
   updateUserUI();
+
+  // ✅ MOVE DEBUG HERE (LAST THING)
+  if (!window.ZM_MAP_DATA) {
+    setReport("DEBUG: ZM_MAP_DATA is undefined");
+  } else if (!window.ZM_MAP_DATA.Main) {
+    setReport("DEBUG: ZM_MAP_DATA exists but Main is missing");
+  } else if (!window.ZM_MAP_DATA.Legacy) {
+    setReport("DEBUG: ZM_MAP_DATA exists but Legacy is missing");
+  } else {
+    setReport("DEBUG: ZM_MAP_DATA loaded correctly");
+  }
+}
 }
 
 window.openSolverHelp = openSolverHelp;
