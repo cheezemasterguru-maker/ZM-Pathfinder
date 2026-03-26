@@ -435,15 +435,18 @@ function loadSelectedMap(){
   document.getElementById("titleInput").value = currentPreviewTitle;
   document.getElementById("gateType").value = mapRecord.gateType || "standard";
 
-  const rowsForMap = getExpectedRowsForEventAndChamber(
-    selectedMapPath?.eventName || "",
-    selectedMapPath?.eventChamber || ""
-  );
-  setBoardRowCount(rowsForMap);
-
   const sourceGrid = mapRecord.grid || [];
 
-  const integrity = runLoadedGridIntegrityCheck(sourceGrid, currentPreviewTitle);
+const cushionRows = 2;
+const minimumRows = isGraveyardValue(selectedMapPath?.eventChamber) ? 16 : 13;
+const rowsForMap = Math.min(
+  MAX_ROWS,
+  Math.max(minimumRows, sourceGrid.length + cushionRows)
+);
+
+setBoardRowCount(rowsForMap);
+
+const integrity = runLoadedGridIntegrityCheck(sourceGrid, currentPreviewTitle);
   if (!integrity.ok) {
     setReport(`Map integrity check failed: ${integrity.errors[0]}`);
     return;
