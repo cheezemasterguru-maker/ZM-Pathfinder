@@ -91,17 +91,19 @@ function closeSolverHelp(){
 }
 
 function hasAnyMainMapData(eventName){
-  const chamberList = window.ZM_MAP_LIBRARY?.Main?.[eventName] || [];
-  return chamberList.some(chamber => !!window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber]);
+  const event = window.ZM_MAP_DATA?.Main?.[eventName];
+  if (!event || typeof event !== "object") return false;
+  return Object.values(event).some(chamber => !!chamber);
 }
 
 function hasAnyLegacyMineData(eventName, mineName){
-  const chamberList = window.ZM_MAP_LIBRARY?.Legacy?.[eventName]?.[mineName] || [];
-  return chamberList.some(chamber => !!window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName]?.[chamber]);
+  const mine = window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName];
+  if (!mine || typeof mine !== "object") return false;
+  return Object.values(mine).some(chamber => !!chamber);
 }
 
 function hasAnyLegacyEventData(eventName){
-  const mines = window.ZM_MAP_LIBRARY?.Legacy?.[eventName] || {};
+  const mines = window.ZM_MAP_DATA?.Legacy?.[eventName] || {};
   return Object.keys(mines).some(mineName => hasAnyLegacyMineData(eventName, mineName));
 }
 
@@ -109,10 +111,10 @@ function populateEventTypeSelect(){
   const select = document.getElementById("eventTypeSelect");
   select.innerHTML = '<option value="">Select Event Type</option>';
 
-  if (!window.ZM_MAP_LIBRARY || !window.ZM_MAP_DATA) return;
+  if (!window.ZM_MAP_DATA) return;
 
-  const mainHasData = Object.keys(window.ZM_MAP_LIBRARY.Main || {}).some(eventName => hasAnyMainMapData(eventName));
-  const legacyHasData = Object.keys(window.ZM_MAP_LIBRARY.Legacy || {}).some(eventName => hasAnyLegacyEventData(eventName));
+  const mainHasData = Object.keys(window.ZM_MAP_DATA.Main || {}).some(eventName => hasAnyMainMapData(eventName));
+  const legacyHasData = Object.keys(window.ZM_MAP_DATA.Legacy || {}).some(eventName => hasAnyLegacyEventData(eventName));
 
   if (mainHasData) {
     const option = document.createElement("option");
@@ -164,7 +166,7 @@ function handleEventTypeChange(){
   const eventNameSelect = document.getElementById("eventNameSelect");
 
   resetMapLoaderBelow(1);
-  if (!eventType || !window.ZM_MAP_LIBRARY || !window.ZM_MAP_LIBRARY[eventType]) {
+  if (!eventType || !window.ZM_MAP_DATA || !window.ZM_MAP_DATA[eventType]) {
     ensureBoardRowCountFromCurrentContext();
     return;
   }
@@ -172,9 +174,9 @@ function handleEventTypeChange(){
   let validNames = [];
 
   if (eventType === "Main") {
-    validNames = Object.keys(window.ZM_MAP_LIBRARY.Main || {}).filter(eventName => hasAnyMainMapData(eventName));
+    validNames = Object.keys(window.ZM_MAP_DATA.Main || {}).filter(eventName => hasAnyMainMapData(eventName));
   } else if (eventType === "Legacy") {
-    validNames = Object.keys(window.ZM_MAP_LIBRARY.Legacy || {}).filter(eventName => hasAnyLegacyEventData(eventName));
+    validNames = Object.keys(window.ZM_MAP_DATA.Legacy || {}).filter(eventName => hasAnyLegacyEventData(eventName));
   }
 
   if (!validNames.length) {
@@ -210,7 +212,7 @@ function handleEventNameChange(){
   }
 
   if (eventType === "Main") {
-    const chambers = (window.ZM_MAP_LIBRARY?.Main?.[eventName] || []).filter(chamber => {
+    const chambers = Object.keys(window.ZM_MAP_DATA?.Main?.[eventName] || {}).filter(chamber => {
       return !!window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber];
     });
 
@@ -228,7 +230,7 @@ function handleEventNameChange(){
       eventChamberSelect.appendChild(option);
     });
   } else if (eventType === "Legacy") {
-    const validMines = Object.keys(window.ZM_MAP_LIBRARY?.Legacy?.[eventName] || {}).filter(mineName => {
+    const validMines = Object.keys(window.ZM_MAP_DATA?.Legacy?.[eventName] || {}).filter(mineName => {
       return hasAnyLegacyMineData(eventName, mineName);
     });
 
@@ -262,7 +264,7 @@ function handleEventMineChange(){
     return;
   }
 
-  const chambers = (window.ZM_MAP_LIBRARY?.Legacy?.[eventName]?.[eventMine] || []).filter(chamber => {
+  const chambers = Object.keys(window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine] || {}).filter(chamber => {
     return !!window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine]?.[chamber];
   });
 
@@ -939,13 +941,12 @@ function init(){
   currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
   loadHelpContent();
   populateEventTypeSelect();
-  setReport(
-  "Library has Essence Cave: " + String(!!window.ZM_MAP_LIBRARY?.Main?.["Essence Cave"]) +
-  "\nData has Essence Cave: " + String(!!window.ZM_MAP_DATA?.Main?.["Essence Cave"]) +
-  "\nData Chamber 1 exists: " + String(!!window.ZM_MAP_DATA?.Main?.["Essence Cave"]?.["Chamber 1"])
-);
 
-  if (window.ZMMapValidator && typeof window.ZMMapValidator.validateMainMapData === "function") {
+  if (!window.ZM_MAP_DATA) {
+    setReport("ZM_MAP_DATA not loaded.");
+  } else if (!window.ZMMapValidator) {
+    setReport("ZMMapValidator not loaded.");
+  } else {
     const allErrors = window.ZMMapValidator.validateMainMapData(window.ZM_MAP_DATA);
     if (allErrors.length) {
       console.error("Map data integrity errors:", allErrors);
