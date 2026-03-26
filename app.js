@@ -1040,6 +1040,7 @@ function init(){
 
 window.openSolverHelp = openSolverHelp;
 window.closeSolverHelp = closeSolverHelp;
+window.setReport = setReport;
 window.handleEventTypeChange = handleEventTypeChange;
 window.handleEventNameChange = handleEventNameChange;
 window.handleEventMineChange = handleEventMineChange;
