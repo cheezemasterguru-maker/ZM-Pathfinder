@@ -246,9 +246,7 @@ window.ZMMapValidator = (() => {
       return errors;
     }
 
-    const expectedRows = getExpectedRowCount(eventName, chamberName);
-
-    errors.push(...validateGridShape(chamber.grid, label, expectedRows));
+    errors.push(...validateGridShape(chamber.grid, label, null));
 
     if (Array.isArray(chamber.grid)) {
       errors.push(...validateTiles(chamber.grid, label));
