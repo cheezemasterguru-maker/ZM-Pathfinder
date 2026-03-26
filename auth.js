@@ -1,4 +1,13 @@
-const ADMIN_NAME = "CheezeMasterGuru";
+(function restoreUser(){
+  const saved = localStorage.getItem(TESTER_STORAGE_KEY);
+  if (saved) {
+    try {
+      window.currentTester = JSON.parse(saved);
+    } catch {
+      localStorage.removeItem("zm_user");
+    }
+  }
+})();stonst ADMIN_NAME = "CheezeMasterGuru";
 const ADMIN_ID = "7625451";
 const TESTER_STORAGE_KEY = "zm_pathfinder_beta_testers";
 const SESSION_STORAGE_KEY = "zm_pathfinder_beta_session";
