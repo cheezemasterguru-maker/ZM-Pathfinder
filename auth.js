@@ -20,12 +20,17 @@ const DEFAULT_TESTERS = [
 
 window.currentTester = null;
 
+/* -------------------- UTIL -------------------- */
+
 function normalizeId(value){
   return String(value || "").trim();
 }
 
+/* -------------------- TESTERS -------------------- */
+
 function initializeTesters(){
   let existing = [];
+
   try {
     existing = JSON.parse(localStorage.getItem(TESTER_STORAGE_KEY) || "[]");
   } catch {
@@ -62,6 +67,13 @@ function saveStoredTesters(testers){
   localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(testers));
 }
 
+function findTesterById(id){
+  const testers = getStoredTesters();
+  return testers.find(t => normalizeId(t.id) === normalizeId(id)) || null;
+}
+
+/* -------------------- SESSION -------------------- */
+
 function getStoredSession(){
   try {
     return JSON.parse(localStorage.getItem(SESSION_STORAGE_KEY) || "null");
@@ -78,25 +90,7 @@ function clearSession(){
   localStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
-function findTesterById(id){
-  const testers = getStoredTesters();
-  const wanted = normalizeId(id);
-  return testers.find(t => normalizeId(t.id) === wanted) || null;
-}
-
-function setLoginStatus(msg, ok = false){
-  const el = document.getElementById("loginStatus");
-  if (!el) return;
-  el.textContent = msg;
-  el.className = "status-text " + (msg ? (ok ? "status-ok" : "status-error") : "");
-}
-
-function setAddTesterStatus(msg, ok = false){
-  const el = document.getElementById("addTesterStatus");
-  if (!el) return;
-  el.textContent = msg;
-  el.className = "status-text " + (msg ? (ok ? "status-ok" : "status-error") : "");
-}
+/* -------------------- UI -------------------- */
 
 function updateUserUI(){
   const badge = document.getElementById("loggedInBadge");
@@ -137,149 +131,31 @@ function lockApp(){
   updateUserUI();
 }
 
-function clearLoginField(){
-  const input = document.getElementById("loginTesterId");
-  if (input) input.value = "";
-  setLoginStatus("");
-}
+/* -------------------- AUTH -------------------- */
 
 function loginTester(){
   const id = normalizeId(document.getElementById("loginTesterId").value);
 
-  if (!id) {
-    setLoginStatus("Enter a tester ID.");
-    return;
-  }
+  if (!id) return;
 
   const tester = findTesterById(id);
-  if (!tester) {
-    setLoginStatus("Tester ID not found.");
-    return;
-  }
+  if (!tester) return;
 
   window.currentTester = tester;
+
+  // 🔑 SAVE SESSION
   saveSession(tester);
 
-  setLoginStatus(`Welcome, ${tester.name}.`, true);
-
-  updateUserUI();
-
-  setTimeout(() => {
-    unlockApp();
-    clearLoginField();
-  }, 100);
+  unlockApp();
 }
 
 function logoutTester(){
   window.currentTester = null;
   clearSession();
-  closeAddTesterModal();
-  if (typeof closeSolverHelp === "function") {
-    closeSolverHelp();
-  }
   lockApp();
-  setLoginStatus("");
 }
 
-function renderTesterList(){
-  const list = document.getElementById("testerList");
-  if (!list) return;
-
-  const testers = getStoredTesters();
-  list.innerHTML = "";
-
-  testers.forEach(tester => {
-    const item = document.createElement("div");
-    item.className = "tester-item";
-
-    const meta = document.createElement("div");
-    meta.className = "tester-meta";
-
-    const name = document.createElement("div");
-    name.className = "tester-name";
-    name.textContent = tester.name + (tester.isAdmin ? " (Admin)" : "");
-
-    const id = document.createElement("div");
-    id.className = "tester-id";
-    id.textContent = tester.id;
-
-    meta.appendChild(name);
-    meta.appendChild(id);
-    item.appendChild(meta);
-
-    if (!tester.isAdmin) {
-      const removeBtn = document.createElement("button");
-      removeBtn.className = "btn-danger";
-      removeBtn.textContent = "Remove";
-      removeBtn.onclick = () => removeBetaTester(tester.id);
-      item.appendChild(removeBtn);
-    }
-
-    list.appendChild(item);
-  });
-}
-
-function openAddTesterModal(){
-  if (!window.currentTester || !window.currentTester.isAdmin) return;
-
-  renderTesterList();
-  setAddTesterStatus("");
-
-  document.getElementById("adminIdInput").value = "";
-  document.getElementById("newTesterName").value = "";
-  document.getElementById("newTesterId").value = "";
-
-  document.getElementById("addTesterOverlay").classList.add("show");
-}
-
-function closeAddTesterModal(){
-  const el = document.getElementById("addTesterOverlay");
-  if (el) el.classList.remove("show");
-  setAddTesterStatus("");
-}
-
-function removeBetaTester(id){
-  if (!window.currentTester || !window.currentTester.isAdmin) return;
-
-  const testers = getStoredTesters().filter(t => normalizeId(t.id) !== normalizeId(id));
-  saveStoredTesters(testers);
-  renderTesterList();
-  setAddTesterStatus("Tester removed.", true);
-}
-
-function addBetaTester(){
-  const adminId = normalizeId(document.getElementById("adminIdInput").value);
-  const name = String(document.getElementById("newTesterName").value || "").trim();
-  const id = normalizeId(document.getElementById("newTesterId").value);
-
-  if (adminId !== normalizeId(ADMIN_ID)) {
-    setAddTesterStatus("Invalid admin ID.");
-    return;
-  }
-
-  if (!name || !id) {
-    setAddTesterStatus("Enter tester name and tester ID.");
-    return;
-  }
-
-  const testers = getStoredTesters();
-  const exists = testers.some(t => normalizeId(t.id) === id);
-
-  if (exists) {
-    setAddTesterStatus("Tester ID already exists.");
-    return;
-  }
-
-  testers.push({ name, id, isAdmin: false });
-
-  saveStoredTesters(testers);
-  renderTesterList();
-
-  setAddTesterStatus(`Added tester locally: ${name} (${id})`, true);
-
-  document.getElementById("newTesterName").value = "";
-  document.getElementById("newTesterId").value = "";
-}
+/* -------------------- INIT -------------------- */
 
 function initAccessControl(){
   initializeTesters();
@@ -291,27 +167,22 @@ function initAccessControl(){
 
     if (tester) {
       window.currentTester = tester;
-      updateUserUI();
       unlockApp();
       return;
     }
   }
 
-  window.currentTester = null;
   lockApp();
 }
 
-/* 🔑 ENSURE AUTO INIT EVERY LOAD */
-window.addEventListener("DOMContentLoaded", () => {
-  initAccessControl();
+/* 🔥 FORCE RUN AFTER EVERYTHING LOADS */
+window.addEventListener("load", () => {
+  setTimeout(initAccessControl, 50);
 });
 
-/* EXPORTS */
+/* -------------------- EXPORT -------------------- */
+
 window.loginTester = loginTester;
 window.logoutTester = logoutTester;
-window.clearLoginField = clearLoginField;
-window.openAddTesterModal = openAddTesterModal;
-window.closeAddTesterModal = closeAddTesterModal;
-window.addBetaTester = addBetaTester;
 window.initAccessControl = initAccessControl;
 window.updateUserUI = updateUserUI;
