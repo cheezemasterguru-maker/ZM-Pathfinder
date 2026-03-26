@@ -13,13 +13,52 @@ window.ZMMapValidator = (() => {
     return isNumberTile(value) || VALID_TILE_TYPES.has(value);
   }
 
+  function isSpecialSmallEvent(eventName) {
+    return MAIN_EVENT_3_CHAMBER.has(eventName);
+  }
+
+  function isGraveyardName(chamberName) {
+    return String(chamberName || "").trim().toLowerCase() === "graveyard";
+  }
+
   function getExpectedMainChambers(eventName) {
     return MAIN_EVENT_3_CHAMBER.has(eventName)
       ? ["Chamber 1", "Chamber 2", "Chamber 3", "Graveyard"]
       : ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"];
   }
 
-  function validateGridShape(grid, label) {
+  function getExpectedRowCount(eventName, chamberName) {
+    const isGraveyard = isGraveyardName(chamberName);
+
+    if (isSpecialSmallEvent(eventName)) {
+      return isGraveyard ? 16 : 11;
+    }
+
+    return isGraveyard ? 20 : 13;
+  }
+
+  function inferEventAndChamberFromTitle(title) {
+    const raw = String(title || "").trim();
+    if (!raw) {
+      return { eventName: "", chamberName: "" };
+    }
+
+    const parts = raw.split(" - ").map(s => s.trim()).filter(Boolean);
+
+    if (parts.length >= 2) {
+      return {
+        eventName: parts.slice(0, -1).join(" - "),
+        chamberName: parts[parts.length - 1]
+      };
+    }
+
+    return {
+      eventName: "",
+      chamberName: raw
+    };
+  }
+
+  function validateGridShape(grid, label, expectedRows = null) {
     const errors = [];
 
     if (!Array.isArray(grid)) {
@@ -30,6 +69,10 @@ window.ZMMapValidator = (() => {
     if (grid.length < 1) {
       errors.push(`${label}: grid has no rows.`);
       return errors;
+    }
+
+    if (expectedRows !== null && grid.length !== expectedRows) {
+      errors.push(`${label}: grid has ${grid.length} rows, expected ${expectedRows}.`);
     }
 
     for (let r = 0; r < grid.length; r++) {
@@ -185,7 +228,7 @@ window.ZMMapValidator = (() => {
     return errors;
   }
 
-  function validateChamberObject(chamber, label) {
+  function validateChamberObject(chamber, label, eventName, chamberName) {
     const errors = [];
 
     if (!chamber || typeof chamber !== "object") {
@@ -206,7 +249,9 @@ window.ZMMapValidator = (() => {
       return errors;
     }
 
-    errors.push(...validateGridShape(chamber.grid, label));
+    const expectedRows = getExpectedRowCount(eventName, chamberName);
+
+    errors.push(...validateGridShape(chamber.grid, label, expectedRows));
 
     if (Array.isArray(chamber.grid)) {
       errors.push(...validateTiles(chamber.grid, label));
@@ -227,6 +272,10 @@ window.ZMMapValidator = (() => {
       return ['ZM_MAP_DATA.Main is missing or invalid.'];
     }
 
+    if (!("Legacy" in data) || typeof data.Legacy !== "object" || data.Legacy === null) {
+      return ['ZM_MAP_DATA.Legacy is missing or invalid.'];
+    }
+
     const main = data.Main;
 
     for (const eventName of Object.keys(main)) {
@@ -237,13 +286,29 @@ window.ZMMapValidator = (() => {
 
       for (const [key, value] of Object.entries(event)) {
         if (key === "Graveyard") {
-          if (value !== null) {
-            errors.push(`Main/${eventName}/Graveyard: expected null until graveyard map exists.`);
+          if (value === null) {
+            continue;
           }
+
+          errors.push(
+            ...validateChamberObject(
+              value,
+              `Main/${eventName}/${key}`,
+              eventName,
+              key
+            )
+          );
           continue;
         }
 
-        errors.push(...validateChamberObject(value, `Main/${eventName}/${key}`));
+        errors.push(
+          ...validateChamberObject(
+            value,
+            `Main/${eventName}/${key}`,
+            eventName,
+            key
+          )
+        );
       }
     }
 
@@ -252,7 +317,14 @@ window.ZMMapValidator = (() => {
 
   function validateSingleLoadedGrid(grid, title = "Loaded Grid") {
     const errors = [];
-    errors.push(...validateGridShape(grid, title));
+    const inferred = inferEventAndChamberFromTitle(title);
+
+    let expectedRows = null;
+    if (inferred.eventName && inferred.chamberName) {
+      expectedRows = getExpectedRowCount(inferred.eventName, inferred.chamberName);
+    }
+
+    errors.push(...validateGridShape(grid, title, expectedRows));
 
     if (Array.isArray(grid)) {
       errors.push(...validateTiles(grid, title));
