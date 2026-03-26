@@ -1,106 +1,170 @@
+// ==========================
+// ZM PATHFINDER AUTH SYSTEM
+// ==========================
+
+const ADMIN_NAME = "CheezeMasterGuru";
 const ADMIN_ID = "7625451";
+
+const TESTER_STORAGE_KEY = "zm_pathfinder_beta_testers";
 const SESSION_STORAGE_KEY = "zm_session";
 
-// ================================
-// RESTORE SESSION
-// ================================
-(function () {
-  const saved = localStorage.getItem(SESSION_STORAGE_KEY);
-  if (saved) {
-    try {
+// ==========================
+// DEFAULT TESTERS (UNCHANGED)
+// ==========================
+const DEFAULT_TESTERS = [
+  { name: "CheezeMasterGuru", id: "7625451", isAdmin: true },
+  { name: "AniLaBanani", id: "23358613", isAdmin: true },
+  { name: "ChristopherH", id: "17462546", isAdmin: true },
+  { name: "Azshannia", id: "13276937", isAdmin: true },
+  { name: "Sonlite", id: "19540845", isAdmin: true },
+  { name: "FatJesus", id: "16332297", isAdmin: true },
+  { name: "Garon98", id: "4120350", isAdmin: true },
+  { name: "XCONN6286", id: "12507785", isAdmin: true },
+  { name: "FS1997", id: "19770641", isAdmin: true }
+];
+
+// ==========================
+// INTERNAL STATE
+// ==========================
+let testers = [];
+
+// ==========================
+// LOAD TESTERS
+// ==========================
+function loadTesters() {
+  try {
+    const saved = localStorage.getItem(TESTER_STORAGE_KEY);
+    testers = saved ? JSON.parse(saved) : DEFAULT_TESTERS.slice();
+  } catch {
+    testers = DEFAULT_TESTERS.slice();
+  }
+}
+
+// ==========================
+// SAVE TESTERS
+// ==========================
+function saveTesters() {
+  localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(testers));
+}
+
+// ==========================
+// RESTORE SESSION (FIXES LOGIN LOOP)
+// ==========================
+function restoreSession() {
+  try {
+    const saved = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (saved) {
       window.currentTester = JSON.parse(saved);
-    } catch {
-      localStorage.removeItem(SESSION_STORAGE_KEY);
-      window.currentTester = null;
     }
-  } else {
+  } catch {
     window.currentTester = null;
   }
-})();
+}
 
-// ================================
-// LOGIN
-// ================================
+// ==========================
+// LOGIN (ID ONLY)
+// ==========================
 function loginTester() {
-  const input = document.getElementById("testerId");
-  const id = String(input?.value || "").trim();
+  const idInput = document.getElementById("testerIdInput");
+  if (!idInput) return;
+
+  const id = idInput.value.trim();
 
   if (!id) {
     alert("Enter Tester ID.");
     return;
   }
 
-  const tester = {
-    name: id === ADMIN_ID ? "CheezeMasterGuru" : `User-${id}`,
-    id,
-    isAdmin: id === ADMIN_ID
-  };
+  const tester = testers.find(t => t.id === id);
 
-  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(tester));
+  if (!tester) {
+    alert("Tester not found.");
+    return;
+  }
+
   window.currentTester = tester;
 
-  unlockApp();
+  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(tester));
+
+  updateUserUI();
 }
 
-// ================================
+// ==========================
 // LOGOUT
-// ================================
+// ==========================
 function logoutTester() {
-  localStorage.removeItem(SESSION_STORAGE_KEY);
   window.currentTester = null;
-  lockApp();
-}
-
-// ================================
-// 🔥 UI CONTROL (THIS FIXES BLANK SCREEN)
-// ================================
-function unlockApp() {
-  const shell = document.getElementById("appShell");
-  if (shell) shell.classList.remove("locked");
-
+  localStorage.removeItem(SESSION_STORAGE_KEY);
   updateUserUI();
 }
 
-function lockApp() {
-  const shell = document.getElementById("appShell");
-  if (shell) shell.classList.add("locked");
+// ==========================
+// ADD TESTER (ADMIN ONLY)
+// ==========================
+function addTester() {
+  if (!window.currentTester || !window.currentTester.isAdmin) {
+    alert("Admin only.");
+    return;
+  }
 
-  updateUserUI();
+  const name = prompt("Enter tester name:");
+  const id = prompt("Enter tester ID:");
+
+  if (!name || !id) {
+    alert("Both name and ID required.");
+    return;
+  }
+
+  if (testers.some(t => t.id === id)) {
+    alert("Tester already exists.");
+    return;
+  }
+
+  testers.push({
+    name,
+    id,
+    isAdmin: false
+  });
+
+  saveTesters();
+  alert("Tester added.");
 }
 
-// ================================
+// ==========================
 // UI UPDATE
-// ================================
+// ==========================
 function updateUserUI() {
   const badge = document.getElementById("loggedInBadge");
-  const loginSection = document.getElementById("loginSection");
-
-  if (!badge || !loginSection) return;
+  const appShell = document.getElementById("appShell");
 
   if (window.currentTester) {
-    badge.textContent = `Logged in as: ${window.currentTester.name} (${window.currentTester.id})`;
-    badge.classList.remove("hidden");
-    loginSection.classList.add("hidden");
+    if (badge) {
+      badge.textContent = `Logged in as: ${window.currentTester.name} (${window.currentTester.id})`;
+    }
+
+    appShell?.classList.remove("locked");
   } else {
-    badge.classList.add("hidden");
-    loginSection.classList.remove("hidden");
+    if (badge) {
+      badge.textContent = "";
+    }
+
+    appShell?.classList.add("locked");
   }
 }
 
-// ================================
-// INIT (CRITICAL)
-// ================================
-window.addEventListener("load", () => {
-  if (window.currentTester) {
-    unlockApp();
-  } else {
-    lockApp();
-  }
-});
+// ==========================
+// INIT
+// ==========================
+function initAccessControl() {
+  loadTesters();
+  restoreSession();
+  updateUserUI();
+}
 
-// ================================
+// ==========================
 // EXPORTS
-// ================================
+// ==========================
 window.loginTester = loginTester;
 window.logoutTester = logoutTester;
-window.updateUserUI = updateUserUI;
+window.addTester = addTester;
+window.initAccessControl = initAccessControl;
