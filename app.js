@@ -1,12 +1,9 @@
 const MAX_ROWS = 20;
-const STANDARD_CHAMBER_ROWS = 15;
-const STANDARD_GRAVEYARD_ROWS = 20;
-const SMALL_EVENT_CHAMBER_ROWS = 13;
-const SMALL_EVENT_GRAVEYARD_ROWS = 16;
+const MINED_ROWS = 13;
 const COLS = 7;
 
 let grid = [];
-let currentRowCount = STANDARD_CHAMBER_ROWS;
+let currentRowCount = MINED_ROWS;
 let tool = "number";
 let lastSelected = { r: 0, c: 0 };
 let selectedMapPath = null;
@@ -44,79 +41,18 @@ function isGraveyardValue(value){
   return String(value || "").trim().toLowerCase() === "graveyard";
 }
 
-function isSmallEventName(eventName){
-  const normalized = String(eventName || "").trim();
-  return normalized === "Essence Cave" || normalized === "Treasure Trove of Gems";
-}
-
-function getExpectedRowsForEventAndChamber(eventName, chamberName){
-  const isGraveyard = isGraveyardValue(chamberName);
-
-  if (isSmallEventName(eventName)) {
-    return isGraveyard ? SMALL_EVENT_GRAVEYARD_ROWS : SMALL_EVENT_CHAMBER_ROWS;
-  }
-
-  return isGraveyard ? STANDARD_GRAVEYARD_ROWS : STANDARD_CHAMBER_ROWS;
-}
-
-function getEventNameFromSelection(){
-  return document.getElementById("eventNameSelect")?.value || "";
-}
-
-function getChamberNameFromSelection(){
-  return document.getElementById("eventChamberSelect")?.value || "";
-}
-
-function parseEventAndChamberFromTitle(title){
-  const raw = String(title || "").trim();
-  if (!raw) return { eventName: "", chamberName: "" };
-
-  const parts = raw.split(" - ").map(s => s.trim()).filter(Boolean);
-
-  if (parts.length >= 2) {
-    return {
-      eventName: parts.slice(0, -1).join(" - "),
-      chamberName: parts[parts.length - 1]
-    };
-  }
-
-  return {
-    eventName: "",
-    chamberName: raw
-  };
-}
-
 function getRowsForContextFromSelection(){
-  const eventName = getEventNameFromSelection();
-  const chamberName = getChamberNameFromSelection();
-
-  if (!chamberName) {
-    return STANDARD_CHAMBER_ROWS;
-  }
-
-  return getExpectedRowsForEventAndChamber(eventName, chamberName);
+  const chamber = document.getElementById("eventChamberSelect")?.value || "";
+  return isGraveyardValue(chamber) ? MAX_ROWS : MINED_ROWS;
 }
 
 function getRowsForContextFromTitle(){
   const title = document.getElementById("titleInput")?.value || "";
-  const parsed = parseEventAndChamberFromTitle(title);
-
-  if (!parsed.chamberName) {
-    return STANDARD_CHAMBER_ROWS;
-  }
-
-  return getExpectedRowsForEventAndChamber(parsed.eventName, parsed.chamberName);
+  return title.toLowerCase().includes("graveyard") ? MAX_ROWS : MINED_ROWS;
 }
 
 function setBoardRowCount(nextRows){
-  const allowed = new Set([
-    SMALL_EVENT_CHAMBER_ROWS,
-    STANDARD_CHAMBER_ROWS,
-    SMALL_EVENT_GRAVEYARD_ROWS,
-    STANDARD_GRAVEYARD_ROWS
-  ]);
-
-  currentRowCount = allowed.has(nextRows) ? nextRows : STANDARD_CHAMBER_ROWS;
+  currentRowCount = nextRows === MAX_ROWS ? MAX_ROWS : MINED_ROWS;
   render();
   renderPreview();
 }
@@ -124,9 +60,7 @@ function setBoardRowCount(nextRows){
 function ensureBoardRowCountFromCurrentContext(){
   const rowsFromSelection = getRowsForContextFromSelection();
   const rowsFromTitle = getRowsForContextFromTitle();
-
-  const nextRows = Math.max(rowsFromSelection, rowsFromTitle);
-  setBoardRowCount(nextRows);
+  setBoardRowCount(rowsFromSelection === MAX_ROWS || rowsFromTitle === MAX_ROWS ? MAX_ROWS : MINED_ROWS);
 }
 
 function getVisibleGridSlice(){
@@ -435,18 +369,12 @@ function loadSelectedMap(){
   document.getElementById("titleInput").value = currentPreviewTitle;
   document.getElementById("gateType").value = mapRecord.gateType || "standard";
 
+  const isGraveyard = isGraveyardValue(selectedMapPath?.eventChamber);
+  setBoardRowCount(isGraveyard ? MAX_ROWS : MINED_ROWS);
+
   const sourceGrid = mapRecord.grid || [];
 
-const cushionRows = 2;
-const minimumRows = isGraveyardValue(selectedMapPath?.eventChamber) ? 16 : 13;
-const rowsForMap = Math.min(
-  MAX_ROWS,
-  Math.max(minimumRows, sourceGrid.length + cushionRows)
-);
-
-setBoardRowCount(rowsForMap);
-
-const integrity = runLoadedGridIntegrityCheck(sourceGrid, currentPreviewTitle);
+  const integrity = runLoadedGridIntegrityCheck(sourceGrid, currentPreviewTitle);
   if (!integrity.ok) {
     setReport(`Map integrity check failed: ${integrity.errors[0]}`);
     return;
@@ -630,7 +558,7 @@ function applyText(text){
 
   resetSolve();
   render();
-  rendifview();
+  renderPreview();
   setReport(`Pasted into board starting at Row ${startR + 1}, Col ${startC + 1}.`);
 }
 
@@ -640,7 +568,7 @@ function clearBoard(updateReport = true){
       grid[r][c] = "";
     }
   }
-  currentRowCount = STANDARD_CHAMBER_ROWS;
+  currentRowCount = MINED_ROWS;
   resetSolve();
   render();
   renderPreview();
@@ -652,7 +580,7 @@ function loadSampleGrid(){
   document.getElementById("gateType").value = "standard";
   document.getElementById("titleInput").value = "Gate 1";
   currentPreviewTitle = "Gate 1";
-  currentRowCount = STANDARD_CHAMBER_ROWS;
+  currentRowCount = MINED_ROWS;
 
   const sample = [
     [8,9,11,9,12,8,9],
@@ -708,10 +636,7 @@ function solveBoard(){
   };
 
   setReport(result.message || "Solved.");
-renderPreview();
-
-// 🔒 ADMIN ONLY: record difficulty
-
+  renderPreview();
 }
 
 function renderPreview(){
@@ -1014,28 +939,28 @@ function init(){
   currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
   loadHelpContent();
   populateEventTypeSelect();
+  setReport(
+  "Library has Essence Cave: " + String(!!window.ZM_MAP_LIBRARY?.Main?.["Essence Cave"]) +
+  "\nData has Essence Cave: " + String(!!window.ZM_MAP_DATA?.Main?.["Essence Cave"]) +
+  "\nData Chamber 1 exists: " + String(!!window.ZM_MAP_DATA?.Main?.["Essence Cave"]?.["Chamber 1"])
+);
+
+  if (window.ZMMapValidator && typeof window.ZMMapValidator.validateMainMapData === "function") {
+    const allErrors = window.ZMMapValidator.validateMainMapData(window.ZM_MAP_DATA);
+    if (allErrors.length) {
+      console.error("Map data integrity errors:", allErrors);
+      setReport(`Map data integrity warning: ${allErrors[0]}`);
+    }
+  }
 
   render();
   renderPreview();
   initAccessControl();
   updateUserUI();
-
-  // ✅ MOVE DEBUG HERE (LAST THING)
-  if (!window.ZM_MAP_DATA) {
-    setReport("DEBUG: ZM_MAP_DATA is undefined");
-  } else if (!window.ZM_MAP_DATA.Main) {
-    setReport("DEBUG: ZM_MAP_DATA exists but Main is missing");
-  } else if (!window.ZM_MAP_DATA.Legacy) {
-    setReport("DEBUG: ZM_MAP_DATA exists but Legacy is missing");
-  } else {
-    setReport("DEBUG: ZM_MAP_DATA loaded correctly");
-  }
-}
 }
 
 window.openSolverHelp = openSolverHelp;
 window.closeSolverHelp = closeSolverHelp;
-window.setReport = setReport;
 window.handleEventTypeChange = handleEventTypeChange;
 window.handleEventNameChange = handleEventNameChange;
 window.handleEventMineChange = handleEventMineChange;
