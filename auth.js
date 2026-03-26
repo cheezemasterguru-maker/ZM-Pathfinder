@@ -7,6 +7,16 @@
       localStorage.removeItem(TESTER_STORAGE_KEY);
     }
   }
+})();
+(restoreUser restoreUser(){
+  const saved = localStorage.getItem(TESTER_STORAGE_KEY);
+  if (saved) {
+    try {
+      window.currentTester = JSON.parse(saved);
+    } catch {
+      localStorage.removeItem(TESTER_STORAGE_KEY);
+    }
+  }
 })();stonst ADMIN_NAME = "CheezeMasterGuru";
 const ADMIN_ID = "7625451";
 const TESTER_STORAGE_KEY = "zm_pathfinder_beta_testers";
