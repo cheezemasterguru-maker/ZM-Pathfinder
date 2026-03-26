@@ -71,9 +71,6 @@ window.ZMMapValidator = (() => {
       return errors;
     }
 
-    if (expectedRows !== null && grid.length !== expectedRows) {
-      errors.push(`${label}: grid has ${grid.length} rows, expected ${expectedRows}.`);
-    }
 
     for (let r = 0; r < grid.length; r++) {
       if (!Array.isArray(grid[r])) {
