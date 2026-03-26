@@ -24,25 +24,13 @@ function normalizeId(value){
   return String(value || "").trim();
 }
 
-/* ---------- STORAGE ---------- */
-
-function safeGet(key, fallback){
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch(e){
-    return fallback;
-  }
-}
-
-function safeSet(key, value){
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch(e){}
-}
-
 function initializeTesters(){
-  let existing = safeGet(TESTER_STORAGE_KEY, []);
+  let existing = [];
+  try {
+    existing = JSON.parse(localStorage.getItem(TESTER_STORAGE_KEY) || "[]");
+  } catch {
+    existing = [];
+  }
 
   if (!Array.isArray(existing)) existing = [];
 
@@ -58,44 +46,43 @@ function initializeTesters(){
     merged.unshift({ name: ADMIN_NAME, id: ADMIN_ID, isAdmin: true });
   }
 
-  safeSet(TESTER_STORAGE_KEY, merged);
+  localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(merged));
 }
 
 function getStoredTesters(){
-  const testers = safeGet(TESTER_STORAGE_KEY, []);
-  return Array.isArray(testers) ? testers : [];
+  try {
+    const data = JSON.parse(localStorage.getItem(TESTER_STORAGE_KEY) || "[]");
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
 }
 
 function saveStoredTesters(testers){
-  safeSet(TESTER_STORAGE_KEY, testers);
+  localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(testers));
 }
 
 function getStoredSession(){
-  const session = safeGet(SESSION_STORAGE_KEY, null);
-
-  // 🔴 HARD FIX: reject corrupt session
-  if (!session || !session.id) return null;
-
-  return session;
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_STORAGE_KEY) || "null");
+  } catch {
+    return null;
+  }
 }
 
 function saveSession(session){
-  safeSet(SESSION_STORAGE_KEY, session);
+  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
 }
 
 function clearSession(){
-  try { localStorage.removeItem(SESSION_STORAGE_KEY); } catch(e){}
+  localStorage.removeItem(SESSION_STORAGE_KEY);
 }
-
-/* ---------- CORE ---------- */
 
 function findTesterById(id){
   const testers = getStoredTesters();
   const wanted = normalizeId(id);
   return testers.find(t => normalizeId(t.id) === wanted) || null;
 }
-
-/* ---------- UI ---------- */
 
 function setLoginStatus(msg, ok = false){
   const el = document.getElementById("loginStatus");
@@ -117,15 +104,18 @@ function updateUserUI(){
   const logoutBtn = document.getElementById("logoutBtn");
   const mapLoaderSection = document.getElementById("mapLoaderSection");
 
-  if (!badge || !addBtn || !logoutBtn || !mapLoaderSection) return;
-
   if (window.currentTester) {
     badge.textContent = `Logged in as: ${window.currentTester.name} (${window.currentTester.id})`;
     badge.className = "user-badge" + (window.currentTester.isAdmin ? " admin-badge" : "");
 
-    addBtn.classList.toggle("hidden", !window.currentTester.isAdmin);
-    logoutBtn.classList.remove("hidden");
+    if (window.currentTester.isAdmin) {
+      addBtn.classList.remove("hidden");
+    } else {
+      addBtn.classList.add("hidden");
+    }
+
     mapLoaderSection.classList.remove("hidden");
+    logoutBtn.classList.remove("hidden");
   } else {
     badge.textContent = "Not logged in";
     badge.className = "user-badge";
@@ -135,29 +125,17 @@ function updateUserUI(){
   }
 }
 
-/* ---------- LOCK SYSTEM ---------- */
-
 function unlockApp(){
-  const shell = document.getElementById("appShell");
-  const overlay = document.getElementById("loginOverlay");
-
-  if (shell) shell.classList.remove("locked");
-  if (overlay) overlay.classList.remove("show");
-
+  document.getElementById("appShell").classList.remove("locked");
+  document.getElementById("loginOverlay").classList.remove("show");
   updateUserUI();
 }
 
 function lockApp(){
-  const shell = document.getElementById("appShell");
-  const overlay = document.getElementById("loginOverlay");
-
-  if (shell) shell.classList.add("locked");
-  if (overlay) overlay.classList.add("show");
-
+  document.getElementById("appShell").classList.add("locked");
+  document.getElementById("loginOverlay").classList.add("show");
   updateUserUI();
 }
-
-/* ---------- LOGIN ---------- */
 
 function clearLoginField(){
   const input = document.getElementById("loginTesterId");
@@ -166,8 +144,7 @@ function clearLoginField(){
 }
 
 function loginTester(){
-  const input = document.getElementById("loginTesterId");
-  const id = normalizeId(input?.value);
+  const id = normalizeId(document.getElementById("loginTesterId").value);
 
   if (!id) {
     setLoginStatus("Enter a tester ID.");
@@ -181,25 +158,28 @@ function loginTester(){
   }
 
   window.currentTester = tester;
-  saveSession({ id: tester.id });
+  saveSession(tester);
 
-  unlockApp();
   setLoginStatus(`Welcome, ${tester.name}.`, true);
-  clearLoginField();
+
+  updateUserUI();
+
+  setTimeout(() => {
+    unlockApp();
+    clearLoginField();
+  }, 100);
 }
 
 function logoutTester(){
   window.currentTester = null;
   clearSession();
-
-  closeAddTesterModal?.();
-  closeSolverHelp?.();
-
+  closeAddTesterModal();
+  if (typeof closeSolverHelp === "function") {
+    closeSolverHelp();
+  }
   lockApp();
   setLoginStatus("");
 }
-
-/* ---------- ADMIN ---------- */
 
 function renderTesterList(){
   const list = document.getElementById("testerList");
@@ -212,19 +192,27 @@ function renderTesterList(){
     const item = document.createElement("div");
     item.className = "tester-item";
 
-    item.innerHTML = `
-      <div class="tester-meta">
-        <div class="tester-name">${tester.name}${tester.isAdmin ? " (Admin)" : ""}</div>
-        <div class="tester-id">${tester.id}</div>
-      </div>
-    `;
+    const meta = document.createElement("div");
+    meta.className = "tester-meta";
+
+    const name = document.createElement("div");
+    name.className = "tester-name";
+    name.textContent = tester.name + (tester.isAdmin ? " (Admin)" : "");
+
+    const id = document.createElement("div");
+    id.className = "tester-id";
+    id.textContent = tester.id;
+
+    meta.appendChild(name);
+    meta.appendChild(id);
+    item.appendChild(meta);
 
     if (!tester.isAdmin) {
-      const btn = document.createElement("button");
-      btn.className = "btn-danger";
-      btn.textContent = "Remove";
-      btn.onclick = () => removeBetaTester(tester.id);
-      item.appendChild(btn);
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "btn-danger";
+      removeBtn.textContent = "Remove";
+      removeBtn.onclick = () => removeBetaTester(tester.id);
+      item.appendChild(removeBtn);
     }
 
     list.appendChild(item);
@@ -245,7 +233,8 @@ function openAddTesterModal(){
 }
 
 function closeAddTesterModal(){
-  document.getElementById("addTesterOverlay").classList.remove("show");
+  const el = document.getElementById("addTesterOverlay");
+  if (el) el.classList.remove("show");
   setAddTesterStatus("");
 }
 
@@ -254,7 +243,6 @@ function removeBetaTester(id){
 
   const testers = getStoredTesters().filter(t => normalizeId(t.id) !== normalizeId(id));
   saveStoredTesters(testers);
-
   renderTesterList();
   setAddTesterStatus("Tester removed.", true);
 }
@@ -275,33 +263,35 @@ function addBetaTester(){
   }
 
   const testers = getStoredTesters();
+  const exists = testers.some(t => normalizeId(t.id) === id);
 
-  if (testers.some(t => normalizeId(t.id) === id)) {
+  if (exists) {
     setAddTesterStatus("Tester ID already exists.");
     return;
   }
 
   testers.push({ name, id, isAdmin: false });
-  saveStoredTesters(testers);
 
+  saveStoredTesters(testers);
   renderTesterList();
+
   setAddTesterStatus(`Added tester locally: ${name} (${id})`, true);
 
   document.getElementById("newTesterName").value = "";
   document.getElementById("newTesterId").value = "";
 }
 
-/* ---------- INIT ---------- */
-
 function initAccessControl(){
   initializeTesters();
 
   const session = getStoredSession();
 
-  if (session) {
+  if (session && session.id) {
     const tester = findTesterById(session.id);
+
     if (tester) {
       window.currentTester = tester;
+      updateUserUI();
       unlockApp();
       return;
     }
@@ -311,8 +301,12 @@ function initAccessControl(){
   lockApp();
 }
 
-/* ---------- EXPORTS ---------- */
+/* 🔑 ENSURE AUTO INIT EVERY LOAD */
+window.addEventListener("DOMContentLoaded", () => {
+  initAccessControl();
+});
 
+/* EXPORTS */
 window.loginTester = loginTester;
 window.logoutTester = logoutTester;
 window.clearLoginField = clearLoginField;
