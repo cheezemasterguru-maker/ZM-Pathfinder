@@ -1,331 +1,423 @@
-window.ZMMapValidator = (() => {
-  const VALID_TILE_TYPES = new Set(["X", "S", "B", ""]);
-  const MAIN_EVENT_3_CHAMBER = new Set([
-    "Essence Cave",
-    "Treasure Trove of Gems"
-  ]);
-
-  function isNumberTile(value) {
-    return typeof value === "number" && Number.isFinite(value);
-  }
-
-  function isValidTile(value) {
-    return isNumberTile(value) || VALID_TILE_TYPES.has(value);
-  }
-
-  function isSpecialSmallEvent(eventName) {
-    return MAIN_EVENT_3_CHAMBER.has(eventName);
-  }
-
-  function isGraveyardName(chamberName) {
-    return String(chamberName || "").trim().toLowerCase() === "graveyard";
-  }
-
-  function getExpectedMainChambers(eventName) {
-    return MAIN_EVENT_3_CHAMBER.has(eventName)
-      ? ["Chamber 1", "Chamber 2", "Chamber 3", "Graveyard"]
-      : ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"];
-  }
-
-  function getExpectedRowCount(eventName, chamberName) {
-    const isGraveyard = isGraveyardName(chamberName);
-
-    if (isSpecialSmallEvent(eventName)) {
-      return isGraveyard ? 16 : 13;
-    }
-
-    return isGraveyard ? 20 : 15;
-  }
-
-  function inferEventAndChamberFromTitle(title) {
-    const raw = String(title || "").trim();
-    if (!raw) {
-      return { eventName: "", chamberName: "" };
-    }
-
-    const parts = raw.split(" - ").map(s => s.trim()).filter(Boolean);
-
-    if (parts.length >= 2) {
-      return {
-        eventName: parts.slice(0, -1).join(" - "),
-        chamberName: parts[parts.length - 1]
-      };
-    }
-
-    return {
-      eventName: "",
-      chamberName: raw
-    };
-  }
-
-  function validateGridShape(grid, label, expectedRows = null) {
-    const errors = [];
-
-    if (!Array.isArray(grid)) {
-      errors.push(`${label}: grid is not an array.`);
-      return errors;
-    }
-
-    if (grid.length < 1) {
-      errors.push(`${label}: grid has no rows.`);
-      return errors;
-    }
-
-
-    for (let r = 0; r < grid.length; r++) {
-      if (!Array.isArray(grid[r])) {
-        errors.push(`${label}: row ${r + 1} is not an array.`);
-        continue;
-      }
-
-      if (grid[r].length !== 7) {
-        errors.push(`${label}: row ${r + 1} has ${grid[r].length} columns, expected 7.`);
-      }
-    }
-
-    return errors;
-  }
-
-  function validateTiles(grid, label) {
-    const errors = [];
-
-    for (let r = 0; r < grid.length; r++) {
-      for (let c = 0; c < grid[r].length; c++) {
-        const value = grid[r][c];
-        if (!isValidTile(value)) {
-          errors.push(
-            `${label}: invalid tile at row ${r + 1}, col ${c + 1} -> ${JSON.stringify(value)}.`
-          );
-        }
-      }
-    }
-
-    return errors;
-  }
-
-  function getShaftCells(grid) {
-    const cells = [];
-    for (let r = 0; r < grid.length; r++) {
-      for (let c = 0; c < grid[r].length; c++) {
-        if (grid[r][c] === "S") {
-          cells.push([r, c]);
-        }
-      }
-    }
-    return cells;
-  }
-
-  function floodFillShafts(grid) {
-    const visited = new Set();
-    const clusters = [];
-
-    function key(r, c) {
-      return `${r},${c}`;
-    }
-
-    function neighbors(r, c) {
-      return [
-        [r - 1, c],
-        [r + 1, c],
-        [r, c - 1],
-        [r, c + 1]
-      ];
-    }
-
-    for (const [startR, startC] of getShaftCells(grid)) {
-      const startKey = key(startR, startC);
-      if (visited.has(startKey)) continue;
-
-      const queue = [[startR, startC]];
-      const cluster = [];
-      visited.add(startKey);
-
-      while (queue.length) {
-        const [r, c] = queue.shift();
-        cluster.push([r, c]);
-
-        for (const [nr, nc] of neighbors(r, c)) {
-          if (
-            nr >= 0 &&
-            nr < grid.length &&
-            nc >= 0 &&
-            nc < 7 &&
-            grid[nr][nc] === "S"
-          ) {
-            const k = key(nr, nc);
-            if (!visited.has(k)) {
-              visited.add(k);
-              queue.push([nr, nc]);
-            }
-          }
-        }
-      }
-
-      clusters.push(cluster);
-    }
-
-    return clusters;
-  }
-
-  function validateShafts(grid, label) {
-    const errors = [];
-    const clusters = floodFillShafts(grid);
-
-    for (let i = 0; i < clusters.length; i++) {
-      const cluster = clusters[i];
-      const rows = cluster.map(([r]) => r);
-      const cols = cluster.map(([, c]) => c);
-
-      const minR = Math.min(...rows);
-      const maxR = Math.max(...rows);
-      const minC = Math.min(...cols);
-      const maxC = Math.max(...cols);
-
-      const height = maxR - minR + 1;
-      const width = maxC - minC + 1;
-
-      if (cluster.length !== 6 || height !== 3 || width !== 2) {
-        errors.push(
-          `${label}: shaft cluster ${i + 1} is invalid. Expected exactly 2x3 (6 cells), got ${width}x${height} with ${cluster.length} cells.`
-        );
-        continue;
-      }
-
-      for (let r = minR; r <= maxR; r++) {
-        for (let c = minC; c <= maxC; c++) {
-          if (grid[r]?.[c] !== "S") {
-            errors.push(
-              `${label}: shaft cluster ${i + 1} is missing an S at row ${r + 1}, col ${c + 1}.`
-            );
-          }
-        }
-      }
-    }
-
-    return errors;
-  }
-
-  function validateEventStructure(mainData, eventName) {
-    const errors = [];
-    const event = mainData[eventName];
-
-    if (!event || typeof event !== "object") {
-      errors.push(`Main/${eventName}: event data missing or invalid.`);
-      return errors;
-    }
-
-    const expected = getExpectedMainChambers(eventName);
-
-    for (const chamberName of expected) {
-      if (!(chamberName in event)) {
-        errors.push(`Main/${eventName}: missing key "${chamberName}".`);
-      }
-    }
-
-    return errors;
-  }
-
-  function validateChamberObject(chamber, label, eventName, chamberName) {
-    const errors = [];
-
-    if (!chamber || typeof chamber !== "object") {
-      errors.push(`${label}: chamber object missing or invalid.`);
-      return errors;
-    }
-
-    if (typeof chamber.title !== "string" || !chamber.title.trim()) {
-      errors.push(`${label}: missing or invalid title.`);
-    }
-
-    if (chamber.gateType !== "standard" && chamber.gateType !== "end") {
-      errors.push(`${label}: gateType must be "standard" or "end".`);
-    }
-
-    if (!("grid" in chamber)) {
-      errors.push(`${label}: missing grid.`);
-      return errors;
-    }
-
-    errors.push(...validateGridShape(chamber.grid, label, null));
-
-    if (Array.isArray(chamber.grid)) {
-      errors.push(...validateTiles(chamber.grid, label));
-      errors.push(...validateShafts(chamber.grid, label));
-    }
-
-    return errors;
-  }
-
-  function validateMainMapData(data) {
-    const errors = [];
-
-    if (!data || typeof data !== "object") {
-      return ["ZM_MAP_DATA is missing or invalid."];
-    }
-
-    if (!data.Main || typeof data.Main !== "object") {
-      return ['ZM_MAP_DATA.Main is missing or invalid.'];
-    }
-
-    if (!("Legacy" in data) || typeof data.Legacy !== "object" || data.Legacy === null) {
-      return ['ZM_MAP_DATA.Legacy is missing or invalid.'];
-    }
-
-    const main = data.Main;
-
-    for (const eventName of Object.keys(main)) {
-      errors.push(...validateEventStructure(main, eventName));
-
-      const event = main[eventName];
-      if (!event || typeof event !== "object") continue;
-
-      for (const [key, value] of Object.entries(event)) {
-        if (key === "Graveyard") {
-          if (value === null) {
-            continue;
-          }
-
-          errors.push(
-            ...validateChamberObject(
-              value,
-              `Main/${eventName}/${key}`,
-              eventName,
-              key
-            )
-          );
-          continue;
-        }
-
-        errors.push(
-          ...validateChamberObject(
-            value,
-            `Main/${eventName}/${key}`,
-            eventName,
-            key
-          )
-        );
-      }
-    }
-
-    return errors;
-  }
-
-  function validateSingleLoadedGrid(grid, title = "Loaded Grid") {
-    const errors = [];
-    errors.push(...validateGridShape(grid, title, null));
-    if (Array.isArray(grid)) {
-      errors.push(...validateTiles(grid, title));
-      errors.push(...validateShafts(grid, title));
-    }
-
-    return {
-      ok: errors.length === 0,
-      errors
-    };
-  }
-
-  return {
-    validateMainMapData,
-    validateSingleLoadedGrid
+const MAX_ROWS = 20;
+const MINED_ROWS = 13;
+const COLS = 7;
+
+let grid = [];
+let currentRowCount = MINED_ROWS;
+let tool = "number";
+let lastSelected = { r: 0, c: 0 };
+let selectedMapPath = null;
+let currentPreviewTitle = "Gate 1";
+
+let solveState = {
+  redPath: [],
+  bluePaths: [],
+  shaftEntryDots: [],
+  shaftClusters: [],
+  solved: false,
+  message: "No solve yet."
+};
+
+function setReport(msg){
+  document.getElementById("report").textContent = msg;
+}
+
+function resetSolve(){
+  solveState = {
+    redPath: [],
+    bluePaths: [],
+    shaftEntryDots: [],
+    shaftClusters: [],
+    solved: false,
+    message: "No solve yet."
   };
-})();
+}
+
+function initGridData(){
+  grid = Array.from({ length: MAX_ROWS }, () => Array(COLS).fill(""));
+}
+
+function isGraveyardValue(value){
+  return String(value || "").trim().toLowerCase() === "graveyard";
+}
+
+function getRowsForContextFromSelection(){
+  const chamber = document.getElementById("eventChamberSelect")?.value || "";
+  return isGraveyardValue(chamber) ? MAX_ROWS : MINED_ROWS;
+}
+
+function getRowsForContextFromTitle(){
+  const title = document.getElementById("titleInput")?.value || "";
+  return title.toLowerCase().includes("graveyard") ? MAX_ROWS : MINED_ROWS;
+}
+
+function setBoardRowCount(nextRows){
+  currentRowCount = nextRows === MAX_ROWS ? MAX_ROWS : MINED_ROWS;
+  render();
+  renderPreview();
+}
+
+function ensureBoardRowCountFromCurrentContext(){
+  const rowsFromSelection = getRowsForContextFromSelection();
+  const rowsFromTitle = getRowsForContextFromTitle();
+  setBoardRowCount(rowsFromSelection === MAX_ROWS || rowsFromTitle === MAX_ROWS ? MAX_ROWS : MINED_ROWS);
+}
+
+function getVisibleGridSlice(){
+  return grid.slice(0, currentRowCount).map(row => [...row]);
+}
+
+function runLoadedGridIntegrityCheck(gridToCheck, titleText = "Loaded Grid"){
+  if (!window.ZMMapValidator || typeof window.ZMMapValidator.validateSingleLoadedGrid !== "function") {
+    return { ok: true, errors: [] };
+  }
+
+  return window.ZMMapValidator.validateSingleLoadedGrid(gridToCheck, titleText);
+}
+
+function loadHelpContent(){
+  if (window.ZM_HELP) {
+    document.getElementById("shortHelpText").innerHTML = window.ZM_HELP.shortHelp || "";
+    document.getElementById("solverHelpBody").innerHTML = window.ZM_HELP.modalHelp || "";
+  }
+}
+
+function openSolverHelp(){
+  document.getElementById("solverHelpOverlay").classList.add("show");
+}
+
+function closeSolverHelp(){
+  document.getElementById("solverHelpOverlay").classList.remove("show");
+}
+
+function hasAnyMainMapData(eventName){
+  const chamberList = window.ZM_MAP_LIBRARY?.Main?.[eventName] || [];
+  return chamberList.some(chamber => !!window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber]);
+}
+
+function hasAnyLegacyMineData(eventName, mineName){
+  const chamberList = window.ZM_MAP_LIBRARY?.Legacy?.[eventName]?.[mineName] || [];
+  return chamberList.some(chamber => !!window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName]?.[chamber]);
+}
+
+function hasAnyLegacyEventData(eventName){
+  const mines = window.ZM_MAP_LIBRARY?.Legacy?.[eventName] || {};
+  return Object.keys(mines).some(mineName => hasAnyLegacyMineData(eventName, mineName));
+}
+
+function populateEventTypeSelect(){
+  const select = document.getElementById("eventTypeSelect");
+  select.innerHTML = '<option value="">Select Event Type</option>';
+
+  if (!window.ZM_MAP_LIBRARY || !window.ZM_MAP_DATA) return;
+
+  const mainHasData = Object.keys(window.ZM_MAP_LIBRARY.Main || {}).some(eventName => hasAnyMainMapData(eventName));
+  const legacyHasData = Object.keys(window.ZM_MAP_LIBRARY.Legacy || {}).some(eventName => hasAnyLegacyEventData(eventName));
+
+  if (mainHasData) {
+    const option = document.createElement("option");
+    option.value = "Main";
+    option.textContent = "Main";
+    select.appendChild(option);
+  }
+
+  if (legacyHasData) {
+    const option = document.createElement("option");
+    option.value = "Legacy";
+    option.textContent = "Legacy";
+    select.appendChild(option);
+  }
+}
+
+function resetMapLoaderBelow(level){
+  const eventNameField = document.getElementById("eventNameField");
+  const eventMineField = document.getElementById("eventMineField");
+  const eventChamberField = document.getElementById("eventChamberField");
+
+  const eventNameSelect = document.getElementById("eventNameSelect");
+  const eventMineSelect = document.getElementById("eventMineSelect");
+  const eventChamberSelect = document.getElementById("eventChamberSelect");
+  const loadMapBtn = document.getElementById("loadMapBtn");
+
+  if (level <= 1) {
+    eventNameSelect.innerHTML = '<option value="">Select Event Name</option>';
+    eventNameField.classList.add("hidden");
+  }
+
+  if (level <= 2) {
+    eventMineSelect.innerHTML = '<option value="">Select Event Mine</option>';
+    eventMineField.classList.add("hidden");
+  }
+
+  if (level <= 3) {
+    eventChamberSelect.innerHTML = '<option value="">Select Event Chamber</option>';
+    eventChamberField.classList.add("hidden");
+  }
+
+  selectedMapPath = null;
+  loadMapBtn.classList.add("hidden");
+}
+
+function handleEventTypeChange(){
+  const eventType = document.getElementById("eventTypeSelect").value;
+  const eventNameField = document.getElementById("eventNameField");
+  const eventNameSelect = document.getElementById("eventNameSelect");
+
+  resetMapLoaderBelow(1);
+  if (!eventType || !window.ZM_MAP_LIBRARY || !window.ZM_MAP_LIBRARY[eventType]) {
+    ensureBoardRowCountFromCurrentContext();
+    return;
+  }
+
+  let validNames = [];
+
+  if (eventType === "Main") {
+    validNames = Object.keys(window.ZM_MAP_LIBRARY.Main || {}).filter(eventName => hasAnyMainMapData(eventName));
+  } else if (eventType === "Legacy") {
+    validNames = Object.keys(window.ZM_MAP_LIBRARY.Legacy || {}).filter(eventName => hasAnyLegacyEventData(eventName));
+  }
+
+  if (!validNames.length) {
+    ensureBoardRowCountFromCurrentContext();
+    return;
+  }
+
+  eventNameField.classList.remove("hidden");
+
+  validNames.forEach(name => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    eventNameSelect.appendChild(option);
+  });
+
+  ensureBoardRowCountFromCurrentContext();
+}
+
+function handleEventNameChange(){
+  const eventType = document.getElementById("eventTypeSelect").value;
+  const eventName = document.getElementById("eventNameSelect").value;
+
+  const eventMineField = document.getElementById("eventMineField");
+  const eventMineSelect = document.getElementById("eventMineSelect");
+  const eventChamberField = document.getElementById("eventChamberField");
+  const eventChamberSelect = document.getElementById("eventChamberSelect");
+
+  resetMapLoaderBelow(2);
+  if (!eventType || !eventName) {
+    ensureBoardRowCountFromCurrentContext();
+    return;
+  }
+
+  if (eventType === "Main") {
+    const chambers = (window.ZM_MAP_LIBRARY?.Main?.[eventName] || []).filter(chamber => {
+      return !!window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber];
+    });
+
+    if (!chambers.length) {
+      ensureBoardRowCountFromCurrentContext();
+      return;
+    }
+
+    eventChamberField.classList.remove("hidden");
+
+    chambers.forEach(chamber => {
+      const option = document.createElement("option");
+      option.value = chamber;
+      option.textContent = chamber;
+      eventChamberSelect.appendChild(option);
+    });
+  } else if (eventType === "Legacy") {
+    const validMines = Object.keys(window.ZM_MAP_LIBRARY?.Legacy?.[eventName] || {}).filter(mineName => {
+      return hasAnyLegacyMineData(eventName, mineName);
+    });
+
+    if (!validMines.length) {
+      ensureBoardRowCountFromCurrentContext();
+      return;
+    }
+
+    eventMineField.classList.remove("hidden");
+
+    validMines.forEach(mineName => {
+      const option = document.createElement("option");
+      option.value = mineName;
+      option.textContent = mineName;
+      eventMineSelect.appendChild(option);
+    });
+  }
+
+  ensureBoardRowCountFromCurrentContext();
+}
+
+function handleEventMineChange(){
+  const eventName = document.getElementById("eventNameSelect").value;
+  const eventMine = document.getElementById("eventMineSelect").value;
+  const eventChamberField = document.getElementById("eventChamberField");
+  const eventChamberSelect = document.getElementById("eventChamberSelect");
+
+  resetMapLoaderBelow(3);
+  if (!eventName || !eventMine) {
+    ensureBoardRowCountFromCurrentContext();
+    return;
+  }
+
+  const chambers = (window.ZM_MAP_LIBRARY?.Legacy?.[eventName]?.[eventMine] || []).filter(chamber => {
+    return !!window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine]?.[chamber];
+  });
+
+  if (!chambers.length) {
+    ensureBoardRowCountFromCurrentContext();
+    return;
+  }
+
+  eventChamberField.classList.remove("hidden");
+
+  chambers.forEach(chamber => {
+    const option = document.createElement("option");
+    option.value = chamber;
+    option.textContent = chamber;
+    eventChamberSelect.appendChild(option);
+  });
+
+  ensureBoardRowCountFromCurrentContext();
+}
+
+function buildAutoTitle(){
+  const eventType = document.getElementById("eventTypeSelect").value;
+  const eventName = document.getElementById("eventNameSelect").value;
+  const eventMine = document.getElementById("eventMineSelect").value;
+  const eventChamber = document.getElementById("eventChamberSelect").value;
+
+  if (!eventType || !eventName || !eventChamber) return null;
+
+  if (eventType === "Main") {
+    return `${eventName} - ${eventChamber}`;
+  }
+
+  if (eventType === "Legacy" && eventMine) {
+    return `${eventName} - ${eventMine} - ${eventChamber}`;
+  }
+
+  return eventChamber;
+}
+
+function handleEventChamberChange(){
+  const loadMapBtn = document.getElementById("loadMapBtn");
+  const eventType = document.getElementById("eventTypeSelect").value;
+  const eventName = document.getElementById("eventNameSelect").value;
+  const eventMine = document.getElementById("eventMineSelect").value;
+  const eventChamber = document.getElementById("eventChamberSelect").value;
+
+  selectedMapPath = null;
+  loadMapBtn.classList.add("hidden");
+
+  if (!eventType || !eventName || !eventChamber) {
+    ensureBoardRowCountFromCurrentContext();
+    return;
+  }
+
+  if (eventType === "Main") {
+    selectedMapPath = { eventType, eventName, eventChamber };
+    loadMapBtn.classList.remove("hidden");
+  }
+
+  if (eventType === "Legacy" && eventMine) {
+    selectedMapPath = { eventType, eventName, eventMine, eventChamber };
+    loadMapBtn.classList.remove("hidden");
+  }
+
+  const autoTitle = buildAutoTitle();
+  if (autoTitle) {
+    document.getElementById("titleInput").value = autoTitle;
+    currentPreviewTitle = autoTitle;
+  }
+
+  ensureBoardRowCountFromCurrentContext();
+}
+
+function handleTitleInputChange(){
+  currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
+  ensureBoardRowCountFromCurrentContext();
+}
+
+function getSelectedMapRecord(){
+  if (!selectedMapPath || !window.ZM_MAP_DATA) return null;
+
+  if (selectedMapPath.eventType === "Main") {
+    return window.ZM_MAP_DATA?.Main?.[selectedMapPath.eventName]?.[selectedMapPath.eventChamber] || null;
+  }
+
+  if (selectedMapPath.eventType === "Legacy") {
+    return window.ZM_MAP_DATA?.Legacy?.[selectedMapPath.eventName]?.[selectedMapPath.eventMine]?.[selectedMapPath.eventChamber] || null;
+  }
+
+  return null;
+}
+
+function loadSelectedMap(){
+  const mapRecord = getSelectedMapRecord();
+  if (!mapRecord) {
+    setReport("Selected map data was not found in maps.js.");
+    return;
+  }
+
+  clearBoard(false);
+
+  const autoTitle = buildAutoTitle();
+  currentPreviewTitle = mapRecord.title || autoTitle || "Loaded Map";
+  document.getElementById("titleInput").value = currentPreviewTitle;
+  document.getElementById("gateType").value = mapRecord.gateType || "standard";
+
+  const isGraveyard = isGraveyardValue(selectedMapPath?.eventChamber);
+  setBoardRowCount(isGraveyard ? MAX_ROWS : MINED_ROWS);
+
+  const sourceGrid = mapRecord.grid || [];
+
+  const integrity = runLoadedGridIntegrityCheck(sourceGrid, currentPreviewTitle);
+  if (!integrity.ok) {
+    setReport(`Map integrity check failed: ${integrity.errors[0]}`);
+    return;
+  }
+
+  for (let r = 0; r < Math.min(sourceGrid.length, MAX_ROWS); r++) {
+    for (let c = 0; c < Math.min(sourceGrid[r].length, COLS); c++) {
+      grid[r][c] = sourceGrid[r][c];
+    }
+  }
+
+  resetSolve();
+  render();
+  renderPreview();
+  setReport(`Loaded map: ${currentPreviewTitle}`);
+}
+
+function init(){
+  initGridData();
+  currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
+
+  loadHelpContent();
+  populateEventTypeSelect();
+
+  if (!window.ZM_MAP_DATA) {
+    setReport("ZM_MAP_DATA not loaded.");
+  } else if (!window.ZMMapValidator) {
+    setReport("ZMMapValidator not loaded.");
+  } else {
+    const errors = window.ZMMapValidator.validateMainMapData(window.ZM_MAP_DATA);
+
+    if (errors.length) {
+      console.error("Map data errors:", errors);
+      setReport(errors[0]);
+    } else {
+      setReport("Map data loaded successfully.");
+    }
+  }
+
+  render();
+  renderPreview();
+  initAccessControl();
+  updateUserUI();
+}
+
+window.addEventListener("load", init);
