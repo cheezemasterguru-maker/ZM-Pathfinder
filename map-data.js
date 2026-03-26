@@ -554,7 +554,22 @@ window.ZM_MAP_DATA = {
     ]
   },
 
-  "Chamber 2": null,
+  "Chamber 2": {
+  title: "Treasure Trove of Gems - Chamber 2",
+  gateType: "standard",
+  grid: [
+    ["X",9,12,8,13,11,13],
+    ["X",11,9,12,9,10,12],
+    ["X",8,10,9,13,8,"X"],
+    ["X",9,7,9,7,"S","S"],
+    ["X",9,10,9,"B","S","S"],
+    ["S","S",7,13,8,"S","S"],
+    ["S","S",8,8,11,9,10],
+    ["S","S",7,9,7,12,"X"],
+    [7,6,7,6,8,"X","X"],
+    [7,5,5,"","X","X","X"]
+  ]
+},
   "Chamber 3": null,
   "Graveyard": null
 }
