@@ -282,7 +282,8 @@ function initAccessControl(){
   if (session) {
     const tester = findTesterById(session.id);
     if (tester) {
-      window.currentTester = tester;
+      localStorage.setItem("zm_user", JSON.stringify(tester));
+window.currentTester = tester;
       unlockApp();
       return;
     }
