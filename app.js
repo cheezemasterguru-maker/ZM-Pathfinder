@@ -939,11 +939,7 @@ function init(){
   currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
   loadHelpContent();
   populateEventTypeSelect();
-  setReport(
-  "Library has Essence Cave: " + String(!!window.ZM_MAP_LIBRARY?.Main?.["Essence Cave"]) +
-  "\nData has Essence Cave: " + String(!!window.ZM_MAP_DATA?.Main?.["Essence Cave"]) +
-  "\nData Chamber 1 exists: " + String(!!window.ZM_MAP_DATA?.Main?.["Essence Cave"]?.["Chamber 1"])
-);
+  
 
   if (window.ZMMapValidator && typeof window.ZMMapValidator.validateMainMapData === "function") {
     const allErrors = window.ZMMapValidator.validateMainMapData(window.ZM_MAP_DATA);
