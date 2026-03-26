@@ -708,7 +708,19 @@ function solveBoard(){
   };
 
   setReport(result.message || "Solved.");
-  renderPreview();
+renderPreview();
+
+// 🔒 ADMIN ONLY: record difficulty
+if (window.ZMDifficulty && typeof window.ZMDifficulty.recordSolve === "function") {
+  if (window.currentTester && window.currentTester.isAdmin) {
+    window.ZMDifficulty.recordSolve({
+      title: currentPreviewTitle,
+      eventName: getEventNameFromSelection(),
+      chamberName: getChamberNameFromSelection(),
+      result
+    });
+  }
+}
 }
 
 function renderPreview(){
