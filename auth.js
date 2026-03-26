@@ -1,14 +1,14 @@
 // ================================
-// ZM Pathfinder - Auth System FIXED
+// EXISTING CONSTANTS (UNCHANGED)
 // ================================
-
 const ADMIN_NAME = "CheezeMasterGuru";
 const ADMIN_ID = "7625451";
 
-const TESTER_STORAGE_KEY = "zm_pathfinder_user";
+const TESTER_STORAGE_KEY = "zm_pathfinder_beta_testers";
+const SESSION_STORAGE_KEY = "zm_pathfinder_session";
 
 // ================================
-// DEFAULT TESTERS
+// DEFAULT TESTERS (UNCHANGED)
 // ================================
 const DEFAULT_TESTERS = [
   { name: "CheezeMasterGuru", id: "7625451", isAdmin: true },
@@ -25,31 +25,66 @@ const DEFAULT_TESTERS = [
 // ================================
 // STATE
 // ================================
-let testers = [...DEFAULT_TESTERS];
+let testers = [];
 
 // ================================
-// RESTORE USER (RUNS ON LOAD)
+// LOAD TESTERS FROM STORAGE
 // ================================
-(function restoreUser(){
+function loadTesters(){
   const saved = localStorage.getItem(TESTER_STORAGE_KEY);
   if (saved) {
     try {
-      window.currentTester = JSON.parse(saved);
-    } catch {
-      localStorage.removeItem(TESTER_STORAGE_KEY);
-      window.currentTester = null;
+      testers = JSON.parse(saved);
+      return;
+    } catch {}
+  }
+  testers = [...DEFAULT_TESTERS];
+}
+
+// ================================
+// SAVE TESTERS
+// ================================
+function saveTesters(){
+  localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(testers));
+}
+
+// ================================
+// 🔥 RESTORE LOGGED-IN USER (FIX)
+// ================================
+function restoreSession(){
+  const saved = localStorage.getItem(SESSION_STORAGE_KEY);
+  if (!saved) {
+    window.currentTester = null;
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(saved);
+
+    // Re-link to tester list (important)
+    const match = testers.find(t => t.name === parsed.name && t.id === parsed.id);
+
+    if (match) {
+      window.currentTester = match;
+    } else {
+      // fallback if tester list changed
+      window.currentTester = parsed;
     }
-  } else {
+  } catch {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
     window.currentTester = null;
   }
-})();
+}
 
 // ================================
 // LOGIN
 // ================================
-function loginTester(name, id){
-  name = String(name || "").trim();
-  id = String(id || "").trim();
+function loginTester(){
+  const nameInput = document.getElementById("testerName");
+  const idInput = document.getElementById("testerId");
+
+  const name = String(nameInput?.value || "").trim();
+  const id = String(idInput?.value || "").trim();
 
   if (!name || !id) {
     alert("Enter name and ID.");
@@ -58,7 +93,6 @@ function loginTester(name, id){
 
   let tester = testers.find(t => t.name === name && t.id === id);
 
-  // If not found, create new tester
   if (!tester) {
     tester = {
       name,
@@ -66,13 +100,13 @@ function loginTester(name, id){
       isAdmin: name === ADMIN_NAME && id === ADMIN_ID
     };
     testers.push(tester);
+    saveTesters();
   }
 
-  // Force admin check (always correct)
   tester.isAdmin = (tester.name === ADMIN_NAME && tester.id === ADMIN_ID);
 
-  // SAVE + SET
-  localStorage.setItem(TESTER_STORAGE_KEY, JSON.stringify(tester));
+  // 🔥 SAVE SESSION (THIS FIXES LOGIN LOOP)
+  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(tester));
   window.currentTester = tester;
 
   updateUserUI();
@@ -82,7 +116,7 @@ function loginTester(name, id){
 // LOGOUT
 // ================================
 function logoutTester(){
-  localStorage.removeItem(TESTER_STORAGE_KEY);
+  localStorage.removeItem(SESSION_STORAGE_KEY);
   window.currentTester = null;
   updateUserUI();
 }
@@ -110,11 +144,13 @@ function updateUserUI(){
 // INIT ACCESS CONTROL
 // ================================
 function initAccessControl(){
-  updateUserUI();
+  loadTesters();        // load tester list
+  restoreSession();     // 🔥 restore login
+  updateUserUI();       // update UI
 }
 
 // ================================
-// GLOBAL EXPORTS
+// EXPORTS
 // ================================
 window.loginTester = loginTester;
 window.logoutTester = logoutTester;
