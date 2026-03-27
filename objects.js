@@ -14,13 +14,13 @@ window.ZM_OBJECT_TYPES = {
   badges: {
     label: "Badges",
     code: "BDG",
-    fill: "#c084fc"
+    fill: "#facc15" // ← NOW GOLD
   },
 
   emblems: {
     label: "Emblems",
     code: "E",
-    fill: "#facc15"
+    fill: "#c084fc" // ← NOW LIGHT PURPLE
   },
 
   keys: {
