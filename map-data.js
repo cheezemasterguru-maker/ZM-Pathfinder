@@ -6,7 +6,7 @@ window.ZM_MAP_DATA = {
         title: "Treasures in Ice - Chamber 1",
         gateType: "standard",
         grid: [
-          [8, 9, 11, 9, 12, 8, "X"],
+          [8, 9, 11, 9, 12, 8, 9],
           [10, "X", 8, "X", 7, 11, 7],
           [8, 7, 9, 6, 9, 6, "X"],
           ["X", 8, 6, 8, "B", "S", "S"],
