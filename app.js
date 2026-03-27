@@ -16,12 +16,22 @@ const EVENT_TOTALS = {
 const DIFFICULTY_MIN = 281;
 const DIFFICULTY_MAX = 1299;
 
+// "overlay" = number stays visible and object code shows underneath
+// "object_only" = code replaces number
+const OBJECT_RENDER_MODE = "overlay";
+
 let grid = [];
 let currentRowCount = MINED_ROWS;
 let tool = "number";
 let lastSelected = { r: 0, c: 0 };
 let selectedMapPath = null;
 let currentPreviewTitle = "Gate 1";
+
+let currentMapContext = {
+  eventType: null,
+  eventName: null,
+  chamberName: null
+};
 
 let solveState = {
   redPath: [],
@@ -90,6 +100,72 @@ function runLoadedGridIntegrityCheck(gridToCheck, titleText = "Loaded Grid"){
   }
 
   return window.ZMMapValidator.validateSingleLoadedGrid(gridToCheck, titleText);
+}
+
+function getTileMeta(eventType, eventName, chamberName, r, c){
+  return window.ZM_TILE_META?.[eventType]?.[eventName]?.[chamberName]?.tiles?.[`${r},${c}`]
+    || { object: "plain" };
+}
+
+function getObjectVisual(meta){
+  if (!meta || !meta.object || meta.object === "plain" || !window.ZM_OBJECT_TYPES) {
+    return { code: "", fill: null };
+  }
+
+  const objDef = window.ZM_OBJECT_TYPES[meta.object];
+  if (!objDef) {
+    return { code: "", fill: null };
+  }
+
+  if (meta.subtype && objDef.subtypes?.[meta.subtype]) {
+    return {
+      code: objDef.subtypes[meta.subtype].code || "",
+      fill: objDef.subtypes[meta.subtype].fill || null
+    };
+  }
+
+  return {
+    code: objDef.code || "",
+    fill: objDef.fill || null
+  };
+}
+
+function applyHtmlTileFill(cell, fill){
+  if (!cell) return;
+
+  cell.style.background = "";
+  cell.style.color = "";
+
+  if (!fill) return;
+
+  if (typeof fill === "string") {
+    cell.style.background = fill;
+  } else if (fill.type === "dual" && Array.isArray(fill.colors) && fill.colors.length >= 2) {
+    cell.style.background = `linear-gradient(135deg, ${fill.colors[0]} 50%, ${fill.colors[1]} 50%)`;
+  }
+}
+
+function drawCanvasTileFill(ctx, x, y, cellSize, fill){
+  if (!fill) return false;
+
+  if (typeof fill === "string") {
+    ctx.fillStyle = fill;
+    ctx.fillRect(x, y, cellSize, cellSize);
+    return true;
+  }
+
+  if (fill.type === "dual" && Array.isArray(fill.colors) && fill.colors.length >= 2) {
+    const gradient = ctx.createLinearGradient(x, y, x + cellSize, y + cellSize);
+    gradient.addColorStop(0, fill.colors[0]);
+    gradient.addColorStop(0.499, fill.colors[0]);
+    gradient.addColorStop(0.5, fill.colors[1]);
+    gradient.addColorStop(1, fill.colors[1]);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(x, y, cellSize, cellSize);
+    return true;
+  }
+
+  return false;
 }
 
 function loadHelpContent(){
@@ -426,6 +502,12 @@ function loadSelectedMap(){
 
   clearBoard(false);
 
+  currentMapContext = {
+    eventType: selectedMapPath.eventType,
+    eventName: selectedMapPath.eventName,
+    chamberName: selectedMapPath.eventChamber
+  };
+
   const autoTitle = buildAutoTitle();
   currentPreviewTitle = mapRecord.title || autoTitle || "Loaded Map";
   document.getElementById("titleInput").value = currentPreviewTitle;
@@ -472,6 +554,14 @@ function render(){
     for(let c = 0; c < COLS; c++){
       const cell = document.createElement("div");
       const val = grid[r][c];
+      const meta = getTileMeta(
+        currentMapContext.eventType,
+        currentMapContext.eventName,
+        currentMapContext.chamberName,
+        r,
+        c
+      );
+      const visual = getObjectVisual(meta);
 
       cell.className = "cell";
       cell.dataset.r = r;
@@ -491,7 +581,40 @@ function render(){
         cell.classList.add("shaft");
         cell.textContent = "S";
       } else if(typeof val === "number"){
-        cell.textContent = String(val);
+        applyHtmlTileFill(cell, visual.fill);
+
+        if (OBJECT_RENDER_MODE === "object_only" && visual.code) {
+          cell.textContent = visual.code;
+        } else {
+          const wrapper = document.createElement("div");
+          wrapper.className = "cell-wrapper";
+          wrapper.style.display = "flex";
+          wrapper.style.flexDirection = "column";
+          wrapper.style.alignItems = "center";
+          wrapper.style.justifyContent = "center";
+          wrapper.style.height = "100%";
+          wrapper.style.width = "100%";
+
+          const number = document.createElement("div");
+          number.className = "cell-number";
+          number.textContent = String(val);
+          number.style.fontWeight = "700";
+          number.style.lineHeight = "1";
+          wrapper.appendChild(number);
+
+          if (visual.code) {
+            const code = document.createElement("div");
+            code.className = "cell-code";
+            code.textContent = visual.code;
+            code.style.fontSize = "10px";
+            code.style.fontWeight = "700";
+            code.style.lineHeight = "1";
+            code.style.marginTop = "2px";
+            wrapper.appendChild(code);
+          }
+
+          cell.appendChild(wrapper);
+        }
       }
 
       gridEl.appendChild(cell);
@@ -633,6 +756,11 @@ function clearBoard(updateReport = true){
   }
   currentRowCount = MINED_ROWS;
   currentPreviewTitle = document.getElementById("titleInput")?.value || "Gate 1";
+  currentMapContext = {
+    eventType: null,
+    eventName: null,
+    chamberName: null
+  };
   resetSolve();
   render();
   renderPreview();
@@ -813,18 +941,34 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
       const x = pad + c * cell;
       const y = topPad + (r - rowOffset) * cell;
       const val = grid[r][c];
+      const meta = getTileMeta(
+        currentMapContext.eventType,
+        currentMapContext.eventName,
+        currentMapContext.chamberName,
+        r,
+        c
+      );
+      const visual = getObjectVisual(meta);
 
       if(val === "S") continue;
 
-      if(val === "X"){
-        ctx.fillStyle = "#000";
-      } else if(val === "B"){
-        ctx.fillStyle = "#8fd3f7";
-      } else {
-        ctx.fillStyle = "#ececef";
+      let usedCustomFill = false;
+
+      if (typeof val === "number" && visual.fill) {
+        usedCustomFill = drawCanvasTileFill(ctx, x, y, cell, visual.fill);
       }
 
-      ctx.fillRect(x, y, cell, cell);
+      if (!usedCustomFill) {
+        if(val === "X"){
+          ctx.fillStyle = "#000";
+        } else if(val === "B"){
+          ctx.fillStyle = "#8fd3f7";
+        } else {
+          ctx.fillStyle = "#ececef";
+        }
+        ctx.fillRect(x, y, cell, cell);
+      }
+
       ctx.strokeStyle = "#171b2e";
       ctx.lineWidth = 2;
       ctx.strokeRect(x, y, cell, cell);
@@ -837,10 +981,26 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
         ctx.fillText("B", x + cell/2, y + cell/2);
       } else if(typeof val === "number"){
         ctx.fillStyle = "#111";
-        ctx.font = "700 28px Arial";
         ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(String(val), x + cell/2, y + cell/2);
+
+        if (OBJECT_RENDER_MODE === "object_only" && visual.code) {
+          ctx.font = "700 22px Arial";
+          ctx.textBaseline = "middle";
+          ctx.fillText(visual.code, x + cell/2, y + cell/2);
+        } else {
+          if (visual.code) {
+            ctx.font = "700 24px Arial";
+            ctx.textBaseline = "middle";
+            ctx.fillText(String(val), x + cell/2, y + cell/2 - 10);
+
+            ctx.font = "700 11px Arial";
+            ctx.fillText(visual.code, x + cell/2, y + cell/2 + 18);
+          } else {
+            ctx.font = "700 28px Arial";
+            ctx.textBaseline = "middle";
+            ctx.fillText(String(val), x + cell/2, y + cell/2);
+          }
+        }
       }
     }
   }
