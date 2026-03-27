@@ -1,54 +1,74 @@
 window.ZM_OBJECT_TYPES = {
-  // --- NO SUBTYPE OBJECTS ---
-  gems: {
-    label: "Gems",
-    color: "#ff6b6b" // Light Red
-  },
-  badges: {
-    label: "Badges",
-    color: "#c084fc" // Light Purple
-  },
-  emblems: {
-    label: "Emblems",
-    color: "#facc15" // Gold
-  },
-  keys: {
-    label: "Keys",
-    color: "#fde047" // Yellow
-  },
-  essence: {
-    label: "Essence",
-    color: "#86efac" // Light Green
-  },
   plain: {
     label: "Plain",
-    color: null // no fill
+    code: null,
+    fill: null
   },
 
-  // --- SUBTYPE OBJECTS ---
+  gems: {
+    label: "Gems",
+    code: "GEM",
+    fill: "#ff6b6b"
+  },
+
+  badges: {
+    label: "Badges",
+    code: "BDG",
+    fill: "#c084fc"
+  },
+
+  emblems: {
+    label: "Emblems",
+    code: "E",
+    fill: "#facc15"
+  },
+
+  keys: {
+    label: "Keys",
+    code: "K",
+    fill: "#fde047"
+  },
+
+  essence: {
+    label: "Essence",
+    code: "ESS",
+    fill: "#86efac"
+  },
+
   chest: {
-    label: "Chests",
+    label: "Chest",
     hasSubtype: true,
     subtypes: {
       wood: {
         label: "Wood",
-        color: "#d2a679" // Light Brown
+        code: "WD",
+        fill: "#d2a679"
       },
       iron: {
         label: "Iron",
-        color: "#22c55e" // Green
+        code: "IRN",
+        fill: "#22c55e"
       },
       steel: {
         label: "Steel",
-        color: "#9ca3af" // Silver
+        code: "STL",
+        fill: "#9ca3af"
       },
       silver: {
         label: "Silver",
-        color: "linear-gradient(135deg, #9ca3af 50%, #60a5fa 50%)"
+        code: "SIL",
+        fill: {
+          type: "dual",
+          colors: ["#9ca3af", "#60a5fa"]
+        }
       },
       gold: {
         label: "Gold",
-        color: "linear-gradient(135deg, #22c55e 50%, #facc15 50%)"
+        code: "GLD",
+        fill: {
+          type: "dual",
+          colors: ["#22c55e", "#facc15"]
+        }
       }
     }
   }
