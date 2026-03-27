@@ -2,6 +2,20 @@ const MAX_ROWS = 20;
 const MINED_ROWS = 13;
 const COLS = 7;
 
+const EVENT_TOTALS = {
+  "Treasures in Ice": 1299,
+  "Volcano Awakening": 1045,
+  "Grand Canyon": 1039,
+  "Excavations in the Sand": 1025,
+  "Moon Odyssey": 1004,
+  "Sweet Valley": 988,
+  "Essence Cave": 457,
+  "Treasure Trove of Gems": 281
+};
+
+const DIFFICULTY_MIN = 281;
+const DIFFICULTY_MAX = 1299;
+
 let grid = [];
 let currentRowCount = MINED_ROWS;
 let tool = "number";
@@ -19,7 +33,10 @@ let solveState = {
 };
 
 function setReport(msg){
-  document.getElementById("report").textContent = msg;
+  const reportEl = document.getElementById("report");
+  if (!reportEl) return;
+  reportEl.textContent = msg;
+  updateDifficultyMeter();
 }
 
 function resetSolve(){
@@ -158,6 +175,7 @@ function resetMapLoaderBelow(level){
 
   selectedMapPath = null;
   loadMapBtn.classList.add("hidden");
+  updateDifficultyMeter();
 }
 
 function handleEventTypeChange(){
@@ -168,6 +186,7 @@ function handleEventTypeChange(){
   resetMapLoaderBelow(1);
   if (!eventType || !window.ZM_MAP_DATA || !window.ZM_MAP_DATA[eventType]) {
     ensureBoardRowCountFromCurrentContext();
+    updateDifficultyMeter();
     return;
   }
 
@@ -195,6 +214,7 @@ function handleEventTypeChange(){
 
   if (!validNames.length) {
     ensureBoardRowCountFromCurrentContext();
+    updateDifficultyMeter();
     return;
   }
 
@@ -208,6 +228,7 @@ function handleEventTypeChange(){
   });
 
   ensureBoardRowCountFromCurrentContext();
+  updateDifficultyMeter();
 }
 
 function handleEventNameChange(){
@@ -222,6 +243,7 @@ function handleEventNameChange(){
   resetMapLoaderBelow(2);
   if (!eventType || !eventName) {
     ensureBoardRowCountFromCurrentContext();
+    updateDifficultyMeter();
     return;
   }
 
@@ -237,6 +259,7 @@ function handleEventNameChange(){
 
     if (!chambers.length) {
       ensureBoardRowCountFromCurrentContext();
+      updateDifficultyMeter();
       return;
     }
 
@@ -260,6 +283,7 @@ function handleEventNameChange(){
 
     if (!validMines.length) {
       ensureBoardRowCountFromCurrentContext();
+      updateDifficultyMeter();
       return;
     }
 
@@ -274,6 +298,7 @@ function handleEventNameChange(){
   }
 
   ensureBoardRowCountFromCurrentContext();
+  updateDifficultyMeter();
 }
 
 function handleEventMineChange(){
@@ -285,6 +310,7 @@ function handleEventMineChange(){
   resetMapLoaderBelow(3);
   if (!eventName || !eventMine) {
     ensureBoardRowCountFromCurrentContext();
+    updateDifficultyMeter();
     return;
   }
 
@@ -299,6 +325,7 @@ function handleEventMineChange(){
 
   if (!chambers.length) {
     ensureBoardRowCountFromCurrentContext();
+    updateDifficultyMeter();
     return;
   }
 
@@ -312,6 +339,7 @@ function handleEventMineChange(){
   });
 
   ensureBoardRowCountFromCurrentContext();
+  updateDifficultyMeter();
 }
 
 function buildAutoTitle(){
@@ -345,6 +373,7 @@ function handleEventChamberChange(){
 
   if (!eventType || !eventName || !eventChamber) {
     ensureBoardRowCountFromCurrentContext();
+    updateDifficultyMeter();
     return;
   }
 
@@ -365,11 +394,13 @@ function handleEventChamberChange(){
   }
 
   ensureBoardRowCountFromCurrentContext();
+  updateDifficultyMeter();
 }
 
 function handleTitleInputChange(){
   currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
   ensureBoardRowCountFromCurrentContext();
+  updateDifficultyMeter();
 }
 
 function getSelectedMapRecord(){
@@ -421,6 +452,7 @@ function loadSelectedMap(){
   render();
   renderPreview();
   setReport(`Loaded map: ${currentPreviewTitle}`);
+  updateDifficultyMeter();
 }
 
 function setTool(nextTool){
@@ -600,10 +632,12 @@ function clearBoard(updateReport = true){
     }
   }
   currentRowCount = MINED_ROWS;
+  currentPreviewTitle = document.getElementById("titleInput")?.value || "Gate 1";
   resetSolve();
   render();
   renderPreview();
   if (updateReport) setReport("Board cleared.");
+  updateDifficultyMeter();
 }
 
 function loadSampleGrid(){
@@ -637,6 +671,7 @@ function loadSampleGrid(){
   render();
   renderPreview();
   setReport("Sample Grid loaded.");
+  updateDifficultyMeter();
 }
 
 function solveBoard(){
@@ -965,6 +1000,146 @@ function downloadPNG(){
   }, 160);
 }
 
+function clampRatio(value){
+  if (DIFFICULTY_MAX === DIFFICULTY_MIN) return 0;
+  const ratio = (value - DIFFICULTY_MIN) / (DIFFICULTY_MAX - DIFFICULTY_MIN);
+  return Math.max(0, Math.min(1, ratio));
+}
+
+function getDifficultyLabel(ratio){
+  if (ratio <= 0.125) return "VERY EASY";
+  if (ratio <= 0.25) return "EASY";
+  if (ratio <= 0.375) return "MILD";
+  if (ratio <= 0.50) return "MODERATE";
+  if (ratio <= 0.625) return "CHALLENGING";
+  if (ratio <= 0.75) return "HARD";
+  if (ratio <= 0.875) return "EXTREME";
+  return "BRUTAL";
+}
+
+function getCurrentEventName(){
+  const selectedEventName = document.getElementById("eventNameSelect")?.value || "";
+  if (selectedEventName && EVENT_TOTALS[selectedEventName] !== undefined) {
+    return selectedEventName;
+  }
+
+  const title = String(currentPreviewTitle || document.getElementById("titleInput")?.value || "").trim();
+  if (!title) return null;
+
+  const names = Object.keys(EVENT_TOTALS).sort((a, b) => b.length - a.length);
+  for (const name of names) {
+    if (title === name || title.startsWith(name + " -")) {
+      return name;
+    }
+  }
+
+  return null;
+}
+
+function ensureDifficultyMeter(){
+  let meter = document.getElementById("difficultyMeter");
+  if (meter) return meter;
+
+  const btnGrid = document.querySelector(".btn-grid");
+  const report = document.getElementById("report");
+  if (!btnGrid || !report || !report.parentNode) return null;
+
+  meter = document.createElement("div");
+  meter.id = "difficultyMeter";
+  meter.style.display = "none";
+  meter.style.width = "100%";
+  meter.style.boxSizing = "border-box";
+  meter.style.borderRadius = "30px";
+  meter.style.border = "2px solid rgba(71,87,162,0.45)";
+  meter.style.background = "rgba(10,20,55,0.9)";
+  meter.style.padding = "14px 18px";
+  meter.style.minHeight = "76px";
+  meter.style.alignItems = "center";
+  meter.style.gap = "14px";
+  meter.style.marginTop = "14px";
+
+  const label = document.createElement("div");
+  label.id = "difficultyMeterLabel";
+  label.style.flex = "0 0 auto";
+  label.style.color = "#ffffff";
+  label.style.fontFamily = "Arial, sans-serif";
+  label.style.fontWeight = "700";
+  label.style.fontSize = "22px";
+  label.style.letterSpacing = "0.5px";
+  label.style.lineHeight = "1";
+  label.textContent = "HARD";
+
+  const barWrap = document.createElement("div");
+  barWrap.style.flex = "1 1 auto";
+  barWrap.style.display = "flex";
+  barWrap.style.alignItems = "center";
+  barWrap.style.minWidth = "0";
+
+  const bar = document.createElement("div");
+  bar.id = "difficultyMeterBar";
+  bar.style.position = "relative";
+  bar.style.width = "100%";
+  bar.style.height = "18px";
+  bar.style.borderRadius = "999px";
+  bar.style.overflow = "hidden";
+  bar.style.border = "2px solid rgba(255,255,255,0.18)";
+  bar.style.background = "linear-gradient(90deg, #ffe2e2 0%, #ffc6c6 14%, #ffabab 28%, #ff8f8f 42%, #ff6f6f 56%, #ff4949 70%, #ef1d1d 84%, #ff2400 100%)";
+  bar.style.boxShadow = "inset 0 0 0 1px rgba(0,0,0,0.15)";
+
+  const marker = document.createElement("div");
+  marker.id = "difficultyMeterMarker";
+  marker.style.position = "absolute";
+  marker.style.top = "50%";
+  marker.style.left = "0%";
+  marker.style.transform = "translate(-50%, -50%)";
+  marker.style.width = "12px";
+  marker.style.height = "12px";
+  marker.style.borderRadius = "50%";
+  marker.style.background = "#ffffff";
+  marker.style.border = "3px solid #0a1737";
+  marker.style.boxShadow = "0 0 0 2px rgba(255,255,255,0.2)";
+
+  bar.appendChild(marker);
+  barWrap.appendChild(bar);
+  meter.appendChild(label);
+  meter.appendChild(barWrap);
+
+  report.parentNode.insertBefore(meter, report);
+
+  return meter;
+}
+
+function updateDifficultyMeter(){
+  const meter = ensureDifficultyMeter();
+  const report = document.getElementById("report");
+  if (!meter || !report) return;
+
+  const eventName = getCurrentEventName();
+  if (!eventName || EVENT_TOTALS[eventName] === undefined) {
+    meter.style.display = "none";
+    report.style.display = "block";
+    return;
+  }
+
+  const value = EVENT_TOTALS[eventName];
+  const ratio = clampRatio(value);
+  const label = getDifficultyLabel(ratio);
+
+  const labelEl = document.getElementById("difficultyMeterLabel");
+  const markerEl = document.getElementById("difficultyMeterMarker");
+
+  if (labelEl) {
+    labelEl.textContent = label;
+  }
+
+  if (markerEl) {
+    markerEl.style.left = `${ratio * 100}%`;
+  }
+
+  report.style.display = "none";
+  meter.style.display = "flex";
+}
+
 function init(){
   initGridData();
   currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
@@ -980,6 +1155,8 @@ function init(){
     if (allErrors.length) {
       console.error("Map data integrity errors:", allErrors);
       setReport(`Map data integrity warning: ${allErrors[0]}`);
+    } else {
+      setReport("Ready.");
     }
   }
 
@@ -987,6 +1164,8 @@ function init(){
   renderPreview();
   initAccessControl();
   updateUserUI();
+  ensureDifficultyMeter();
+  updateDifficultyMeter();
 }
 
 window.openSolverHelp = openSolverHelp;
