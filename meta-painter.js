@@ -1,4 +1,4 @@
-/* =========================
+56px=====================
    ZM META PAINTER
 ========================= */
 
@@ -314,7 +314,7 @@ function mpClickTile(r, c) {
 function mpRenderGrid() {
   const grid = document.getElementById("metaGrid");
   grid.innerHTML = "";
-  grid.style.gridTemplateColumns = `repeat(${MP_COLS}, 56px)`;
+  grid.style.gridTemplateColumns = `repeat(${MP_COLS}, 42px)`;
 
   for (let r = 0; r < mpCurrentRowCount; r++) {
     for (let c = 0; c < MP_COLS; c++) {
