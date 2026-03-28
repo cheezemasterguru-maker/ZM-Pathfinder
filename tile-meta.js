@@ -11,6 +11,7 @@ window.ZM_TILE_META = {
     "1,5": { object: "essence" },
     "2,0": { object: "chest", subtype: "wood" },
     "2,4": { object: "keys" },
+    "3,1": { object: "essence" },
     "3,3": { object: "badges" },
     "4,3": { object: "chest", subtype: "iron" },
     "5,1": { object: "essence" },
@@ -22,7 +23,7 @@ window.ZM_TILE_META = {
     "9,5": { object: "chest", subtype: "wood" },
     "10,1": { object: "badges" }
   }
-}
+},
       "Chamber 2": { tiles: {} },
       "Chamber 3": { tiles: {} },
       "Chamber 4": { tiles: {} },
