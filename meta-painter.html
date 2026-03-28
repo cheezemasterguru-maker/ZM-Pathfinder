@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZM Meta Painter</title>
+  <link rel="stylesheet" href="styles.css?v=556" />
+  <script src="map-library.js?v=555"></script>
+  <script src="map-data.js?v=888"></script>
+  <script src="objects.js?v=2"></script>
+  <script src="tile-meta.js?v=2"></script>
+  <script src="auth.js?v=777"></script>
+  <script src="meta-painter.js?v=1" defer></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #0d1220;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+
+    .page-wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #121a2d;
+      border: 2px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    h1, h2 {
+      margin: 0 0 12px 0;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    .field select,
+    .field input,
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: #0b1020;
+      color: #fff;
+      padding: 10px;
+      font-size: 14px;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .btn-action { background: #3b82f6; color: #fff; }
+    .btn-good { background: #16a34a; color: #fff; }
+    .btn-warn { background: #dc2626; color: #fff; }
+    .btn-neutral { background: #475569; color: #fff; }
+
+    .status {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #dbeafe;
+      white-space: pre-wrap;
+      line-height: 1.4;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 16px;
+    }
+
+    @media (max-width: 1000px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .board-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .meta-grid {
+      display: grid;
+      gap: 4px;
+      width: fit-content;
+      margin-top: 12px;
+    }
+
+    .meta-cell {
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      border: 2px solid #1e293b;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      color: #111;
+      font-weight: 700;
+      background: #e5e7eb;
+      user-select: none;
+      -webkit-user-select: none;
+      position: relative;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .meta-cell.paintable {
+      cursor: pointer;
+    }
+
+    .meta-cell.blocked {
+      background: #000;
+      color: #fff;
+    }
+
+    .meta-cell.bubble {
+      background: #8fd3f7;
+      color: #111;
+    }
+
+    .meta-cell.shaft {
+      background: #98f44d;
+      color: #111;
+    }
+
+    .meta-cell .base-number {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .meta-cell .base-type {
+      font-size: 10px;
+      line-height: 1;
+      margin-top: 3px;
+    }
+
+    .tool-section {
+      margin-bottom: 14px;
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .tool-btn {
+      min-height: 48px;
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.08);
+      color: #111;
+      font-weight: 700;
+      padding: 8px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .tool-btn.active {
+      box-shadow: 0 0 0 3px #fff inset;
+    }
+
+    .tool-btn.plain {
+      background: #e5e7eb;
+      color: #111;
+    }
+
+    .tool-btn.dual {
+      color: #111;
+    }
+
+    .legend-note {
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.4;
+    }
+
+    .output-box {
+      min-height: 320px;
+      font-family: monospace;
+      white-space: pre;
+      resize: vertical;
+    }
+
+    .locked-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5,10,20,0.94);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .locked-card {
+      width: 100%;
+      max-width: 420px;
+      background: #121a2d;
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 18px;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    #adminBadge {
+      font-size: 14px;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+  </style>
+</head>
+<body>
+  <div id="lockedOverlay" class="locked-overlay">
+    <div class="locked-card">
+      <h2>Admin Only</h2>
+      <p>This metadata painter can only be opened by the admin account.</p>
+      <div class="field" style="margin-top:14px;">
+        <label for="adminLoginId">Admin ID</label>
+        <input id="adminLoginId" type="text" placeholder="Enter admin ID">
+      </div>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn-action" onclick="metaPainterLogin()">Login</button>
+      </div>
+      <div id="adminLoginStatus" class="status"></div>
+    </div>
+  </div>
+
+  <div class="page-wrap">
+    <div class="card">
+      <div class="title-row">
+        <div>
+          <h1>ZM Meta Painter</h1>
+          <div class="legend-note">Tap a tool, then tap numbered tiles to assign metadata. Block, Bubble, and Shaft tiles are view-only.</div>
+        </div>
+        <div id="adminBadge">Not logged in</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="controls-grid">
+        <div class="field">
+          <label for="eventTypeSelect">Event Type</label>
+          <select id="eventTypeSelect" onchange="mpHandleEventTypeChange()">
+            <option value="">Select Event Type</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="eventNameSelect">Event Name</label>
+          <select id="eventNameSelect" onchange="mpHandleEventNameChange()">
+            <option value="">Select Event Name</option>
+          </select>
+        </div>
+
+        <div class="field hidden" id="eventMineField">
+          <label for="eventMineSelect">Event Mine</label>
+          <select id="eventMineSelect" onchange="mpHandleEventMineChange()">
+            <option value="">Select Event Mine</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="eventChamberSelect">Chamber</label>
+          <select id="eventChamberSelect" onchange="mpHandleEventChamberChange()">
+            <option value="">Select Chamber</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-action" onclick="mpLoadSelectedChamber()">Load Chamber</button>
+        <button class="btn-neutral" onclick="mpClearCurrentMetadata()">Clear Current Chamber Metadata</button>
+        <button class="btn-good" onclick="mpGenerateOutput()">Generate Output</button>
+        <button class="btn-good" onclick="mpCopyOutput()">Copy Output</button>
+        <button class="btn-action" onclick="mpDownloadOutput()">Download Output</button>
+      </div>
+
+      <div id="metaPainterStatus" class="status"></div>
+    </div>
+
+    <div class="layout">
+      <div class="card">
+        <h2>Painter</h2>
+        <div class="board-wrap">
+          <div id="metaGrid" class="meta-grid"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>Tools</h2>
+
+          <div class="tool-section">
+            <div class="tool-grid" id="toolGrid"></div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn-neutral" onclick="mpSetTool('plain')">Plain</button>
+            <button class="btn-neutral" onclick="mpSetTool('clear')">Clear</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Output</h2>
+          <textarea id="outputBox" class="output-box" spellcheck="false"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
