@@ -3,25 +3,17 @@ window.ZM_TILE_META = {
     "Treasures in Ice": {
       "Chamber 1": {
   tiles: {
-    "0,0": { object: "keys" },
-    "0,2": { object: "chest", subtype: "iron" },
-    "0,4": { object: "badges" },
-    "0,6": { object: "chest", subtype: "wood" },
-    "1,0": { object: "badges" },
-    "1,5": { object: "essence" },
+    "0,0": { object: "gems" },
+    "0,1": { object: "badges" },
+    "0,2": { object: "emblems" },
+    "0,3": { object: "keys" },
+    "0,4": { object: "essence" },
+    "0,5": { object: "stickers" },
     "2,0": { object: "chest", subtype: "wood" },
-    "2,4": { object: "keys" },
-    "3,1": { object: "essence" },
-    "3,3": { object: "badges" },
-    "4,3": { object: "chest", subtype: "iron" },
-    "5,1": { object: "essence" },
-    "6,1": { object: "chest", subtype: "wood" },
-    "6,6": { object: "keys" },
-    "7,4": { object: "badges" },
-    "8,3": { object: "keys" },
-    "8,5": { object: "essence" },
-    "9,5": { object: "chest", subtype: "wood" },
-    "10,1": { object: "badges" }
+    "2,1": { object: "chest", subtype: "iron" },
+    "2,2": { object: "chest", subtype: "steel" },
+    "2,3": { object: "chest", subtype: "silver" },
+    "2,4": { object: "chest", subtype: "gold" }
   }
 },
       "Chamber 2": { tiles: {} },
