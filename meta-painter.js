@@ -1,21 +1,10 @@
-56px=====================
-   ZM META PAINTER
-========================= */
-
 const MP_COLS = 7;
 const MP_MAX_ROWS = 20;
 const MP_MINED_ROWS = 13;
 
-/* =========================
-   STATE
-========================= */
-
-let mpCurrentTester = null;
 let mpSelectedMapPath = null;
-
 let mpCurrentBaseGrid = [];
 let mpCurrentRowCount = MP_MINED_ROWS;
-
 let mpCurrentTool = "plain";
 
 let mpCurrentContext = {
@@ -26,10 +15,6 @@ let mpCurrentContext = {
 };
 
 let mpCurrentMeta = {};
-
-/* =========================
-   TOOL ORDER
-========================= */
 
 const MP_TOOL_ORDER = [
   "gems",
@@ -45,71 +30,10 @@ const MP_TOOL_ORDER = [
   "chest:gold"
 ];
 
-/* =========================
-   AUTH (ADMIN ONLY)
-========================= */
-
-function metaPainterLogin() {
-  const id = String(document.getElementById("adminLoginId").value || "").trim();
-  const status = document.getElementById("adminLoginStatus");
-
-  if (!id) {
-    status.textContent = "Enter admin ID.";
-    return;
-  }
-
-  const tester = findTesterById(id);
-
-  if (!tester || !tester.isAdmin) {
-    status.textContent = "Admin access denied.";
-    return;
-  }
-
-  window.currentTester = tester;
-  mpCurrentTester = tester;
-  saveSession(tester);
-
-  document.getElementById("lockedOverlay").classList.add("hidden");
-  document.getElementById("adminBadge").textContent =
-    `Admin: ${tester.name} (${tester.id})`;
-
-  status.textContent = "";
-}
-
-function mpInitAccess() {
-  initializeTesters();
-
-  const session = getStoredSession();
-
-  if (session && session.id) {
-    const tester = findTesterById(session.id);
-
-    if (tester && tester.isAdmin) {
-      window.currentTester = tester;
-      mpCurrentTester = tester;
-
-      document.getElementById("lockedOverlay").classList.add("hidden");
-      document.getElementById("adminBadge").textContent =
-        `Admin: ${tester.name} (${tester.id})`;
-      return;
-    }
-  }
-
-  document.getElementById("lockedOverlay").classList.remove("hidden");
-}
-
-/* =========================
-   STATUS
-========================= */
-
 function mpStatus(msg) {
   const el = document.getElementById("metaPainterStatus");
   if (el) el.textContent = msg;
 }
-
-/* =========================
-   DROPDOWNS
-========================= */
 
 function mpPopulateEventTypeSelect() {
   const select = document.getElementById("eventTypeSelect");
@@ -134,9 +58,13 @@ function mpResetBelow(level) {
   const eventName = document.getElementById("eventNameSelect");
   const eventMine = document.getElementById("eventMineSelect");
   const chamber = document.getElementById("eventChamberSelect");
+  const eventMineField = document.getElementById("eventMineField");
 
   if (level <= 1) eventName.innerHTML = '<option value="">Select Event Name</option>';
-  if (level <= 2) eventMine.innerHTML = '<option value="">Select Event Mine</option>';
+  if (level <= 2) {
+    eventMine.innerHTML = '<option value="">Select Event Mine</option>';
+    eventMineField.classList.add("hidden");
+  }
   if (level <= 3) chamber.innerHTML = '<option value="">Select Chamber</option>';
 
   mpSelectedMapPath = null;
@@ -164,12 +92,42 @@ function mpHandleEventNameChange() {
   const type = document.getElementById("eventTypeSelect").value;
   const name = document.getElementById("eventNameSelect").value;
   const chamber = document.getElementById("eventChamberSelect");
+  const eventMine = document.getElementById("eventMineSelect");
+  const eventMineField = document.getElementById("eventMineField");
 
   mpResetBelow(2);
   if (!type || !name) return;
 
-  const chambers = Object.keys(window.ZM_MAP_DATA[type][name] || {});
+  if (type === "Main") {
+    const chambers = Object.keys(window.ZM_MAP_DATA?.Main?.[name] || {});
+    chambers.forEach(ch => {
+      const opt = document.createElement("option");
+      opt.value = ch;
+      opt.textContent = ch;
+      chamber.appendChild(opt);
+    });
+  } else {
+    const mines = Object.keys(window.ZM_MAP_DATA?.Legacy?.[name] || {});
+    eventMineField.classList.remove("hidden");
 
+    mines.forEach(mine => {
+      const opt = document.createElement("option");
+      opt.value = mine;
+      opt.textContent = mine;
+      eventMine.appendChild(opt);
+    });
+  }
+}
+
+function mpHandleEventMineChange() {
+  const name = document.getElementById("eventNameSelect").value;
+  const mine = document.getElementById("eventMineSelect").value;
+  const chamber = document.getElementById("eventChamberSelect");
+
+  mpResetBelow(3);
+  if (!name || !mine) return;
+
+  const chambers = Object.keys(window.ZM_MAP_DATA?.Legacy?.[name]?.[mine] || {});
   chambers.forEach(ch => {
     const opt = document.createElement("option");
     opt.value = ch;
@@ -178,21 +136,20 @@ function mpHandleEventNameChange() {
   });
 }
 
-function mpHandleEventMineChange() {}
-
 function mpHandleEventChamberChange() {
   const type = document.getElementById("eventTypeSelect").value;
   const name = document.getElementById("eventNameSelect").value;
+  const mine = document.getElementById("eventMineSelect").value;
   const chamber = document.getElementById("eventChamberSelect").value;
 
   if (!type || !name || !chamber) return;
 
-  mpSelectedMapPath = { eventType: type, eventName: name, chamberName: chamber };
+  if (type === "Main") {
+    mpSelectedMapPath = { eventType: type, eventName: name, chamberName: chamber };
+  } else {
+    mpSelectedMapPath = { eventType: type, eventName: name, eventMine: mine, chamberName: chamber };
+  }
 }
-
-/* =========================
-   LOAD MAP
-========================= */
 
 function mpLoadSelectedChamber() {
   const path = mpSelectedMapPath;
@@ -201,15 +158,25 @@ function mpLoadSelectedChamber() {
     return;
   }
 
-  const record =
-    window.ZM_MAP_DATA?.[path.eventType]?.[path.eventName]?.[path.chamberName];
+  let record = null;
+
+  if (path.eventType === "Main") {
+    record = window.ZM_MAP_DATA?.Main?.[path.eventName]?.[path.chamberName];
+  } else {
+    record = window.ZM_MAP_DATA?.Legacy?.[path.eventName]?.[path.eventMine]?.[path.chamberName];
+  }
 
   if (!record) {
     mpStatus("Map not found.");
     return;
   }
 
-  mpCurrentContext = path;
+  mpCurrentContext = {
+    eventType: path.eventType,
+    eventName: path.eventName,
+    eventMine: path.eventMine || null,
+    chamberName: path.chamberName
+  };
 
   const source = record.grid || [];
 
@@ -234,10 +201,6 @@ function mpLoadSelectedChamber() {
 
   mpStatus(`Loaded ${path.eventName} - ${path.chamberName}`);
 }
-
-/* =========================
-   TOOLS
-========================= */
 
 function mpSetTool(tool) {
   mpCurrentTool = tool;
@@ -284,10 +247,6 @@ function mpBuildToolGrid() {
   mpSetTool("plain");
 }
 
-/* =========================
-   GRID RENDER
-========================= */
-
 function mpClickTile(r, c) {
   const val = mpCurrentBaseGrid[r][c];
   if (typeof val !== "number") return;
@@ -296,15 +255,13 @@ function mpClickTile(r, c) {
 
   if (mpCurrentTool === "plain" || mpCurrentTool === "clear") {
     delete mpCurrentMeta[key];
+  } else if (mpCurrentTool.startsWith("chest:")) {
+    mpCurrentMeta[key] = {
+      object: "chest",
+      subtype: mpCurrentTool.split(":")[1]
+    };
   } else {
-    if (mpCurrentTool.startsWith("chest:")) {
-      mpCurrentMeta[key] = {
-        object: "chest",
-        subtype: mpCurrentTool.split(":")[1]
-      };
-    } else {
-      mpCurrentMeta[key] = { object: mpCurrentTool };
-    }
+    mpCurrentMeta[key] = { object: mpCurrentTool };
   }
 
   mpRenderGrid();
@@ -314,7 +271,7 @@ function mpClickTile(r, c) {
 function mpRenderGrid() {
   const grid = document.getElementById("metaGrid");
   grid.innerHTML = "";
-  grid.style.gridTemplateColumns = `repeat(${MP_COLS}, 42px)`;
+  grid.style.gridTemplateColumns = `repeat(${MP_COLS}, 40px)`;
 
   for (let r = 0; r < mpCurrentRowCount; r++) {
     for (let c = 0; c < MP_COLS; c++) {
@@ -380,12 +337,13 @@ function mpRenderGrid() {
   }
 }
 
-/* =========================
-   OUTPUT
-========================= */
-
 function mpGenerateOutput() {
   const box = document.getElementById("outputBox");
+
+  if (!mpCurrentContext.chamberName) {
+    box.value = "";
+    return;
+  }
 
   const entries = Object.entries(mpCurrentMeta).sort((a, b) => {
     const [ar, ac] = a[0].split(",").map(Number);
@@ -409,12 +367,24 @@ function mpGenerateOutput() {
 }
 
 function mpCopyOutput() {
-  navigator.clipboard.writeText(document.getElementById("outputBox").value);
-  mpStatus("Copied.");
+  const text = document.getElementById("outputBox").value;
+  if (!text.trim()) {
+    mpStatus("Nothing to copy.");
+    return;
+  }
+
+  navigator.clipboard.writeText(text)
+    .then(() => mpStatus("Copied."))
+    .catch(() => mpStatus("Copy failed."));
 }
 
 function mpDownloadOutput() {
   const text = document.getElementById("outputBox").value;
+  if (!text.trim()) {
+    mpStatus("Nothing to download.");
+    return;
+  }
+
   const blob = new Blob([text], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
 
@@ -424,20 +394,28 @@ function mpDownloadOutput() {
   a.click();
 
   URL.revokeObjectURL(url);
+  mpStatus("Downloaded.");
 }
 
 function mpClearCurrentMetadata() {
   mpCurrentMeta = {};
   mpRenderGrid();
   mpGenerateOutput();
+  mpStatus("Current chamber metadata cleared.");
 }
 
-/* =========================
-   INIT
-========================= */
+window.mpHandleEventTypeChange = mpHandleEventTypeChange;
+window.mpHandleEventNameChange = mpHandleEventNameChange;
+window.mpHandleEventMineChange = mpHandleEventMineChange;
+window.mpHandleEventChamberChange = mpHandleEventChamberChange;
+window.mpLoadSelectedChamber = mpLoadSelectedChamber;
+window.mpSetTool = mpSetTool;
+window.mpGenerateOutput = mpGenerateOutput;
+window.mpCopyOutput = mpCopyOutput;
+window.mpDownloadOutput = mpDownloadOutput;
+window.mpClearCurrentMetadata = mpClearCurrentMetadata;
 
 window.addEventListener("load", () => {
-  mpInitAccess();
   mpPopulateEventTypeSelect();
   mpBuildToolGrid();
 });
