@@ -130,6 +130,31 @@ function getObjectVisual(meta){
   };
 }
 
+function getHtmlCodeFontSize(code){
+  const len = String(code || "").length;
+  if (len >= 6) return "8px";
+  if (len === 5) return "9px";
+  if (len === 4) return "10px";
+  return "11px";
+}
+
+function getCanvasCodeFontSize(code){
+  const len = String(code || "").length;
+  if (len >= 6) return 8;
+  if (len === 5) return 9;
+  if (len === 4) return 10;
+  return 12;
+}
+
+function getCanvasNumberFontSize(code){
+  if (!code) return 28;
+  const len = String(code).length;
+  if (len >= 6) return 21;
+  if (len === 5) return 22;
+  if (len === 4) return 23;
+  return 24;
+}
+
 function applyHtmlTileFill(cell, fill){
   if (!cell) return;
 
@@ -606,7 +631,7 @@ function render(){
             const code = document.createElement("div");
             code.className = "cell-code";
             code.textContent = visual.code;
-            code.style.fontSize = "10px";
+            code.style.fontSize = getHtmlCodeFontSize(visual.code);
             code.style.fontWeight = "700";
             code.style.lineHeight = "1";
             code.style.marginTop = "2px";
@@ -989,11 +1014,11 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
           ctx.fillText(visual.code, x + cell/2, y + cell/2);
         } else {
           if (visual.code) {
-            ctx.font = "700 24px Arial";
+            ctx.font = `700 ${getCanvasNumberFontSize(visual.code)}px Arial`;
             ctx.textBaseline = "middle";
             ctx.fillText(String(val), x + cell/2, y + cell/2 - 10);
 
-            ctx.font = "700 11px Arial";
+            ctx.font = `700 ${getCanvasCodeFontSize(visual.code)}px Arial`;
             ctx.fillText(visual.code, x + cell/2, y + cell/2 + 18);
           } else {
             ctx.font = "700 28px Arial";
