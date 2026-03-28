@@ -7,25 +7,28 @@ window.ZM_OBJECT_TYPES = {
 
   gems: {
     label: "Gems",
-    code: "GEM",
+    code: "Gems",
     fill: "#ff6b6b"
   },
 
   badges: {
     label: "Badges",
-    code: "BDG",
-    fill: "#facc15"
+    code: "Badge",
+    fill: "#c084fc"
   },
 
   emblems: {
     label: "Emblems",
-    code: "E",
-    fill: "#c084fc"
+    code: "Emb",
+    fill: {
+      type: "dual",
+      colors: ["#ef4444", "#facc15"]
+    }
   },
 
   keys: {
     label: "Keys",
-    code: "K",
+    code: "Key",
     fill: "#fde047"
   },
 
@@ -47,22 +50,22 @@ window.ZM_OBJECT_TYPES = {
     subtypes: {
       wood: {
         label: "Wood",
-        code: "WD",
+        code: "WOOD",
         fill: "#d2a679"
       },
       iron: {
         label: "Iron",
-        code: "IRN",
+        code: "IRON",
         fill: "#22c55e"
       },
       steel: {
         label: "Steel",
-        code: "STL",
+        code: "STEEL",
         fill: "#9ca3af"
       },
       silver: {
         label: "Silver",
-        code: "SIL",
+        code: "SILVER",
         fill: {
           type: "dual",
           colors: ["#9ca3af", "#60a5fa"]
@@ -70,7 +73,7 @@ window.ZM_OBJECT_TYPES = {
       },
       gold: {
         label: "Gold",
-        code: "GLD",
+        code: "GOLD",
         fill: {
           type: "dual",
           colors: ["#22c55e", "#facc15"]
