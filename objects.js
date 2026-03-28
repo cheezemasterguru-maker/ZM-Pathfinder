@@ -14,13 +14,13 @@ window.ZM_OBJECT_TYPES = {
   badges: {
     label: "Badges",
     code: "BDG",
-    fill: "#facc15" // ← NOW GOLD
+    fill: "#facc15"
   },
 
   emblems: {
     label: "Emblems",
     code: "E",
-    fill: "#c084fc" // ← NOW LIGHT PURPLE
+    fill: "#c084fc"
   },
 
   keys: {
@@ -33,6 +33,12 @@ window.ZM_OBJECT_TYPES = {
     label: "Essence",
     code: "ESS",
     fill: "#86efac"
+  },
+
+  stickers: {
+    label: "Stickers",
+    code: "STK",
+    fill: "#14b8a6"
   },
 
   chest: {
