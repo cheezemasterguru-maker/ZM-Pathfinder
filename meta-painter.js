@@ -179,6 +179,7 @@ function mpHandleEventNameChange() {
 }
 
 function mpHandleEventMineChange() {}
+
 function mpHandleEventChamberChange() {
   const type = document.getElementById("eventTypeSelect").value;
   const name = document.getElementById("eventNameSelect").value;
@@ -268,7 +269,9 @@ function mpBuildToolGrid() {
     } else {
       const def = window.ZM_OBJECT_TYPES[tool];
       label = def.code;
-      fill = def.fill;
+      fill = typeof def.fill === "string"
+        ? def.fill
+        : `linear-gradient(135deg, ${def.fill.colors[0]} 50%, ${def.fill.colors[1]} 50%)`;
     }
 
     btn.textContent = label;
