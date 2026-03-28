@@ -23,6 +23,7 @@ window.ZM_TILE_META = {
     "9,5": { object: "chest", subtype: "wood" },
     "10,1": { object: "emblems" }
   }
+            }
 },
       "Chamber 2": { tiles: {} },
       "Chamber 3": { tiles: {} },
