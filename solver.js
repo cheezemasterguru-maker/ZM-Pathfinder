@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V4.5 loaded");
+  console.log("ZM Solver V4.6 loaded");
 
-  const SOLVER_VERSION = "V4.5";
+  const SOLVER_VERSION = "V4.6";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -120,7 +120,7 @@
           const key = `${rr},${cc}`;
           if (!entryMap.has(key)) {
             attacks.push([rr, cc]);
-            entryMap.set(key, [r, c]);
+            entryMap.set(key, [r, c]); // store touched shaft cell separately
           }
         }
       }
@@ -148,10 +148,13 @@
     const open = [];
 
     for (const [r, c] of starts) {
+      if (!isWalkableCell(grid, r, c)) continue; // critical fix: never seed from shaft/X
       dist[r][c] = 0;
       steps[r][c] = 0;
       open.push({ r, c, cost: 0, len: 0 });
     }
+
+    if (!open.length) return null;
 
     while (open.length) {
       open.sort((a, b) => (a.cost !== b.cost ? a.cost - b.cost : a.len - b.len));
@@ -227,13 +230,6 @@
       }
     }
     return out;
-  }
-
-  function appendEntryStep(path, entryCell) {
-    if (!path || !path.length || !entryCell) return path || [];
-    const last = path[path.length - 1];
-    if (last[0] === entryCell[0] && last[1] === entryCell[1]) return path;
-    return [...path, entryCell];
   }
 
   function dedupeCells(cells) {
@@ -671,7 +667,11 @@
     if (!route) return null;
 
     const entry = entryMap.get(`${route.goal[0]},${route.goal[1]}`);
-    const finalPath = entry ? appendEntryStep(route.path, entry) : route.path;
+
+    // Critical fix:
+    // finalPath must remain legal travel path only.
+    // Do NOT append shaft cell itself into the path.
+    const finalPath = route.path;
 
     const rawCost = route.cost;
     const minerCount = pathMinerCount(finalPath, grid, reusable);
@@ -701,7 +701,6 @@
   function chooseBestBlueRouteOption(options, isLowestShaft) {
     if (!options.length) return null;
 
-    // Step 1: determine truly cheapest direct/base option.
     const baseOptions = options.filter(o => o.kind === "base");
     const bestBase = baseOptions.length
       ? [...baseOptions].sort((a, b) =>
@@ -713,23 +712,15 @@
         )[0]
       : null;
 
-    // Step 2: compute score with much weaker reuse bias.
     for (const o of options) {
       let score = o.rawCost;
-
-      // prefer direct low-mineral routes
       score += o.minerCount * 10;
       score += o.rawValueSum * 0.35;
-
-      // small shaft-order preference
       score -= o.lowerBonus;
       score -= o.bubbleBonus;
-
-      // reuse only as a light tie-breaker
       score -= Math.min(0.8, o.sharedCount * 0.08);
       score -= Math.min(0.5, o.adjacentShared * 0.05);
 
-      // extra preference for deeper entry on lowest shaft only
       if (isLowestShaft) {
         score -= o.entryDepth * 3.5;
       }
@@ -748,10 +739,7 @@
 
     let chosen = options[0];
 
-    // Step 3: hard guard against unnecessary reuse.
-    // If direct/base is close or cheaper, and cumulative breaks more minerals, choose base.
     if (bestBase) {
-      const costGap = chosen.rawCost - bestBase.rawCost;
       const scoreGap = chosen.score - bestBase.score;
       const baseClearlyCleaner =
         bestBase.minerCount < chosen.minerCount ||
@@ -773,7 +761,6 @@
         chosen = bestBase;
       }
 
-      // Extra guard: if cumulative is only winning because of reuse, but direct is cheaper on raw route cost, take direct.
       if (
         chosen.kind !== "base" &&
         bestBase.rawCost < chosen.rawCost &&
@@ -827,7 +814,6 @@
         isLowestShaft
       });
       if (cumulativeOption) {
-        // dependency penalty: if cumulative route delays obvious direct shaft access, penalize it
         const directStandalone = dijkstra({
           grid,
           starts,
@@ -872,20 +858,25 @@
 
       bluePaths.push(chosen.finalPath);
       attackPoints.push(chosen.route.goal);
+
+      // keep shaft touch marker separate for rendering/debug only
       if (chosen.entry) shaftEntryDots.push(chosen.entry);
 
       blueCost += chosen.rawCost;
       dependencyCost += chosen.dependency || 0;
 
-      // much lighter assist accounting now
       assistBonus += Math.min(1.25, chosen.sharedCount * 0.06 + chosen.adjacentShared * 0.03);
       lowerShaftBonus += chosen.lowerBonus || 0;
       bubbleBonus += chosen.bubbleBonus || 0;
 
+      // legal travel cells only
       for (const [r, c] of chosen.finalPath) {
         reusable.add(`${r},${c}`);
       }
 
+      // critical fix:
+      // cumulative starts must remain on legal walkable cells only.
+      // use attack tile/path endpoints, never shaft cells.
       cumulativeStarts = dedupeCells(
         cumulativeStarts
           .concat(chosen.finalPath)
