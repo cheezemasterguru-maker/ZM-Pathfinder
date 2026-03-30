@@ -163,6 +163,11 @@ function isGraveyardValue(value){
   return String(value || "").trim().toLowerCase() === "graveyard";
 }
 
+function isMainDeepContext(){
+  const selectedEventType = document.getElementById("eventTypeSelect")?.value || "";
+  return currentMapContext.eventType === "MainDeep" || selectedEventType === "MainDeep";
+}
+
 function getRowsForContextFromSelection(){
   const chamber = document.getElementById("eventChamberSelect")?.value || "";
   return isGraveyardValue(chamber) ? MAX_ROWS : MINED_ROWS;
@@ -309,6 +314,12 @@ function hasAnyMainMapData(eventName){
   return Object.values(event).some(chamber => !!chamber);
 }
 
+function hasAnyMainDeepData(eventName){
+  const event = window.ZM_MAP_DATA?.MainDeep?.[eventName];
+  if (!event || typeof event !== "object") return false;
+  return Object.values(event).some(chamber => !!chamber);
+}
+
 function hasAnyLegacyMineData(eventName, mineName){
   const mine = window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName];
   if (!mine || typeof mine !== "object") return false;
@@ -326,20 +337,28 @@ function populateEventTypeSelect(){
 
   if (!window.ZM_MAP_DATA) return;
 
+  const mainDeepHasData = Object.keys(window.ZM_MAP_DATA.MainDeep || {}).some(eventName => hasAnyMainDeepData(eventName));
   const mainHasData = Object.keys(window.ZM_MAP_DATA.Main || {}).some(eventName => hasAnyMainMapData(eventName));
   const legacyHasData = Object.keys(window.ZM_MAP_DATA.Legacy || {}).some(eventName => hasAnyLegacyEventData(eventName));
+
+  if (mainDeepHasData) {
+    const option = document.createElement("option");
+    option.value = "MainDeep";
+    option.textContent = "Main DEEP";
+    select.appendChild(option);
+  }
 
   if (mainHasData) {
     const option = document.createElement("option");
     option.value = "Main";
-    option.textContent = "Main";
+    option.textContent = "Main Events";
     select.appendChild(option);
   }
 
   if (legacyHasData) {
     const option = document.createElement("option");
     option.value = "Legacy";
-    option.textContent = "Legacy";
+    option.textContent = "Legacy Events";
     select.appendChild(option);
   }
 }
@@ -388,7 +407,16 @@ function handleEventTypeChange(){
 
   let validNames = [];
 
-  if (eventType === "Main") {
+  if (eventType === "MainDeep") {
+    const libraryNames = Object.keys(window.ZM_MAP_LIBRARY?.MainDeep || {});
+    const dataNames = Object.keys(window.ZM_MAP_DATA.MainDeep || {});
+    validNames = [
+      ...libraryNames.filter(eventName => hasAnyMainDeepData(eventName)),
+      ...dataNames.filter(eventName =>
+        !libraryNames.includes(eventName) && hasAnyMainDeepData(eventName)
+      )
+    ];
+  } else if (eventType === "Main") {
     const libraryNames = Object.keys(window.ZM_MAP_LIBRARY?.Main || {});
     const dataNames = Object.keys(window.ZM_MAP_DATA.Main || {});
     validNames = [
@@ -443,7 +471,31 @@ function handleEventNameChange(){
     return;
   }
 
-  if (eventType === "Main") {
+  if (eventType === "MainDeep") {
+    const libraryChambers = window.ZM_MAP_LIBRARY?.MainDeep?.[eventName] || [];
+    const dataChambers = Object.keys(window.ZM_MAP_DATA?.MainDeep?.[eventName] || {});
+    const chambers = [
+      ...libraryChambers.filter(chamber => !!window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[chamber]),
+      ...dataChambers.filter(chamber =>
+        !libraryChambers.includes(chamber) && !!window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[chamber]
+      )
+    ];
+
+    if (!chambers.length) {
+      ensureBoardRowCountFromCurrentContext();
+      updateDifficultyMeter();
+      return;
+    }
+
+    eventChamberField.classList.remove("hidden");
+
+    chambers.forEach(chamber => {
+      const option = document.createElement("option");
+      option.value = chamber;
+      option.textContent = chamber;
+      eventChamberSelect.appendChild(option);
+    });
+  } else if (eventType === "Main") {
     const libraryChambers = window.ZM_MAP_LIBRARY?.Main?.[eventName] || [];
     const dataChambers = Object.keys(window.ZM_MAP_DATA?.Main?.[eventName] || {});
     const chambers = [
@@ -550,6 +602,10 @@ function buildAutoTitle(){
 
   if (!eventType || !eventName || !eventChamber) return null;
 
+  if (eventType === "MainDeep") {
+    return `${eventName} - ${eventChamber}`;
+  }
+
   if (eventType === "Main") {
     return `${eventName} - ${eventChamber}`;
   }
@@ -575,6 +631,11 @@ function handleEventChamberChange(){
     ensureBoardRowCountFromCurrentContext();
     updateDifficultyMeter();
     return;
+  }
+
+  if (eventType === "MainDeep") {
+    selectedMapPath = { eventType, eventName, eventChamber };
+    loadMapBtn.classList.remove("hidden");
   }
 
   if (eventType === "Main") {
@@ -605,6 +666,10 @@ function handleTitleInputChange(){
 
 function getSelectedMapRecord(){
   if (!selectedMapPath || !window.ZM_MAP_DATA) return null;
+
+  if (selectedMapPath.eventType === "MainDeep") {
+    return window.ZM_MAP_DATA?.MainDeep?.[selectedMapPath.eventName]?.[selectedMapPath.eventChamber] || null;
+  }
 
   if (selectedMapPath.eventType === "Main") {
     return window.ZM_MAP_DATA?.Main?.[selectedMapPath.eventName]?.[selectedMapPath.eventChamber] || null;
@@ -1304,6 +1369,8 @@ function getDifficultyLabel(ratio){
 }
 
 function getCurrentEventName(){
+  if (isMainDeepContext()) return null;
+
   const selectedEventName = document.getElementById("eventNameSelect")?.value || "";
   if (selectedEventName && EVENT_TOTALS[selectedEventName] !== undefined) {
     return selectedEventName;
@@ -1399,6 +1466,12 @@ function updateDifficultyMeter(){
   const meter = ensureDifficultyMeter();
   const report = document.getElementById("report");
   if (!meter || !report) return;
+
+  if (isMainDeepContext()) {
+    meter.style.display = "none";
+    report.style.display = "block";
+    return;
+  }
 
   const eventName = getCurrentEventName();
   if (!eventName || EVENT_TOTALS[eventName] === undefined) {
