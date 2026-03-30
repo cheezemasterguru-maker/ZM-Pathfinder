@@ -1040,3 +1040,110 @@
 
       const candidate = {
         redMode: redCandidate.mode,
+        redVariant: redCandidate.variant,
+        redBubble: redCandidate.redBubble,
+        redPath: redCandidate.path,
+        redCost: redCandidate.redCost,
+        gateGoal: redCandidate.gateGoal,
+        bluePaths: blueEval.bluePaths,
+        blueCost: blueEval.blueCost,
+        shaftEntryDots: blueEval.shaftEntryDots,
+        attackPoints: blueEval.attackPoints,
+        unresolvedTargets: blueEval.unresolved,
+        dependencyCost: blueEval.dependencyCost,
+        assistBonus: blueEval.assistBonus,
+        lowerShaftBonus: blueEval.lowerShaftBonus,
+        bubbleBonus: blueEval.bubbleBonus,
+        redLoopPenalty: blueEval.redLoopPenalty,
+        overAssistPenalty: blueEval.overAssistPenalty,
+        effectiveTotal
+      };
+
+      allCandidates.push(candidate);
+
+      if (!best) {
+        best = candidate;
+        continue;
+      }
+
+      if (candidate.unresolvedTargets < best.unresolvedTargets) {
+        best = candidate;
+        continue;
+      }
+
+      if (
+        candidate.unresolvedTargets === best.unresolvedTargets &&
+        candidate.effectiveTotal < best.effectiveTotal
+      ) {
+        best = candidate;
+        continue;
+      }
+
+      if (
+        candidate.unresolvedTargets === best.unresolvedTargets &&
+        candidate.effectiveTotal === best.effectiveTotal &&
+        candidate.redCost < best.redCost
+      ) {
+        best = candidate;
+      }
+    }
+
+    const routeAnalysis = buildRouteAnalysis(grid, allCandidates, best);
+
+    return {
+      ok: true,
+      rows,
+      cols,
+      gateType,
+      startRow,
+      solverVersion: SOLVER_VERSION,
+      redMode: best.redMode,
+      redVariant: best.redVariant,
+      redBubble: best.redBubble,
+      redPath: best.redPath,
+      redCost: roundCost(best.redCost),
+      bluePaths: best.bluePaths,
+      blueCost: roundCost(best.blueCost),
+      totalCost: roundCost(best.redCost + best.blueCost),
+      effectiveTotal: roundCost(best.effectiveTotal),
+      dependencyCost: roundCost(best.dependencyCost),
+      assistBonus: roundCost(best.assistBonus),
+      lowerShaftBonus: roundCost(best.lowerShaftBonus),
+      bubbleBonus: roundCost(best.bubbleBonus),
+      redLoopPenalty: roundCost(best.redLoopPenalty),
+      overAssistPenalty: roundCost(best.overAssistPenalty),
+      shaftClusters: shaftClustersOrdered,
+      shaftEntryDots: best.shaftEntryDots,
+      attackPoints: best.attackPoints,
+      bubbles,
+      unresolvedTargets: best.unresolvedTargets,
+      redCandidateCount: redCandidates.length,
+      routeAnalysis,
+      message:
+        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
+        "solver_status: solved\n" +
+        `red_mode: ${best.redMode}\n` +
+        `red_variant: ${best.redVariant}\n` +
+        `red_cost: ${roundCost(best.redCost)}\n` +
+        `blue_cost: ${roundCost(best.blueCost)}\n` +
+        `dependency_cost: ${roundCost(best.dependencyCost)}\n` +
+        `assist_bonus: ${roundCost(best.assistBonus)}\n` +
+        `lower_shaft_bonus: ${roundCost(best.lowerShaftBonus)}\n` +
+        `bubble_bonus: ${roundCost(best.bubbleBonus)}\n` +
+        `red_loop_penalty: ${roundCost(best.redLoopPenalty)}\n` +
+        `over_assist_penalty: ${roundCost(best.overAssistPenalty)}\n` +
+        `bubble_count: ${bubbles.length}\n` +
+        `shaft_count: ${shaftClustersOrdered.length}\n` +
+        `red_candidate_count: ${redCandidates.length}\n` +
+        `unresolved_targets: ${best.unresolvedTargets}\n` +
+        `total_cost: ${roundCost(best.redCost + best.blueCost)}\n` +
+        `effective_total: ${roundCost(best.effectiveTotal)}`
+    };
+  }
+
+  window.ZMPathfinderSolver = {
+    solverVersion: SOLVER_VERSION,
+    numberCost,
+    solveGrid
+  };
+})();
