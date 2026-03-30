@@ -58,38 +58,109 @@ function mpHasAnyLegacyEventData(eventName) {
   return Object.keys(mines).some(mineName => mpHasAnyLegacyMineData(eventName, mineName));
 }
 
+function mpUniqueOrdered(primary, secondary) {
+  const out = [];
+  const seen = new Set();
+
+  [...primary, ...secondary].forEach(value => {
+    if (!value || seen.has(value)) return;
+    seen.add(value);
+    out.push(value);
+  });
+
+  return out;
+}
+
+function mpGetOrderedMainDeepNames() {
+  const libraryNames = Object.keys(window.ZM_MAP_LIBRARY?.MainDeep || {});
+  const dataNames = Object.keys(window.ZM_MAP_DATA?.MainDeep || {});
+  return mpUniqueOrdered(
+    libraryNames.filter(name => mpHasAnyMainDeepData(name)),
+    dataNames.filter(name => mpHasAnyMainDeepData(name))
+  );
+}
+
+function mpGetOrderedMainNames() {
+  const libraryNames = Object.keys(window.ZM_MAP_LIBRARY?.Main || {});
+  const dataNames = Object.keys(window.ZM_MAP_DATA?.Main || {});
+  return mpUniqueOrdered(
+    libraryNames.filter(name => mpHasAnyMainData(name)),
+    dataNames.filter(name => mpHasAnyMainData(name))
+  );
+}
+
+function mpGetOrderedLegacyNames() {
+  const libraryNames = Object.keys(window.ZM_MAP_LIBRARY?.Legacy || {});
+  const dataNames = Object.keys(window.ZM_MAP_DATA?.Legacy || {});
+  return mpUniqueOrdered(
+    libraryNames.filter(name => mpHasAnyLegacyEventData(name)),
+    dataNames.filter(name => mpHasAnyLegacyEventData(name))
+  );
+}
+
+function mpGetOrderedMainDeepChambers(eventName) {
+  const libraryChambers = window.ZM_MAP_LIBRARY?.MainDeep?.[eventName] || [];
+  const dataChambers = Object.keys(window.ZM_MAP_DATA?.MainDeep?.[eventName] || {});
+  return mpUniqueOrdered(
+    libraryChambers.filter(ch => !!window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[ch]),
+    dataChambers.filter(ch => !!window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[ch])
+  );
+}
+
+function mpGetOrderedMainChambers(eventName) {
+  const libraryChambers = window.ZM_MAP_LIBRARY?.Main?.[eventName] || [];
+  const dataChambers = Object.keys(window.ZM_MAP_DATA?.Main?.[eventName] || {});
+  return mpUniqueOrdered(
+    libraryChambers.filter(ch => !!window.ZM_MAP_DATA?.Main?.[eventName]?.[ch]),
+    dataChambers.filter(ch => !!window.ZM_MAP_DATA?.Main?.[eventName]?.[ch])
+  );
+}
+
+function mpGetOrderedLegacyMines(eventName) {
+  const libraryMines = Object.keys(window.ZM_MAP_LIBRARY?.Legacy?.[eventName] || {});
+  const dataMines = Object.keys(window.ZM_MAP_DATA?.Legacy?.[eventName] || {});
+  return mpUniqueOrdered(
+    libraryMines.filter(mine => mpHasAnyLegacyMineData(eventName, mine)),
+    dataMines.filter(mine => mpHasAnyLegacyMineData(eventName, mine))
+  );
+}
+
+function mpGetOrderedLegacyChambers(eventName, mineName) {
+  const libraryChambers = window.ZM_MAP_LIBRARY?.Legacy?.[eventName]?.[mineName] || [];
+  const dataChambers = Object.keys(window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName] || {});
+  return mpUniqueOrdered(
+    libraryChambers.filter(ch => !!window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName]?.[ch]),
+    dataChambers.filter(ch => !!window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName]?.[ch])
+  );
+}
+
 function mpPopulateEventTypeSelect() {
   const select = document.getElementById("eventTypeSelect");
   select.innerHTML = '<option value="">Select Event Type</option>';
 
-  if (window.ZM_MAP_DATA?.MainDeep) {
-    const hasMainDeep = Object.keys(window.ZM_MAP_DATA.MainDeep).some(name => mpHasAnyMainDeepData(name));
-    if (hasMainDeep) {
-      const opt = document.createElement("option");
-      opt.value = "MainDeep";
-      opt.textContent = "Main DEEP";
-      select.appendChild(opt);
-    }
+  const mainDeepNames = mpGetOrderedMainDeepNames();
+  const mainNames = mpGetOrderedMainNames();
+  const legacyNames = mpGetOrderedLegacyNames();
+
+  if (mainDeepNames.length) {
+    const opt = document.createElement("option");
+    opt.value = "MainDeep";
+    opt.textContent = "Main DEEP";
+    select.appendChild(opt);
   }
 
-  if (window.ZM_MAP_DATA?.Main) {
-    const hasMain = Object.keys(window.ZM_MAP_DATA.Main).some(name => mpHasAnyMainData(name));
-    if (hasMain) {
-      const opt = document.createElement("option");
-      opt.value = "Main";
-      opt.textContent = "Main";
-      select.appendChild(opt);
-    }
+  if (mainNames.length) {
+    const opt = document.createElement("option");
+    opt.value = "Main";
+    opt.textContent = "Main";
+    select.appendChild(opt);
   }
 
-  if (window.ZM_MAP_DATA?.Legacy) {
-    const hasLegacy = Object.keys(window.ZM_MAP_DATA.Legacy).some(name => mpHasAnyLegacyEventData(name));
-    if (hasLegacy) {
-      const opt = document.createElement("option");
-      opt.value = "Legacy";
-      opt.textContent = "Legacy";
-      select.appendChild(opt);
-    }
+  if (legacyNames.length) {
+    const opt = document.createElement("option");
+    opt.value = "Legacy";
+    opt.textContent = "Legacy";
+    select.appendChild(opt);
   }
 }
 
@@ -120,11 +191,11 @@ function mpHandleEventTypeChange() {
   let names = [];
 
   if (type === "MainDeep") {
-    names = Object.keys(window.ZM_MAP_DATA?.MainDeep || {}).filter(name => mpHasAnyMainDeepData(name));
+    names = mpGetOrderedMainDeepNames();
   } else if (type === "Main") {
-    names = Object.keys(window.ZM_MAP_DATA?.Main || {}).filter(name => mpHasAnyMainData(name));
+    names = mpGetOrderedMainNames();
   } else if (type === "Legacy") {
-    names = Object.keys(window.ZM_MAP_DATA?.Legacy || {}).filter(name => mpHasAnyLegacyEventData(name));
+    names = mpGetOrderedLegacyNames();
   }
 
   names.forEach(name => {
@@ -146,9 +217,7 @@ function mpHandleEventNameChange() {
   if (!type || !name) return;
 
   if (type === "MainDeep") {
-    const chambers = Object.keys(window.ZM_MAP_DATA?.MainDeep?.[name] || {}).filter(
-      ch => !!window.ZM_MAP_DATA?.MainDeep?.[name]?.[ch]
-    );
+    const chambers = mpGetOrderedMainDeepChambers(name);
 
     chambers.forEach(ch => {
       const opt = document.createElement("option");
@@ -157,9 +226,7 @@ function mpHandleEventNameChange() {
       chamber.appendChild(opt);
     });
   } else if (type === "Main") {
-    const chambers = Object.keys(window.ZM_MAP_DATA?.Main?.[name] || {}).filter(
-      ch => !!window.ZM_MAP_DATA?.Main?.[name]?.[ch]
-    );
+    const chambers = mpGetOrderedMainChambers(name);
 
     chambers.forEach(ch => {
       const opt = document.createElement("option");
@@ -168,9 +235,7 @@ function mpHandleEventNameChange() {
       chamber.appendChild(opt);
     });
   } else {
-    const mines = Object.keys(window.ZM_MAP_DATA?.Legacy?.[name] || {}).filter(
-      mine => mpHasAnyLegacyMineData(name, mine)
-    );
+    const mines = mpGetOrderedLegacyMines(name);
 
     eventMineField.classList.remove("hidden");
 
@@ -191,9 +256,7 @@ function mpHandleEventMineChange() {
   mpResetBelow(3);
   if (!name || !mine) return;
 
-  const chambers = Object.keys(window.ZM_MAP_DATA?.Legacy?.[name]?.[mine] || {}).filter(
-    ch => !!window.ZM_MAP_DATA?.Legacy?.[name]?.[mine]?.[ch]
-  );
+  const chambers = mpGetOrderedLegacyChambers(name, mine);
 
   chambers.forEach(ch => {
     const opt = document.createElement("option");
