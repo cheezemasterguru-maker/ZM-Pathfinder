@@ -77,9 +77,7 @@ function renderRouteAudit(routeAnalysis){
   if (!body) return;
 
   const shaftData = getCurrentChamberShaftData();
-  const shaftClusters = solveState.shaftClusters && solveState.shaftClusters.length
-    ? solveState.shaftClusters
-    : getShaftClustersFromGrid();
+  const shaftClusters = getOrderedPhysicalShaftClusters();
 
   body.innerHTML = "";
 
@@ -151,7 +149,8 @@ function renderRouteAudit(routeAnalysis){
       const maxR = Math.max(...rows);
       const minC = Math.min(...cols);
       const maxC = Math.max(...cols);
-      return `${index + 1}. rows ${minR}-${maxR}, cols ${minC}-${maxC}, cells: ${cluster.length}`;
+      const labelLines = getShaftDisplayLines(index, shaftData);
+      return `${index + 1}. rows ${minR}-${maxR}, cols ${minC}-${maxC}, cells: ${cluster.length} | label: ${labelLines.join(" / ")}`;
     });
 
     physicalText.innerHTML = clusterLines.join("<br>");
@@ -370,6 +369,73 @@ function getCurrentShaftDataPathLabel() {
   }
 
   return `No shaft-data path resolved`;
+}
+
+function getOrderedPhysicalShaftClusters() {
+  if (solveState.shaftClusters && solveState.shaftClusters.length) {
+    return solveState.shaftClusters;
+  }
+  return getShaftClustersFromGrid();
+}
+
+function getShaftDisplayLines(index, shaftData) {
+  const shaft = shaftData[index];
+  if (!shaft) return ["Shaft"];
+
+  const lines = [];
+  const shaftType = shaft.shaftType ? String(shaft.shaftType) : "Shaft";
+  lines.push(shaftType);
+
+  if (shaft.level !== null && shaft.level !== undefined && shaft.level !== "") {
+    lines.push(`Lv ${shaft.level}`);
+  }
+
+  if (shaft.auto !== null && shaft.auto !== undefined && shaft.auto !== "") {
+    lines.push(`Auto ${shaft.auto}`);
+  }
+
+  return lines;
+}
+
+function drawCenteredMultilineText(ctx, lines, x, y, w, h) {
+  if (!lines || !lines.length) return;
+
+  const safeLines = lines.filter(Boolean);
+  if (!safeLines.length) return;
+
+  let fontSize = Math.max(12, Math.min(26, Math.floor(Math.min(w, h) / 4.2)));
+  const maxWidth = w - 16;
+  const maxHeight = h - 16;
+
+  function fits(size) {
+    ctx.font = `700 ${size}px Arial`;
+    const lineHeight = Math.max(12, Math.floor(size * 1.1));
+    const totalHeight = lineHeight * safeLines.length;
+
+    if (totalHeight > maxHeight) return false;
+
+    for (const line of safeLines) {
+      if (ctx.measureText(line).width > maxWidth) return false;
+    }
+    return true;
+  }
+
+  while (fontSize > 10 && !fits(fontSize)) {
+    fontSize -= 1;
+  }
+
+  ctx.font = `700 ${fontSize}px Arial`;
+  ctx.fillStyle = "#111";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const lineHeight = Math.max(12, Math.floor(fontSize * 1.1));
+  const totalHeight = lineHeight * safeLines.length;
+  const startY = y + (h - totalHeight) / 2 + lineHeight / 2;
+
+  safeLines.forEach((line, i) => {
+    ctx.fillText(line, x + w / 2, startY + i * lineHeight);
+  });
 }
 
 function getHtmlCodeFontSize(code){
@@ -1341,11 +1407,11 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
     }
   }
 
-  const shafts = solveState.shaftClusters && solveState.shaftClusters.length
-    ? solveState.shaftClusters
-    : getShaftClustersFromGrid();
+  const shafts = getOrderedPhysicalShaftClusters();
+  const shaftData = getCurrentChamberShaftData();
 
-  for(const cluster of shafts){
+  for(let i = 0; i < shafts.length; i++){
+    const cluster = shafts[i];
     const rows = cluster.map(v => v[0]);
     const cols = cluster.map(v => v[1]);
     const minR = Math.min(...rows);
@@ -1366,11 +1432,7 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
     ctx.lineWidth = 3;
     ctx.strokeRect(x, y, w, h);
 
-    ctx.fillStyle = "#111";
-    ctx.font = "700 26px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("Shaft", x + w/2, y + h/2);
+    drawCenteredMultilineText(ctx, getShaftDisplayLines(i, shaftData), x, y, w, h);
   }
 
   for(const path of solveState.bluePaths){
@@ -1444,6 +1506,15 @@ function getShaftClustersFromGrid(){
       clusters.push(cluster);
     }
   }
+
+  clusters.sort((a, b) => {
+    const aBottom = Math.max(...a.map(([r]) => r));
+    const bBottom = Math.max(...b.map(([r]) => r));
+    if (aBottom !== bBottom) return bBottom - aBottom;
+    const aTop = Math.min(...a.map(([r]) => r));
+    const bTop = Math.min(...b.map(([r]) => r));
+    return bTop - aTop;
+  });
 
   return clusters;
 }
