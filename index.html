@@ -11,11 +11,12 @@
   <script src="map-validator.js?v=555"></script>
   <script src="objects.js?v=2"></script>
   <script src="tile-meta.js?v=779"></script>
+  <script src="shaft-data.js?v=1"></script>
   <script src="solver.js?v=4.7"></script>
   <script src="auth.js?v=777" defer></script>
   <script src="temp-solver.js?v=1"></script>
   <script src="timing-tables.js?v=1"></script>
-  <script src="app.js?v=781" defer></script>
+  <script src="app.js?v=782" defer></script>
 </head>
 <body>
   <div id="appShell" class="app-shell locked">
@@ -52,7 +53,6 @@
 
         <div id="mapLoaderSection" class="hidden">
           <div class="section-title">Map Loader</div>
-          <div class="help">Choose a stored map path, then press <b>Load Map</b> to place it into the grid. Loaded maps can still be edited afterward.</div>
 
           <div class="map-loader-grid compact-loader">
             <div class="loader-row">
@@ -99,6 +99,9 @@
           <button class="btn-action" onclick="loadSampleGrid()">Sample Grid</button>
           <button class="btn-action" onclick="pasteFromClipboard()">Paste From Clipboard</button>
           <button class="btn-action" onclick="openSolverHelp()">Solver Help</button>
+
+          <!-- NEW BUTTON -->
+          <button class="btn-action" onclick="openRouteReportModal()">Route Report</button>
         </div>
 
         <div id="report" class="report">Ready. Grid and solver are wired together.</div>
@@ -107,9 +110,6 @@
       <div class="card editor-card">
         <div class="sticky-tools">
           <div class="section-title" style="margin-top:0;">Editable Board</div>
-          <div class="help" style="margin-bottom:8px;">
-            Non-graveyard boards use 7×13. Graveyard boards use 7×20.
-          </div>
 
           <div class="tool-grid">
             <button id="tool-number" class="btn-white tool-active" onclick="setTool('number')">Number</button>
@@ -125,78 +125,52 @@
       </div>
 
       <div class="card">
-        <div class="section-title" style="margin-top:0;">Preview</div>
+        <div class="section-title">Preview</div>
         <div class="preview-wrap">
-          <canvas id="previewCanvas" width="860" height="1280"></canvas>
+          <canvas id="previewCanvas"></canvas>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- EXISTING MODALS (unchanged) -->
   <div id="loginOverlay" class="overlay show">
     <div class="modal modal-box" onclick="event.stopPropagation()">
       <h2>Beta Tester Login</h2>
-      <p>Enter your beta tester ID to unlock the solver.</p>
-
       <div class="modal-grid">
         <div class="field">
-          <label for="loginTesterId">Tester ID</label>
           <input id="loginTesterId" type="text" placeholder="Enter tester ID">
         </div>
       </div>
-
       <div class="modal-actions">
         <button class="btn-solve" onclick="loginTester()">Login</button>
-        <button class="btn-action" onclick="clearLoginField()">Clear</button>
       </div>
-
-      <div id="loginStatus" class="status-text"></div>
     </div>
   </div>
 
-  <div id="addTesterOverlay" class="overlay" onclick="closeAddTesterModal()">
+  <!-- ROUTE REPORT MODAL -->
+  <div id="routeReportOverlay" class="overlay" onclick="closeRouteReportModal()">
     <div class="modal modal-box" onclick="event.stopPropagation()">
-      <button class="modal-close" onclick="closeAddTesterModal()" aria-label="Close">×</button>
+      <button class="modal-close" onclick="closeRouteReportModal()">×</button>
 
-      <h2>Add Beta Tester</h2>
-      <p>Only the hard-coded admin account can add testers locally.</p>
+      <h2>Route Report</h2>
 
-      <div class="modal-grid">
-        <div class="field">
-          <label for="adminIdInput">Admin ID</label>
-          <input id="adminIdInput" type="text" placeholder="Enter admin ID">
-        </div>
-
-        <div class="field">
-          <label for="newTesterName">Tester Name</label>
-          <input id="newTesterName" type="text" placeholder="Enter tester name">
-        </div>
-
-        <div class="field">
-          <label for="newTesterId">Tester ID</label>
-          <input id="newTesterId" type="text" placeholder="Enter tester ID">
-        </div>
-      </div>
+      <div id="routeReportBody" class="help-content"></div>
 
       <div class="modal-actions">
-        <button class="btn-success" onclick="addBetaTester()">Add Tester</button>
-        <button class="btn-action" onclick="closeAddTesterModal()">Close</button>
+        <button class="btn-action" onclick="closeRouteReportModal()">Close</button>
       </div>
-
-      <div id="addTesterStatus" class="status-text"></div>
-      <div class="tester-list" id="testerList"></div>
     </div>
   </div>
 
+  <!-- HELP MODAL -->
   <div id="solverHelpOverlay" class="overlay" onclick="closeSolverHelp()">
     <div class="modal modal-box" onclick="event.stopPropagation()">
-      <button class="modal-close" onclick="closeSolverHelp()" aria-label="Close">×</button>
+      <button class="modal-close" onclick="closeSolverHelp()">×</button>
       <h2>Solver Help</h2>
       <div id="solverHelpBody" class="help-content"></div>
-      <div class="modal-actions">
-        <button class="btn-action" onclick="closeSolverHelp()">Close</button>
-      </div>
     </div>
   </div>
+
 </body>
 </html>
