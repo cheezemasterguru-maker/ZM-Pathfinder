@@ -39,7 +39,8 @@ let solveState = {
   shaftEntryDots: [],
   shaftClusters: [],
   solved: false,
-  message: "No solve yet."
+  message: "No solve yet.",
+  routeAnalysis: []
 };
 
 function setReport(msg){
@@ -49,6 +50,98 @@ function setReport(msg){
   updateDifficultyMeter();
 }
 
+function ensureRouteAuditCard(){
+  let card = document.getElementById("routeAuditCard");
+  if (card) return card;
+
+  const page = document.querySelector(".page");
+  const editorCard = document.querySelector(".editor-card");
+  if (!page || !editorCard) return null;
+
+  card = document.createElement("div");
+  card.id = "routeAuditCard";
+  card.className = "card";
+  card.style.display = "none";
+
+  const title = document.createElement("div");
+  title.className = "section-title";
+  title.style.marginTop = "0";
+  title.textContent = "Route Report";
+
+  const body = document.createElement("div");
+  body.id = "routeAuditBody";
+
+  card.appendChild(title);
+  card.appendChild(body);
+
+  editorCard.insertAdjacentElement("afterend", card);
+  return card;
+}
+
+function renderRouteAudit(routeAnalysis){
+  const card = ensureRouteAuditCard();
+  const body = document.getElementById("routeAuditBody");
+  if (!card || !body) return;
+
+  if (!routeAnalysis || !routeAnalysis.length) {
+    card.style.display = "none";
+    body.innerHTML = "";
+    return;
+  }
+
+  const approved = routeAnalysis.filter(item => item.approved);
+  const rejected = routeAnalysis.filter(item => !item.approved);
+
+  function makeRouteBox(item, isApproved){
+    const box = document.createElement("div");
+    box.style.borderRadius = "16px";
+    box.style.padding = "12px 14px";
+    box.style.marginBottom = "12px";
+    box.style.border = `2px solid ${isApproved ? "rgba(34,197,94,0.55)" : "rgba(239,68,68,0.35)"}`;
+    box.style.background = isApproved ? "rgba(34,197,94,0.14)" : "rgba(239,68,68,0.10)";
+    box.style.color = "#fff";
+    box.style.boxSizing = "border-box";
+
+    const heading = document.createElement("div");
+    heading.textContent = isApproved ? "APPROVED ROUTE" : "IGNORED ROUTE";
+    heading.style.fontWeight = "700";
+    heading.style.fontSize = "18px";
+    heading.style.marginBottom = "8px";
+
+    const pathLine = document.createElement("div");
+    pathLine.textContent = item.redPathValues;
+    pathLine.style.fontWeight = "700";
+    pathLine.style.fontSize = "16px";
+    pathLine.style.lineHeight = "1.4";
+    pathLine.style.wordBreak = "break-word";
+    pathLine.style.marginBottom = "8px";
+
+    const meta = document.createElement("div");
+    meta.style.fontSize = "14px";
+    meta.style.lineHeight = "1.5";
+    meta.innerHTML =
+      `Mode: <b>${item.redMode}</b> | Variant: <b>${item.redVariant}</b><br>` +
+      `Effective total: <b>${item.effectiveTotal}</b>` +
+      (isApproved ? "" : ` | Worse by: <b>${item.deltaFromBest}</b>`) + `<br>` +
+      `Red cost: <b>${item.redCost}</b> | Blue cost: <b>${item.blueCost}</b><br>` +
+      `Unresolved targets: <b>${item.unresolvedTargets}</b><br>` +
+      `Reason: <b>${item.reason}</b>`;
+
+    box.appendChild(heading);
+    box.appendChild(pathLine);
+    box.appendChild(meta);
+
+    return box;
+  }
+
+  body.innerHTML = "";
+
+  approved.forEach(item => body.appendChild(makeRouteBox(item, true)));
+  rejected.forEach(item => body.appendChild(makeRouteBox(item, false)));
+
+  card.style.display = "block";
+}
+
 function resetSolve(){
   solveState = {
     redPath: [],
@@ -56,8 +149,10 @@ function resetSolve(){
     shaftEntryDots: [],
     shaftClusters: [],
     solved: false,
-    message: "No solve yet."
+    message: "No solve yet.",
+    routeAnalysis: []
   };
+  renderRouteAudit([]);
 }
 
 function initGridData(){
@@ -378,7 +473,7 @@ function handleEventNameChange(){
     const validMines = [
       ...libraryMines.filter(mineName => hasAnyLegacyMineData(eventName, mineName)),
       ...dataMines.filter(mineName =>
-        !libraryMines.includes(mineName) && hasAnyLegacyMineData(eventName, mineName)
+        !libraryNamesIncludes(libraryMines, mineName) && hasAnyLegacyMineData(eventName, mineName)
       )
     ];
 
@@ -400,6 +495,10 @@ function handleEventNameChange(){
 
   ensureBoardRowCountFromCurrentContext();
   updateDifficultyMeter();
+}
+
+function libraryNamesIncludes(arr, value){
+  return arr.includes(value);
 }
 
 function handleEventMineChange(){
@@ -851,10 +950,12 @@ function solveBoard(){
     shaftEntryDots: result.shaftEntryDots || [],
     shaftClusters: result.shaftClusters || [],
     solved: true,
-    message: result.message || "Solved."
+    message: result.message || "Solved.",
+    routeAnalysis: result.routeAnalysis || []
   };
 
-  setReport(result.message || "Solved.");
+  setReport("Solved.");
+  renderRouteAudit(result.routeAnalysis || []);
   renderPreview();
 }
 
@@ -1330,6 +1431,13 @@ function init(){
   currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
   loadHelpContent();
   populateEventTypeSelect();
+
+  const editorHelp = document.querySelector(".sticky-tools .help");
+  if (editorHelp) {
+    editorHelp.style.display = "none";
+  }
+
+  ensureRouteAuditCard();
 
   if (!window.ZM_MAP_DATA) {
     setReport("ZM_MAP_DATA not loaded.");
