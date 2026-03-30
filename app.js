@@ -30,7 +30,8 @@ let currentPreviewTitle = "Gate 1";
 let currentMapContext = {
   eventType: null,
   eventName: null,
-  chamberName: null
+  chamberName: null,
+  eventMine: null
 };
 
 let solveState = {
@@ -38,6 +39,7 @@ let solveState = {
   bluePaths: [],
   shaftEntryDots: [],
   shaftClusters: [],
+  attackPoints: [],
   solved: false,
   message: "No solve yet.",
   routeAnalysis: []
@@ -50,42 +52,128 @@ function setReport(msg){
   updateDifficultyMeter();
 }
 
-function ensureRouteAuditCard(){
-  let card = document.getElementById("routeAuditCard");
-  if (card) return card;
+function getRouteReportOverlay() {
+  return document.getElementById("routeReportOverlay");
+}
 
-  const page = document.querySelector(".page");
-  const editorCard = document.querySelector(".editor-card");
-  if (!page || !editorCard) return null;
+function getRouteReportBody() {
+  return document.getElementById("routeReportBody");
+}
 
-  card = document.createElement("div");
-  card.id = "routeAuditCard";
-  card.className = "card";
-  card.style.display = "none";
+function openRouteReportModal() {
+  const overlay = getRouteReportOverlay();
+  if (!overlay) return;
+  overlay.classList.add("show");
+}
 
-  const title = document.createElement("div");
-  title.className = "section-title";
-  title.style.marginTop = "0";
-  title.textContent = "Route Report";
-
-  const body = document.createElement("div");
-  body.id = "routeAuditBody";
-
-  card.appendChild(title);
-  card.appendChild(body);
-
-  editorCard.insertAdjacentElement("afterend", card);
-  return card;
+function closeRouteReportModal() {
+  const overlay = getRouteReportOverlay();
+  if (!overlay) return;
+  overlay.classList.remove("show");
 }
 
 function renderRouteAudit(routeAnalysis){
-  const card = ensureRouteAuditCard();
-  const body = document.getElementById("routeAuditBody");
-  if (!card || !body) return;
+  const body = getRouteReportBody();
+  if (!body) return;
+
+  const shaftData = getCurrentChamberShaftData();
+  const shaftClusters = solveState.shaftClusters && solveState.shaftClusters.length
+    ? solveState.shaftClusters
+    : getShaftClustersFromGrid();
+
+  body.innerHTML = "";
+
+  const summarySection = document.createElement("div");
+  summarySection.className = "help-section";
+
+  const summaryTitle = document.createElement("h3");
+  summaryTitle.textContent = "Solve Summary";
+
+  const summaryText = document.createElement("p");
+  summaryText.innerHTML =
+    `Solved: <b>${solveState.solved ? "Yes" : "No"}</b><br>` +
+    `Red path cells: <b>${solveState.redPath.length}</b><br>` +
+    `Blue route count: <b>${solveState.bluePaths.length}</b><br>` +
+    `Physical shaft cluster count: <b>${shaftClusters.length}</b><br>` +
+    `Chamber shaft data entries: <b>${shaftData.length}</b>`;
+
+  summarySection.appendChild(summaryTitle);
+  summarySection.appendChild(summaryText);
+  body.appendChild(summarySection);
+
+  const shaftSection = document.createElement("div");
+  shaftSection.className = "help-section";
+
+  const shaftTitle = document.createElement("h3");
+  shaftTitle.textContent = "Shaft Data";
+
+  const shaftText = document.createElement("p");
+
+  if (!currentMapContext.eventType || !currentMapContext.eventName || !currentMapContext.chamberName) {
+    shaftText.innerHTML = `No chamber is currently loaded, so no chamber-level shaft data can be shown.`;
+  } else if (!shaftData.length) {
+    shaftText.innerHTML =
+      `Resolved shaft data path:<br>` +
+      `<b>${getCurrentShaftDataPathLabel()}</b><br><br>` +
+      `This chamber currently has <b>0</b> shaft data entries.`;
+  } else {
+    const lines = shaftData.map((shaft, index) => {
+      const shaftType = shaft?.shaftType ?? "Unknown";
+      const level = shaft?.level ?? "null";
+      const auto = shaft?.auto ?? "null";
+      return `${index + 1}. ${shaftType} | level: ${level} | auto: ${auto}`;
+    });
+
+    shaftText.innerHTML =
+      `Resolved shaft data path:<br>` +
+      `<b>${getCurrentShaftDataPathLabel()}</b><br><br>` +
+      lines.map(line => line.replace(/</g, "&lt;").replace(/>/g, "&gt;")).join("<br>");
+  }
+
+  shaftSection.appendChild(shaftTitle);
+  shaftSection.appendChild(shaftText);
+  body.appendChild(shaftSection);
+
+  const physicalSection = document.createElement("div");
+  physicalSection.className = "help-section";
+
+  const physicalTitle = document.createElement("h3");
+  physicalTitle.textContent = "Physical Shaft Clusters";
+
+  const physicalText = document.createElement("p");
+  if (!shaftClusters.length) {
+    physicalText.innerHTML = `No physical shaft clusters were found from grid S tiles.`;
+  } else {
+    const clusterLines = shaftClusters.map((cluster, index) => {
+      const rows = cluster.map(([r]) => r);
+      const cols = cluster.map(([, c]) => c);
+      const minR = Math.min(...rows);
+      const maxR = Math.max(...rows);
+      const minC = Math.min(...cols);
+      const maxC = Math.max(...cols);
+      return `${index + 1}. rows ${minR}-${maxR}, cols ${minC}-${maxC}, cells: ${cluster.length}`;
+    });
+
+    physicalText.innerHTML = clusterLines.join("<br>");
+  }
+
+  physicalSection.appendChild(physicalTitle);
+  physicalSection.appendChild(physicalText);
+  body.appendChild(physicalSection);
+
+  const reportSection = document.createElement("div");
+  reportSection.className = "help-section";
+
+  const reportTitle = document.createElement("h3");
+  reportTitle.textContent = "Route Analysis";
+
+  reportSection.appendChild(reportTitle);
 
   if (!routeAnalysis || !routeAnalysis.length) {
-    card.style.display = "none";
-    body.innerHTML = "";
+    const emptyText = document.createElement("p");
+    emptyText.innerHTML = `No route analysis is available yet. Solve a board first.`;
+    reportSection.appendChild(emptyText);
+    body.appendChild(reportSection);
     return;
   }
 
@@ -96,7 +184,7 @@ function renderRouteAudit(routeAnalysis){
     const box = document.createElement("div");
     box.style.borderRadius = "16px";
     box.style.padding = "12px 14px";
-    box.style.marginBottom = "12px";
+    box.style.marginTop = "12px";
     box.style.border = `2px solid ${isApproved ? "rgba(34,197,94,0.55)" : "rgba(239,68,68,0.35)"}`;
     box.style.background = isApproved ? "rgba(34,197,94,0.14)" : "rgba(239,68,68,0.10)";
     box.style.color = "#fff";
@@ -116,6 +204,14 @@ function renderRouteAudit(routeAnalysis){
     pathLine.style.wordBreak = "break-word";
     pathLine.style.marginBottom = "8px";
 
+    const coords = document.createElement("div");
+    coords.textContent = item.redPathCoords;
+    coords.style.fontSize = "12px";
+    coords.style.lineHeight = "1.45";
+    coords.style.wordBreak = "break-word";
+    coords.style.opacity = "0.92";
+    coords.style.marginBottom = "8px";
+
     const meta = document.createElement("div");
     meta.style.fontSize = "14px";
     meta.style.lineHeight = "1.5";
@@ -129,17 +225,16 @@ function renderRouteAudit(routeAnalysis){
 
     box.appendChild(heading);
     box.appendChild(pathLine);
+    box.appendChild(coords);
     box.appendChild(meta);
 
     return box;
   }
 
-  body.innerHTML = "";
+  approved.forEach(item => reportSection.appendChild(makeRouteBox(item, true)));
+  rejected.forEach(item => reportSection.appendChild(makeRouteBox(item, false)));
 
-  approved.forEach(item => body.appendChild(makeRouteBox(item, true)));
-  rejected.forEach(item => body.appendChild(makeRouteBox(item, false)));
-
-  card.style.display = "block";
+  body.appendChild(reportSection);
 }
 
 function resetSolve(){
@@ -148,6 +243,7 @@ function resetSolve(){
     bluePaths: [],
     shaftEntryDots: [],
     shaftClusters: [],
+    attackPoints: [],
     solved: false,
     message: "No solve yet.",
     routeAnalysis: []
@@ -228,6 +324,52 @@ function getObjectVisual(meta){
     code: objDef.code || "",
     fill: objDef.fill || null
   };
+}
+
+function getCurrentChamberShaftData() {
+  const type = currentMapContext.eventType;
+  const eventName = currentMapContext.eventName;
+  const chamberName = currentMapContext.chamberName;
+  const mineName = currentMapContext.eventMine;
+
+  if (!type || !eventName || !chamberName || !window.ZM_SHAFT_DATA) {
+    return [];
+  }
+
+  if (type === "MainDeep") {
+    return window.ZM_SHAFT_DATA?.MainDeep?.[eventName]?.[chamberName] || [];
+  }
+
+  if (type === "Main") {
+    return window.ZM_SHAFT_DATA?.Main?.[eventName]?.[chamberName] || [];
+  }
+
+  if (type === "Legacy") {
+    return window.ZM_SHAFT_DATA?.Legacy?.[eventName]?.[mineName]?.[chamberName] || [];
+  }
+
+  return [];
+}
+
+function getCurrentShaftDataPathLabel() {
+  const type = currentMapContext.eventType || "(none)";
+  const eventName = currentMapContext.eventName || "(none)";
+  const chamberName = currentMapContext.chamberName || "(none)";
+  const mineName = currentMapContext.eventMine || null;
+
+  if (type === "Legacy") {
+    return `ZM_SHAFT_DATA.Legacy["${eventName}"]["${mineName || "(none)"}"]["${chamberName}"]`;
+  }
+
+  if (type === "MainDeep") {
+    return `ZM_SHAFT_DATA.MainDeep["${eventName}"]["${chamberName}"]`;
+  }
+
+  if (type === "Main") {
+    return `ZM_SHAFT_DATA.Main["${eventName}"]["${chamberName}"]`;
+  }
+
+  return `No shaft-data path resolved`;
 }
 
 function getHtmlCodeFontSize(code){
@@ -694,7 +836,8 @@ function loadSelectedMap(){
   currentMapContext = {
     eventType: selectedMapPath.eventType,
     eventName: selectedMapPath.eventName,
-    chamberName: selectedMapPath.eventChamber
+    chamberName: selectedMapPath.eventChamber,
+    eventMine: selectedMapPath.eventMine || null
   };
 
   const autoTitle = buildAutoTitle();
@@ -948,7 +1091,8 @@ function clearBoard(updateReport = true){
   currentMapContext = {
     eventType: null,
     eventName: null,
-    chamberName: null
+    chamberName: null,
+    eventMine: null
   };
   resetSolve();
   render();
@@ -1014,6 +1158,7 @@ function solveBoard(){
     bluePaths: result.bluePaths || [],
     shaftEntryDots: result.shaftEntryDots || [],
     shaftClusters: result.shaftClusters || [],
+    attackPoints: result.attackPoints || [],
     solved: true,
     message: result.message || "Solved.",
     routeAnalysis: result.routeAnalysis || []
@@ -1510,8 +1655,6 @@ function init(){
     editorHelp.style.display = "none";
   }
 
-  ensureRouteAuditCard();
-
   if (!window.ZM_MAP_DATA) {
     setReport("ZM_MAP_DATA not loaded.");
   } else if (!window.ZMMapValidator) {
@@ -1532,10 +1675,13 @@ function init(){
   updateUserUI();
   ensureDifficultyMeter();
   updateDifficultyMeter();
+  renderRouteAudit([]);
 }
 
 window.openSolverHelp = openSolverHelp;
 window.closeSolverHelp = closeSolverHelp;
+window.openRouteReportModal = openRouteReportModal;
+window.closeRouteReportModal = closeRouteReportModal;
 window.handleEventTypeChange = handleEventTypeChange;
 window.handleEventNameChange = handleEventNameChange;
 window.handleEventMineChange = handleEventMineChange;
