@@ -35,22 +35,61 @@ function mpStatus(msg) {
   if (el) el.textContent = msg;
 }
 
+function mpHasAnyMainDeepData(eventName) {
+  const event = window.ZM_MAP_DATA?.MainDeep?.[eventName];
+  if (!event || typeof event !== "object") return false;
+  return Object.values(event).some(chamber => !!chamber);
+}
+
+function mpHasAnyMainData(eventName) {
+  const event = window.ZM_MAP_DATA?.Main?.[eventName];
+  if (!event || typeof event !== "object") return false;
+  return Object.values(event).some(chamber => !!chamber);
+}
+
+function mpHasAnyLegacyMineData(eventName, mineName) {
+  const mine = window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName];
+  if (!mine || typeof mine !== "object") return false;
+  return Object.values(mine).some(chamber => !!chamber);
+}
+
+function mpHasAnyLegacyEventData(eventName) {
+  const mines = window.ZM_MAP_DATA?.Legacy?.[eventName] || {};
+  return Object.keys(mines).some(mineName => mpHasAnyLegacyMineData(eventName, mineName));
+}
+
 function mpPopulateEventTypeSelect() {
   const select = document.getElementById("eventTypeSelect");
   select.innerHTML = '<option value="">Select Event Type</option>';
 
+  if (window.ZM_MAP_DATA?.MainDeep) {
+    const hasMainDeep = Object.keys(window.ZM_MAP_DATA.MainDeep).some(name => mpHasAnyMainDeepData(name));
+    if (hasMainDeep) {
+      const opt = document.createElement("option");
+      opt.value = "MainDeep";
+      opt.textContent = "Main DEEP";
+      select.appendChild(opt);
+    }
+  }
+
   if (window.ZM_MAP_DATA?.Main) {
-    const opt = document.createElement("option");
-    opt.value = "Main";
-    opt.textContent = "Main";
-    select.appendChild(opt);
+    const hasMain = Object.keys(window.ZM_MAP_DATA.Main).some(name => mpHasAnyMainData(name));
+    if (hasMain) {
+      const opt = document.createElement("option");
+      opt.value = "Main";
+      opt.textContent = "Main";
+      select.appendChild(opt);
+    }
   }
 
   if (window.ZM_MAP_DATA?.Legacy) {
-    const opt = document.createElement("option");
-    opt.value = "Legacy";
-    opt.textContent = "Legacy";
-    select.appendChild(opt);
+    const hasLegacy = Object.keys(window.ZM_MAP_DATA.Legacy).some(name => mpHasAnyLegacyEventData(name));
+    if (hasLegacy) {
+      const opt = document.createElement("option");
+      opt.value = "Legacy";
+      opt.textContent = "Legacy";
+      select.appendChild(opt);
+    }
   }
 }
 
@@ -78,7 +117,15 @@ function mpHandleEventTypeChange() {
 
   if (!type) return;
 
-  const names = Object.keys(window.ZM_MAP_DATA[type] || {});
+  let names = [];
+
+  if (type === "MainDeep") {
+    names = Object.keys(window.ZM_MAP_DATA?.MainDeep || {}).filter(name => mpHasAnyMainDeepData(name));
+  } else if (type === "Main") {
+    names = Object.keys(window.ZM_MAP_DATA?.Main || {}).filter(name => mpHasAnyMainData(name));
+  } else if (type === "Legacy") {
+    names = Object.keys(window.ZM_MAP_DATA?.Legacy || {}).filter(name => mpHasAnyLegacyEventData(name));
+  }
 
   names.forEach(name => {
     const opt = document.createElement("option");
@@ -98,8 +145,22 @@ function mpHandleEventNameChange() {
   mpResetBelow(2);
   if (!type || !name) return;
 
-  if (type === "Main") {
-    const chambers = Object.keys(window.ZM_MAP_DATA?.Main?.[name] || {});
+  if (type === "MainDeep") {
+    const chambers = Object.keys(window.ZM_MAP_DATA?.MainDeep?.[name] || {}).filter(
+      ch => !!window.ZM_MAP_DATA?.MainDeep?.[name]?.[ch]
+    );
+
+    chambers.forEach(ch => {
+      const opt = document.createElement("option");
+      opt.value = ch;
+      opt.textContent = ch;
+      chamber.appendChild(opt);
+    });
+  } else if (type === "Main") {
+    const chambers = Object.keys(window.ZM_MAP_DATA?.Main?.[name] || {}).filter(
+      ch => !!window.ZM_MAP_DATA?.Main?.[name]?.[ch]
+    );
+
     chambers.forEach(ch => {
       const opt = document.createElement("option");
       opt.value = ch;
@@ -107,7 +168,10 @@ function mpHandleEventNameChange() {
       chamber.appendChild(opt);
     });
   } else {
-    const mines = Object.keys(window.ZM_MAP_DATA?.Legacy?.[name] || {});
+    const mines = Object.keys(window.ZM_MAP_DATA?.Legacy?.[name] || {}).filter(
+      mine => mpHasAnyLegacyMineData(name, mine)
+    );
+
     eventMineField.classList.remove("hidden");
 
     mines.forEach(mine => {
@@ -127,7 +191,10 @@ function mpHandleEventMineChange() {
   mpResetBelow(3);
   if (!name || !mine) return;
 
-  const chambers = Object.keys(window.ZM_MAP_DATA?.Legacy?.[name]?.[mine] || {});
+  const chambers = Object.keys(window.ZM_MAP_DATA?.Legacy?.[name]?.[mine] || {}).filter(
+    ch => !!window.ZM_MAP_DATA?.Legacy?.[name]?.[mine]?.[ch]
+  );
+
   chambers.forEach(ch => {
     const opt = document.createElement("option");
     opt.value = ch;
@@ -144,7 +211,9 @@ function mpHandleEventChamberChange() {
 
   if (!type || !name || !chamber) return;
 
-  if (type === "Main") {
+  if (type === "MainDeep") {
+    mpSelectedMapPath = { eventType: type, eventName: name, chamberName: chamber };
+  } else if (type === "Main") {
     mpSelectedMapPath = { eventType: type, eventName: name, chamberName: chamber };
   } else {
     mpSelectedMapPath = { eventType: type, eventName: name, eventMine: mine, chamberName: chamber };
@@ -160,7 +229,9 @@ function mpLoadSelectedChamber() {
 
   let record = null;
 
-  if (path.eventType === "Main") {
+  if (path.eventType === "MainDeep") {
+    record = window.ZM_MAP_DATA?.MainDeep?.[path.eventName]?.[path.chamberName];
+  } else if (path.eventType === "Main") {
     record = window.ZM_MAP_DATA?.Main?.[path.eventName]?.[path.chamberName];
   } else {
     record = window.ZM_MAP_DATA?.Legacy?.[path.eventName]?.[path.eventMine]?.[path.chamberName];
@@ -181,7 +252,7 @@ function mpLoadSelectedChamber() {
   const source = record.grid || [];
 
   mpCurrentRowCount =
-    path.chamberName.toLowerCase() === "graveyard"
+    String(path.chamberName || "").trim().toLowerCase() === "graveyard"
       ? MP_MAX_ROWS
       : MP_MINED_ROWS;
 
@@ -191,15 +262,19 @@ function mpLoadSelectedChamber() {
 
   mpCurrentMeta =
     window.ZM_TILE_META?.[path.eventType]?.[path.eventName]?.[path.chamberName]?.tiles
-      ? JSON.parse(JSON.stringify(
-          window.ZM_TILE_META[path.eventType][path.eventName][path.chamberName].tiles
-        ))
+      ? JSON.parse(
+          JSON.stringify(window.ZM_TILE_META[path.eventType][path.eventName][path.chamberName].tiles)
+        )
       : {};
 
   mpRenderGrid();
   mpGenerateOutput();
 
-  mpStatus(`Loaded ${path.eventName} - ${path.chamberName}`);
+  const statusParts = [path.eventName];
+  if (path.eventType === "Legacy" && path.eventMine) statusParts.push(path.eventMine);
+  statusParts.push(path.chamberName);
+
+  mpStatus(`Loaded ${statusParts.join(" - ")}`);
 }
 
 function mpSetTool(tool) {
