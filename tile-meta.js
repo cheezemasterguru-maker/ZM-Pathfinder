@@ -1,4 +1,32 @@
 window.ZM_TILE_META = {
+  MainDeep: {
+    "DEEP 1": {
+      "Chamber 1": { tiles: {} },
+      "Chamber 2": { tiles: {} },
+      "Chamber 3": { tiles: {} }
+    },
+
+    "DEEP 2": {
+      "Chamber 1": { tiles: {} },
+      "Chamber 2": { tiles: {} },
+      "Chamber 3": { tiles: {} },
+      "Chamber 4": { tiles: {} }
+    },
+
+    "DEEP 3": {
+      "Chamber 1": { tiles: {} },
+      "Chamber 2": { tiles: {} },
+      "Chamber 3": { tiles: {} },
+      "Chamber 4": { tiles: {} }
+    },
+
+    "DEEP 4": {
+      "Chamber 1": { tiles: {} },
+      "Chamber 2": { tiles: {} },
+      "Chamber 3": { tiles: {} }
+    }
+  },
+
   Main: {
     "Treasures in Ice": {
       "Chamber 1": {
