@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V4.6 loaded");
+  console.log("ZM Solver V4.7 loaded");
 
-  const SOLVER_VERSION = "V4.6";
+  const SOLVER_VERSION = "V4.7";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -120,7 +120,7 @@
           const key = `${rr},${cc}`;
           if (!entryMap.has(key)) {
             attacks.push([rr, cc]);
-            entryMap.set(key, [r, c]); // store touched shaft cell separately
+            entryMap.set(key, [r, c]);
           }
         }
       }
@@ -148,7 +148,7 @@
     const open = [];
 
     for (const [r, c] of starts) {
-      if (!isWalkableCell(grid, r, c)) continue; // critical fix: never seed from shaft/X
+      if (!isWalkableCell(grid, r, c)) continue;
       dist[r][c] = 0;
       steps[r][c] = 0;
       open.push({ r, c, cost: 0, len: 0 });
@@ -535,17 +535,6 @@
     return bonus;
   }
 
-  function getBlueLocalRouteStrength(grid, starts, reusable, attacks) {
-    const route = dijkstra({
-      grid,
-      starts,
-      goals: attacks,
-      freeCells: reusable
-    });
-    if (!route) return Infinity;
-    return route.cost;
-  }
-
   function redBacktrackPenalty(path) {
     if (!path || path.length < 3) return 0;
 
@@ -667,10 +656,6 @@
     if (!route) return null;
 
     const entry = entryMap.get(`${route.goal[0]},${route.goal[1]}`);
-
-    // Critical fix:
-    // finalPath must remain legal travel path only.
-    // Do NOT append shaft cell itself into the path.
     const finalPath = route.path;
 
     const rawCost = route.cost;
@@ -859,7 +844,6 @@
       bluePaths.push(chosen.finalPath);
       attackPoints.push(chosen.route.goal);
 
-      // keep shaft touch marker separate for rendering/debug only
       if (chosen.entry) shaftEntryDots.push(chosen.entry);
 
       blueCost += chosen.rawCost;
@@ -869,14 +853,10 @@
       lowerShaftBonus += chosen.lowerBonus || 0;
       bubbleBonus += chosen.bubbleBonus || 0;
 
-      // legal travel cells only
       for (const [r, c] of chosen.finalPath) {
         reusable.add(`${r},${c}`);
       }
 
-      // critical fix:
-      // cumulative starts must remain on legal walkable cells only.
-      // use attack tile/path endpoints, never shaft cells.
       cumulativeStarts = dedupeCells(
         cumulativeStarts
           .concat(chosen.finalPath)
@@ -936,6 +916,71 @@
     };
   }
 
+  function getCellDisplayValue(grid, r, c) {
+    const v = grid[r]?.[c];
+    if (typeof v === "number") return String(v);
+    if (v === "B") return "B";
+    if (v === "") return "□";
+    return String(v);
+  }
+
+  function getPathValueLabel(grid, path) {
+    if (!path || !path.length) return "(no path)";
+    const values = path.map(([r, c]) => getCellDisplayValue(grid, r, c));
+    return values.join(" - ");
+  }
+
+  function getPathCoordLabel(path) {
+    if (!path || !path.length) return "(no path)";
+    return path.map(([r, c]) => `${r},${c}`).join(" → ");
+  }
+
+  function buildRouteAnalysis(grid, allCandidates, best) {
+    const sorted = [...allCandidates].sort((a, b) => {
+      if (a.unresolvedTargets !== b.unresolvedTargets) {
+        return a.unresolvedTargets - b.unresolvedTargets;
+      }
+      if (a.effectiveTotal !== b.effectiveTotal) {
+        return a.effectiveTotal - b.effectiveTotal;
+      }
+      return a.redCost - b.redCost;
+    });
+
+    const sliced = sorted.slice(0, 12);
+
+    return sliced.map((candidate) => {
+      const approved = candidate === best;
+      let reason = "Chosen";
+
+      if (!approved) {
+        if (candidate.unresolvedTargets > best.unresolvedTargets) {
+          reason = `More unresolved targets (${candidate.unresolvedTargets} vs ${best.unresolvedTargets})`;
+        } else if (candidate.effectiveTotal > best.effectiveTotal) {
+          reason = `Higher effective total by ${roundCost(candidate.effectiveTotal - best.effectiveTotal)}`;
+        } else if (candidate.redCost > best.redCost) {
+          reason = `Higher red cost by ${roundCost(candidate.redCost - best.redCost)}`;
+        } else {
+          reason = "Lost tie-break";
+        }
+      }
+
+      return {
+        approved,
+        status: approved ? "APPROVED" : "IGNORED",
+        reason,
+        redMode: candidate.redMode,
+        redVariant: candidate.redVariant,
+        unresolvedTargets: candidate.unresolvedTargets,
+        redPathValues: getPathValueLabel(grid, candidate.redPath),
+        redPathCoords: getPathCoordLabel(candidate.redPath),
+        redCost: roundCost(candidate.redCost),
+        blueCost: roundCost(candidate.blueCost),
+        effectiveTotal: roundCost(candidate.effectiveTotal),
+        deltaFromBest: roundCost(candidate.effectiveTotal - best.effectiveTotal)
+      };
+    });
+  }
+
   function solveGrid({ grid, gateType = "standard" }) {
     const rows = grid.length;
     const cols = grid[0].length;
@@ -972,6 +1017,7 @@
     }
 
     let best = null;
+    const allCandidates = [];
 
     for (const redCandidate of redCandidates) {
       const blueEval = evaluateOrderedBlueForRedCandidate(
@@ -994,105 +1040,3 @@
 
       const candidate = {
         redMode: redCandidate.mode,
-        redVariant: redCandidate.variant,
-        redBubble: redCandidate.redBubble,
-        redPath: redCandidate.path,
-        redCost: redCandidate.redCost,
-        gateGoal: redCandidate.gateGoal,
-        bluePaths: blueEval.bluePaths,
-        blueCost: blueEval.blueCost,
-        shaftEntryDots: blueEval.shaftEntryDots,
-        attackPoints: blueEval.attackPoints,
-        unresolvedTargets: blueEval.unresolved,
-        dependencyCost: blueEval.dependencyCost,
-        assistBonus: blueEval.assistBonus,
-        lowerShaftBonus: blueEval.lowerShaftBonus,
-        bubbleBonus: blueEval.bubbleBonus,
-        redLoopPenalty: blueEval.redLoopPenalty,
-        overAssistPenalty: blueEval.overAssistPenalty,
-        effectiveTotal
-      };
-
-      if (!best) {
-        best = candidate;
-        continue;
-      }
-
-      if (candidate.unresolvedTargets < best.unresolvedTargets) {
-        best = candidate;
-        continue;
-      }
-
-      if (
-        candidate.unresolvedTargets === best.unresolvedTargets &&
-        candidate.effectiveTotal < best.effectiveTotal
-      ) {
-        best = candidate;
-        continue;
-      }
-
-      if (
-        candidate.unresolvedTargets === best.unresolvedTargets &&
-        candidate.effectiveTotal === best.effectiveTotal &&
-        candidate.redCost < best.redCost
-      ) {
-        best = candidate;
-      }
-    }
-
-    return {
-      ok: true,
-      rows,
-      cols,
-      gateType,
-      startRow,
-      solverVersion: SOLVER_VERSION,
-      redMode: best.redMode,
-      redVariant: best.redVariant,
-      redBubble: best.redBubble,
-      redPath: best.redPath,
-      redCost: roundCost(best.redCost),
-      bluePaths: best.bluePaths,
-      blueCost: roundCost(best.blueCost),
-      totalCost: roundCost(best.redCost + best.blueCost),
-      effectiveTotal: roundCost(best.effectiveTotal),
-      dependencyCost: roundCost(best.dependencyCost),
-      assistBonus: roundCost(best.assistBonus),
-      lowerShaftBonus: roundCost(best.lowerShaftBonus),
-      bubbleBonus: roundCost(best.bubbleBonus),
-      redLoopPenalty: roundCost(best.redLoopPenalty),
-      overAssistPenalty: roundCost(best.overAssistPenalty),
-      shaftClusters: shaftClustersOrdered,
-      shaftEntryDots: best.shaftEntryDots,
-      attackPoints: best.attackPoints,
-      bubbles,
-      unresolvedTargets: best.unresolvedTargets,
-      redCandidateCount: redCandidates.length,
-      message:
-        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
-        "solver_status: solved\n" +
-        `red_mode: ${best.redMode}\n` +
-        `red_variant: ${best.redVariant}\n` +
-        `red_cost: ${roundCost(best.redCost)}\n` +
-        `blue_cost: ${roundCost(best.blueCost)}\n` +
-        `dependency_cost: ${roundCost(best.dependencyCost)}\n` +
-        `assist_bonus: ${roundCost(best.assistBonus)}\n` +
-        `lower_shaft_bonus: ${roundCost(best.lowerShaftBonus)}\n` +
-        `bubble_bonus: ${roundCost(best.bubbleBonus)}\n` +
-        `red_loop_penalty: ${roundCost(best.redLoopPenalty)}\n` +
-        `over_assist_penalty: ${roundCost(best.overAssistPenalty)}\n` +
-        `bubble_count: ${bubbles.length}\n` +
-        `shaft_count: ${shaftClustersOrdered.length}\n` +
-        `red_candidate_count: ${redCandidates.length}\n` +
-        `unresolved_targets: ${best.unresolvedTargets}\n` +
-        `total_cost: ${roundCost(best.redCost + best.blueCost)}\n` +
-        `effective_total: ${roundCost(best.effectiveTotal)}`
-    };
-  }
-
-  window.ZMPathfinderSolver = {
-    solverVersion: SOLVER_VERSION,
-    numberCost,
-    solveGrid
-  };
-})();
