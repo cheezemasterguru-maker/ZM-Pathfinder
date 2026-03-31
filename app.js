@@ -16,6 +16,27 @@ const EVENT_TOTALS = {
 const DIFFICULTY_MIN = 281;
 const DIFFICULTY_MAX = 1299;
 
+const LEGACY_EVENT_ORDER = [
+  "Love Story",
+  "Clover Valley",
+  "Easter Egg Hunt",
+  "4th of July",
+  "Mystery Reef",
+  "Teamwork Festival",
+  "Halloween",
+  "Fall Festival",
+  "Winter Break"
+];
+
+const LEGACY_MINE_ORDER = [
+  "Mine 1",
+  "Mine 2",
+  "Mine 3",
+  "Mine 4",
+  "Mine 5",
+  "The Deep"
+];
+
 // "overlay" = number stays visible and object code shows underneath
 // "object_only" = code replaces number
 const OBJECT_RENDER_MODE = "overlay";
@@ -388,7 +409,7 @@ function getShaftDisplayLines(index, shaftData) {
   lines.push(shaftType);
 
   if (shaft.level !== null && shaft.level !== undefined && shaft.level !== "") {
-    lines.push(String(shaft.level)); // just number
+    lines.push(String(shaft.level));
   }
 
   if (shaft.auto !== null && shaft.auto !== undefined && shaft.auto !== "") {
@@ -584,9 +605,13 @@ function getOrderedMainNames() {
 function getOrderedLegacyNames() {
   const libraryNames = Object.keys(window.ZM_MAP_LIBRARY?.Legacy || {});
   const dataNames = Object.keys(window.ZM_MAP_DATA?.Legacy || {});
+
   return mergeOrderedUnique(
-    libraryNames.filter(eventName => hasAnyLegacyEventData(eventName)),
-    dataNames.filter(eventName => hasAnyLegacyEventData(eventName))
+    LEGACY_EVENT_ORDER.filter(eventName => hasAnyLegacyEventData(eventName)),
+    mergeOrderedUnique(
+      libraryNames.filter(eventName => hasAnyLegacyEventData(eventName)),
+      dataNames.filter(eventName => hasAnyLegacyEventData(eventName))
+    )
   );
 }
 
@@ -611,9 +636,13 @@ function getOrderedMainChambers(eventName) {
 function getOrderedLegacyMines(eventName) {
   const libraryMines = Object.keys(window.ZM_MAP_LIBRARY?.Legacy?.[eventName] || {});
   const dataMines = Object.keys(window.ZM_MAP_DATA?.Legacy?.[eventName] || {});
+
   return mergeOrderedUnique(
-    libraryMines.filter(mineName => hasAnyLegacyMineData(eventName, mineName)),
-    dataMines.filter(mineName => hasAnyLegacyMineData(eventName, mineName))
+    LEGACY_MINE_ORDER.filter(mineName => hasAnyLegacyMineData(eventName, mineName)),
+    mergeOrderedUnique(
+      libraryMines.filter(mineName => hasAnyLegacyMineData(eventName, mineName)),
+      dataMines.filter(mineName => hasAnyLegacyMineData(eventName, mineName))
+    )
   );
 }
 
