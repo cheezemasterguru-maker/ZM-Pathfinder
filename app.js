@@ -319,6 +319,13 @@ function runLoadedGridIntegrityCheck(gridToCheck, titleText = "Loaded Grid"){
 }
 
 function getTileMeta(eventType, eventName, chamberName, r, c){
+  const mineName = currentMapContext.eventMine;
+
+  if (eventType === "Legacy") {
+    return window.ZM_TILE_META?.Legacy?.[eventName]?.[mineName]?.[chamberName]?.tiles?.[`${r},${c}`]
+      || { object: "plain" };
+  }
+
   return window.ZM_TILE_META?.[eventType]?.[eventName]?.[chamberName]?.tiles?.[`${r},${c}`]
     || { object: "plain" };
 }
