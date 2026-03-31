@@ -64,6 +64,15 @@ body{
   object-fit:contain;
 }
 
+.hero-title-wrap{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  flex-wrap:wrap;
+  width:100%;
+}
+
 h1{
   margin:0;
   font-size:34px;
@@ -71,6 +80,38 @@ h1{
   font-weight:800;
   letter-spacing:-.4px;
   text-align:center;
+}
+
+.language-picker{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  justify-content:center;
+  flex-wrap:wrap;
+  background:#10162d;
+  border:1px solid #30406f;
+  border-radius:999px;
+  padding:8px 12px;
+}
+
+.language-picker label{
+  font-size:13px;
+  font-weight:700;
+  color:#eef2ff;
+  white-space:nowrap;
+}
+
+.language-picker select{
+  border:none;
+  outline:none;
+  border-radius:10px;
+  padding:6px 10px;
+  background:var(--panel2);
+  color:var(--text);
+  font-size:13px;
+  font-weight:700;
+  border:1px solid #36406a;
+  min-width:120px;
 }
 
 .top-meta{
@@ -495,6 +536,22 @@ canvas{
   .page{ padding:10px 6px 18px; }
   h1{ font-size:30px; }
   .logo{ max-width:270px; }
+
+  .hero-title-wrap{
+    flex-direction:column;
+    gap:10px;
+  }
+
+  .language-picker{
+    width:100%;
+    max-width:320px;
+  }
+
+  .language-picker select{
+    min-width:110px;
+    max-width:160px;
+  }
+
   .controls-grid{ grid-template-columns:1fr 1fr; gap:8px; }
   .map-loader-grid{ grid-template-columns:1fr 1fr; gap:8px; }
   .field label{ font-size:13px; }
@@ -522,5 +579,19 @@ canvas{
   #loadMapBtn{
     flex:0 0 140px;
     width:140px;
+  }
+
+  .language-picker{
+    padding:8px 10px;
+    gap:6px;
+  }
+
+  .language-picker label{
+    font-size:12px;
+  }
+
+  .language-picker select{
+    font-size:12px;
+    padding:6px 8px;
   }
 }
