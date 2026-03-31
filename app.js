@@ -384,14 +384,15 @@ function getShaftDisplayLines(index, shaftData) {
 
   const lines = [];
   const shaftType = shaft.shaftType ? String(shaft.shaftType) : "Shaft";
+
   lines.push(shaftType);
 
   if (shaft.level !== null && shaft.level !== undefined && shaft.level !== "") {
-    lines.push(`Lv ${shaft.level}`);
+    lines.push(String(shaft.level)); // just number
   }
 
   if (shaft.auto !== null && shaft.auto !== undefined && shaft.auto !== "") {
-    lines.push(`Auto ${shaft.auto}`);
+    lines.push(`Auto - ${shaft.auto}`);
   }
 
   return lines;
