@@ -2,6 +2,27 @@ const MP_COLS = 7;
 const MP_MAX_ROWS = 20;
 const MP_MINED_ROWS = 13;
 
+const MP_LEGACY_EVENT_ORDER = [
+  "Love Story",
+  "Clover Valley",
+  "Easter Egg Hunt",
+  "4th of July",
+  "Mystery Reef",
+  "Teamwork Festival",
+  "Halloween",
+  "Fall Festival",
+  "Winter Break"
+];
+
+const MP_LEGACY_MINE_ORDER = [
+  "Mine 1",
+  "Mine 2",
+  "Mine 3",
+  "Mine 4",
+  "Mine 5",
+  "The Deep"
+];
+
 let mpSelectedMapPath = null;
 let mpCurrentBaseGrid = [];
 let mpCurrentRowCount = MP_MINED_ROWS;
@@ -102,9 +123,13 @@ function mpGetOrderedMainNames() {
 function mpGetOrderedLegacyNames() {
   const libraryNames = Object.keys(window.ZM_MAP_LIBRARY?.Legacy || {});
   const dataNames = Object.keys(window.ZM_MAP_DATA?.Legacy || {});
+
   return mpUniqueOrdered(
-    libraryNames.filter(name => mpHasAnyLegacyEventData(name)),
-    dataNames.filter(name => mpHasAnyLegacyEventData(name))
+    MP_LEGACY_EVENT_ORDER.filter(name => mpHasAnyLegacyEventData(name)),
+    mpUniqueOrdered(
+      libraryNames.filter(name => mpHasAnyLegacyEventData(name)),
+      dataNames.filter(name => mpHasAnyLegacyEventData(name))
+    )
   );
 }
 
@@ -129,9 +154,13 @@ function mpGetOrderedMainChambers(eventName) {
 function mpGetOrderedLegacyMines(eventName) {
   const libraryMines = Object.keys(window.ZM_MAP_LIBRARY?.Legacy?.[eventName] || {});
   const dataMines = Object.keys(window.ZM_MAP_DATA?.Legacy?.[eventName] || {});
+
   return mpUniqueOrdered(
-    libraryMines.filter(mine => mpHasAnyLegacyMineData(eventName, mine)),
-    dataMines.filter(mine => mpHasAnyLegacyMineData(eventName, mine))
+    MP_LEGACY_MINE_ORDER.filter(mine => mpHasAnyLegacyMineData(eventName, mine)),
+    mpUniqueOrdered(
+      libraryMines.filter(mine => mpHasAnyLegacyMineData(eventName, mine)),
+      dataMines.filter(mine => mpHasAnyLegacyMineData(eventName, mine))
+    )
   );
 }
 
@@ -247,6 +276,8 @@ function mpHandleEventNameChange() {
   } else {
     const mines = mpGetOrderedLegacyMines(name);
 
+    if (!mines.length) return;
+
     eventMineField.classList.remove("hidden");
 
     mines.forEach(mine => {
@@ -333,12 +364,21 @@ function mpLoadSelectedChamber() {
     Array.from({ length: MP_COLS }, (_, c) => source[r]?.[c] ?? "")
   );
 
-  mpCurrentMeta =
-    window.ZM_TILE_META?.[path.eventType]?.[path.eventName]?.[path.chamberName]?.tiles
-      ? JSON.parse(
-          JSON.stringify(window.ZM_TILE_META[path.eventType][path.eventName][path.chamberName].tiles)
-        )
-      : {};
+  if (path.eventType === "Legacy") {
+    mpCurrentMeta =
+      window.ZM_TILE_META?.[path.eventType]?.[path.eventName]?.[path.eventMine]?.[path.chamberName]?.tiles
+        ? JSON.parse(
+            JSON.stringify(window.ZM_TILE_META[path.eventType][path.eventName][path.eventMine][path.chamberName].tiles)
+          )
+        : {};
+  } else {
+    mpCurrentMeta =
+      window.ZM_TILE_META?.[path.eventType]?.[path.eventName]?.[path.chamberName]?.tiles
+        ? JSON.parse(
+            JSON.stringify(window.ZM_TILE_META[path.eventType][path.eventName][path.chamberName].tiles)
+          )
+        : {};
+  }
 
   mpRenderGrid();
   mpGenerateOutput();
@@ -499,17 +539,32 @@ function mpGenerateOutput() {
     return ar - br || ac - bc;
   });
 
-  let out = `"${mpCurrentContext.chamberName}": {\n  tiles: {\n`;
+  let out = "";
+
+  if (mpCurrentContext.eventType === "Legacy" && mpCurrentContext.eventMine) {
+    out += `"${mpCurrentContext.eventMine}": {\n`;
+    out += `  "${mpCurrentContext.chamberName}": {\n`;
+    out += `    tiles: {\n`;
+  } else {
+    out += `"${mpCurrentContext.chamberName}": {\n`;
+    out += `  tiles: {\n`;
+  }
 
   entries.forEach(([key, meta], i) => {
-    let line = `    "${key}": { object: "${meta.object}"`;
+    let line = `      "${key}": { object: "${meta.object}"`;
     if (meta.subtype) line += `, subtype: "${meta.subtype}"`;
     line += " }";
     if (i < entries.length - 1) line += ",";
     out += line + "\n";
   });
 
-  out += "  }\n}";
+  if (mpCurrentContext.eventType === "Legacy" && mpCurrentContext.eventMine) {
+    out += `    }\n`;
+    out += `  }\n`;
+    out += `}`;
+  } else {
+    out += "  }\n}";
+  }
 
   box.value = out;
 }
