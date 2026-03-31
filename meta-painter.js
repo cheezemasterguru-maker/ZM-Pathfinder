@@ -35,22 +35,32 @@ function mpStatus(msg) {
   if (el) el.textContent = msg;
 }
 
+function mpHasUsableGridRecord(record) {
+  if (!record || typeof record !== "object") return false;
+  if (!Array.isArray(record.grid) || !record.grid.length) return false;
+
+  return record.grid.some(row =>
+    Array.isArray(row) &&
+    row.some(cell => cell !== "" && cell !== null && cell !== undefined)
+  );
+}
+
 function mpHasAnyMainDeepData(eventName) {
   const event = window.ZM_MAP_DATA?.MainDeep?.[eventName];
   if (!event || typeof event !== "object") return false;
-  return Object.values(event).some(chamber => !!chamber);
+  return Object.values(event).some(record => mpHasUsableGridRecord(record));
 }
 
 function mpHasAnyMainData(eventName) {
   const event = window.ZM_MAP_DATA?.Main?.[eventName];
   if (!event || typeof event !== "object") return false;
-  return Object.values(event).some(chamber => !!chamber);
+  return Object.values(event).some(record => mpHasUsableGridRecord(record));
 }
 
 function mpHasAnyLegacyMineData(eventName, mineName) {
   const mine = window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName];
   if (!mine || typeof mine !== "object") return false;
-  return Object.values(mine).some(chamber => !!chamber);
+  return Object.values(mine).some(record => mpHasUsableGridRecord(record));
 }
 
 function mpHasAnyLegacyEventData(eventName) {
@@ -102,8 +112,8 @@ function mpGetOrderedMainDeepChambers(eventName) {
   const libraryChambers = window.ZM_MAP_LIBRARY?.MainDeep?.[eventName] || [];
   const dataChambers = Object.keys(window.ZM_MAP_DATA?.MainDeep?.[eventName] || {});
   return mpUniqueOrdered(
-    libraryChambers.filter(ch => !!window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[ch]),
-    dataChambers.filter(ch => !!window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[ch])
+    libraryChambers.filter(ch => mpHasUsableGridRecord(window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[ch])),
+    dataChambers.filter(ch => mpHasUsableGridRecord(window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[ch]))
   );
 }
 
@@ -111,8 +121,8 @@ function mpGetOrderedMainChambers(eventName) {
   const libraryChambers = window.ZM_MAP_LIBRARY?.Main?.[eventName] || [];
   const dataChambers = Object.keys(window.ZM_MAP_DATA?.Main?.[eventName] || {});
   return mpUniqueOrdered(
-    libraryChambers.filter(ch => !!window.ZM_MAP_DATA?.Main?.[eventName]?.[ch]),
-    dataChambers.filter(ch => !!window.ZM_MAP_DATA?.Main?.[eventName]?.[ch])
+    libraryChambers.filter(ch => mpHasUsableGridRecord(window.ZM_MAP_DATA?.Main?.[eventName]?.[ch])),
+    dataChambers.filter(ch => mpHasUsableGridRecord(window.ZM_MAP_DATA?.Main?.[eventName]?.[ch]))
   );
 }
 
@@ -129,8 +139,8 @@ function mpGetOrderedLegacyChambers(eventName, mineName) {
   const libraryChambers = window.ZM_MAP_LIBRARY?.Legacy?.[eventName]?.[mineName] || [];
   const dataChambers = Object.keys(window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName] || {});
   return mpUniqueOrdered(
-    libraryChambers.filter(ch => !!window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName]?.[ch]),
-    dataChambers.filter(ch => !!window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName]?.[ch])
+    libraryChambers.filter(ch => mpHasUsableGridRecord(window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName]?.[ch])),
+    dataChambers.filter(ch => mpHasUsableGridRecord(window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName]?.[ch]))
   );
 }
 
