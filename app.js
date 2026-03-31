@@ -41,6 +41,8 @@ const LEGACY_MINE_ORDER = [
 // "object_only" = code replaces number
 const OBJECT_RENDER_MODE = "overlay";
 
+let currentLanguage = localStorage.getItem("zm_language") || "en";
+
 let grid = [];
 let currentRowCount = MINED_ROWS;
 let tool = "number";
@@ -65,6 +67,158 @@ let solveState = {
   message: "No solve yet.",
   routeAnalysis: []
 };
+
+function t(key) {
+  return window.ZM_TRANSLATIONS?.[currentLanguage]?.[key]
+    || window.ZM_TRANSLATIONS?.en?.[key]
+    || key;
+}
+
+function changeLanguage(lang) {
+  currentLanguage = lang || "en";
+  localStorage.setItem("zm_language", currentLanguage);
+  applyLanguage();
+}
+
+function applyLanguage() {
+  const languageSelect = document.getElementById("languageSelect");
+  if (languageSelect) languageSelect.value = currentLanguage;
+
+  const appTitle = document.getElementById("appTitle");
+  if (appTitle) appTitle.textContent = t("appTitle");
+
+  const languageLabel = document.getElementById("languageLabel");
+  if (languageLabel) languageLabel.textContent = t("language");
+
+  const loggedInBadge = document.getElementById("loggedInBadge");
+  if (loggedInBadge && !loggedInBadge.dataset.customText) {
+    loggedInBadge.textContent = t("notLoggedIn");
+  }
+
+  const addTesterBtn = document.getElementById("addTesterBtn");
+  if (addTesterBtn) addTesterBtn.textContent = t("addBetaTester");
+
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) logoutBtn.textContent = t("logout");
+
+  const howInputGridTitle = document.getElementById("howInputGridTitle");
+  if (howInputGridTitle) howInputGridTitle.textContent = t("howInputWorks");
+
+  const titleLabel = document.getElementById("titleLabel");
+  if (titleLabel) titleLabel.textContent = t("title");
+
+  const gateTypeLabel = document.getElementById("gateTypeLabel");
+  if (gateTypeLabel) gateTypeLabel.textContent = t("gateType");
+
+  const gateType = document.getElementById("gateType");
+  if (gateType && gateType.options.length >= 2) {
+    gateType.options[0].textContent = t("standardGate");
+    gateType.options[1].textContent = t("endGate");
+  }
+
+  const mapLoaderTitle = document.getElementById("mapLoaderTitle");
+  if (mapLoaderTitle) mapLoaderTitle.textContent = t("mapLoader");
+
+  const eventTypeLabel = document.getElementById("eventTypeLabel");
+  if (eventTypeLabel) eventTypeLabel.textContent = t("eventType");
+
+  const eventNameLabel = document.getElementById("eventNameLabel");
+  if (eventNameLabel) eventNameLabel.textContent = t("eventName");
+
+  const eventMineLabel = document.getElementById("eventMineLabel");
+  if (eventMineLabel) eventMineLabel.textContent = t("eventMine");
+
+  const eventChamberLabel = document.getElementById("eventChamberLabel");
+  if (eventChamberLabel) eventChamberLabel.textContent = t("eventChamber");
+
+  const eventTypeSelect = document.getElementById("eventTypeSelect");
+  if (eventTypeSelect && eventTypeSelect.options.length > 0) {
+    eventTypeSelect.options[0].textContent = t("selectEventType");
+    for (let i = 1; i < eventTypeSelect.options.length; i++) {
+      const opt = eventTypeSelect.options[i];
+      if (opt.value === "MainDeep") opt.textContent = t("mainDeep");
+      if (opt.value === "Main") opt.textContent = t("mainEvents");
+      if (opt.value === "Legacy") opt.textContent = t("legacyEvents");
+    }
+  }
+
+  const eventNameSelect = document.getElementById("eventNameSelect");
+  if (eventNameSelect && eventNameSelect.options.length > 0) {
+    eventNameSelect.options[0].textContent = t("selectEventName");
+  }
+
+  const eventMineSelect = document.getElementById("eventMineSelect");
+  if (eventMineSelect && eventMineSelect.options.length > 0) {
+    eventMineSelect.options[0].textContent = t("selectEventMine");
+  }
+
+  const eventChamberSelect = document.getElementById("eventChamberSelect");
+  if (eventChamberSelect && eventChamberSelect.options.length > 0) {
+    eventChamberSelect.options[0].textContent = t("selectEventChamber");
+  }
+
+  const loadMapBtn = document.getElementById("loadMapBtn");
+  if (loadMapBtn) loadMapBtn.textContent = t("loadMap");
+
+  const clearBoardBtn = document.getElementById("clearBoardBtn");
+  if (clearBoardBtn) clearBoardBtn.textContent = t("clearBoard");
+
+  const solveBtn = document.getElementById("solveBtn");
+  if (solveBtn) solveBtn.textContent = t("solve");
+
+  const downloadPngBtn = document.getElementById("downloadPngBtn");
+  if (downloadPngBtn) downloadPngBtn.textContent = t("downloadPNG");
+
+  const sampleGridBtn = document.getElementById("sampleGridBtn");
+  if (sampleGridBtn) sampleGridBtn.textContent = t("sampleGrid");
+
+  const pasteClipboardBtn = document.getElementById("pasteClipboardBtn");
+  if (pasteClipboardBtn) pasteClipboardBtn.textContent = t("pasteFromClipboard");
+
+  const solverHelpBtn = document.getElementById("solverHelpBtn");
+  if (solverHelpBtn) solverHelpBtn.textContent = t("solverHelp");
+
+  const routeReportBtn = document.getElementById("routeReportBtn");
+  if (routeReportBtn) routeReportBtn.textContent = t("routeReport");
+
+  const editableBoardTitle = document.getElementById("editableBoardTitle");
+  if (editableBoardTitle) editableBoardTitle.textContent = t("editableBoard");
+
+  const toolNumber = document.getElementById("tool-number");
+  if (toolNumber) toolNumber.textContent = t("number");
+
+  const toolBlock = document.getElementById("tool-block");
+  if (toolBlock) toolBlock.textContent = t("block");
+
+  const toolBubble = document.getElementById("tool-bubble");
+  if (toolBubble) toolBubble.textContent = t("bubble");
+
+  const toolShaft = document.getElementById("tool-shaft");
+  if (toolShaft) toolShaft.textContent = t("shaft");
+
+  const previewTitle = document.getElementById("previewTitle");
+  if (previewTitle) previewTitle.textContent = t("preview");
+
+  const betaTesterLoginTitle = document.getElementById("betaTesterLoginTitle");
+  if (betaTesterLoginTitle) betaTesterLoginTitle.textContent = t("betaTesterLogin");
+
+  const loginTesterId = document.getElementById("loginTesterId");
+  if (loginTesterId) loginTesterId.placeholder = t("enterTesterId");
+
+  const loginBtn = document.getElementById("loginBtn");
+  if (loginBtn) loginBtn.textContent = t("login");
+
+  const routeReportModalTitle = document.getElementById("routeReportModalTitle");
+  if (routeReportModalTitle) routeReportModalTitle.textContent = t("routeReportTitle");
+
+  const routeReportCloseBtn = document.getElementById("routeReportCloseBtn");
+  if (routeReportCloseBtn) routeReportCloseBtn.textContent = t("close");
+
+  const solverHelpModalTitle = document.getElementById("solverHelpModalTitle");
+  if (solverHelpModalTitle) solverHelpModalTitle.textContent = t("solverHelp");
+
+  loadHelpContent();
+}
 
 function setReport(msg){
   const reportEl = document.getElementById("report");
@@ -531,6 +685,12 @@ function drawCanvasTileFill(ctx, x, y, cellSize, fill){
 }
 
 function loadHelpContent(){
+  if (window.ZM_HELP_TRANSLATED?.[currentLanguage]) {
+    document.getElementById("shortHelpText").innerHTML = window.ZM_HELP_TRANSLATED[currentLanguage].shortHelp || "";
+    document.getElementById("solverHelpBody").innerHTML = window.ZM_HELP_TRANSLATED[currentLanguage].modalHelp || "";
+    return;
+  }
+
   if (window.ZM_HELP) {
     document.getElementById("shortHelpText").innerHTML = window.ZM_HELP.shortHelp || "";
     document.getElementById("solverHelpBody").innerHTML = window.ZM_HELP.modalHelp || "";
@@ -664,7 +824,7 @@ function getOrderedLegacyChambers(eventName, eventMine) {
 
 function populateEventTypeSelect(){
   const select = document.getElementById("eventTypeSelect");
-  select.innerHTML = '<option value="">Select Event Type</option>';
+  select.innerHTML = `<option value="">${t("selectEventType")}</option>`;
 
   if (!window.ZM_MAP_DATA) return;
 
@@ -675,21 +835,21 @@ function populateEventTypeSelect(){
   if (mainDeepNames.length) {
     const option = document.createElement("option");
     option.value = "MainDeep";
-    option.textContent = "Main DEEP";
+    option.textContent = t("mainDeep");
     select.appendChild(option);
   }
 
   if (mainNames.length) {
     const option = document.createElement("option");
     option.value = "Main";
-    option.textContent = "Main Events";
+    option.textContent = t("mainEvents");
     select.appendChild(option);
   }
 
   if (legacyNames.length) {
     const option = document.createElement("option");
     option.value = "Legacy";
-    option.textContent = "Legacy Events";
+    option.textContent = t("legacyEvents");
     select.appendChild(option);
   }
 }
@@ -705,17 +865,17 @@ function resetMapLoaderBelow(level){
   const loadMapBtn = document.getElementById("loadMapBtn");
 
   if (level <= 1) {
-    eventNameSelect.innerHTML = '<option value="">Select Event Name</option>';
+    eventNameSelect.innerHTML = `<option value="">${t("selectEventName")}</option>`;
     eventNameField.classList.add("hidden");
   }
 
   if (level <= 2) {
-    eventMineSelect.innerHTML = '<option value="">Select Event Mine</option>';
+    eventMineSelect.innerHTML = `<option value="">${t("selectEventMine")}</option>`;
     eventMineField.classList.add("hidden");
   }
 
   if (level <= 3) {
-    eventChamberSelect.innerHTML = '<option value="">Select Event Chamber</option>';
+    eventChamberSelect.innerHTML = `<option value="">${t("selectEventChamber")}</option>`;
     eventChamberField.classList.add("hidden");
   }
 
@@ -836,10 +996,6 @@ function handleEventNameChange(){
 
   ensureBoardRowCountFromCurrentContext();
   updateDifficultyMeter();
-}
-
-function libraryNamesIncludes(arr, value){
-  return arr.includes(value);
 }
 
 function handleEventMineChange(){
@@ -1794,6 +1950,7 @@ function init(){
   currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
   loadHelpContent();
   populateEventTypeSelect();
+  applyLanguage();
 
   const editorHelp = document.querySelector(".sticky-tools .help");
   if (editorHelp) {
@@ -1823,6 +1980,7 @@ function init(){
   renderRouteAudit([]);
 }
 
+window.changeLanguage = changeLanguage;
 window.openSolverHelp = openSolverHelp;
 window.closeSolverHelp = closeSolverHelp;
 window.openRouteReportModal = openRouteReportModal;
