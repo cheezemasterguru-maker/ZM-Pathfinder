@@ -193,12 +193,12 @@ window.ZM_SHAFT_DATA = {
   "Easter Egg Hunt": {
     "Mine 1": {
       "Chamber 1": [
-        { shaftType: "Beryl", level: 3, auto: null },
-        { shaftType: "Quartz", level: 6, auto: null }
+        { shaftType: "Beryl", level: 3, auto: 3 },
+        { shaftType: "Quartz", level: 6, auto: 4 }
       ],
       "Chamber 2": [
-        { shaftType: "Cobalt", level: 5, auto: null },
-        { shaftType: "Amber", level: 7, auto: null }
+        { shaftType: "Cobalt", level: 5, auto: 4 },
+        { shaftType: "Amber", level: 7, auto: 3 }
       ]
     }
   }
