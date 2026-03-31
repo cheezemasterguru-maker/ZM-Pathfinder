@@ -856,7 +856,7 @@ window.ZM_MAP_DATA = {
       ["", 9, "", 10, 10, 10, 9]
     ]
   }
-}
+},
     "Mine 4": {},
     "Mine 5": {},
     "The Deep": {}
