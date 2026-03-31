@@ -89,8 +89,8 @@ window.ZM_SHAFT_DATA = {
           { shaftType: "Quartz", level: 8, auto: 5 }
         ],
         "Chamber 2": [
-          { shaftType: "Cobalt", level: 6, auto: 7 },
-          { shaftType: "Amber", level: 10, auto: 7 },
+          { shaftType: "Cobalt", level: 6, auto: 6 },
+          { shaftType: "Amber", level: 10, auto: 6 },
           { shaftType: "Ametrine", level: 11, auto: 6 }
         ],
         "Chamber 3": [
