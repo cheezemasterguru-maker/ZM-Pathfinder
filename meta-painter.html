@@ -109,6 +109,7 @@
 
     .board-wrap {
       overflow-x: auto;
+      overflow-y: visible;
       -webkit-overflow-scrolling: touch;
     }
 
@@ -117,6 +118,7 @@
       gap: 4px;
       width: fit-content;
       margin-top: 8px;
+      min-width: max-content;
     }
 
     .meta-cell {
@@ -169,20 +171,30 @@
       margin-top: 2px;
     }
 
-    .tool-section {
-      margin-bottom: 12px;
+    .legend-note {
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.4;
+    }
+
+    .output-box {
+      min-height: 320px;
+      font-family: monospace;
+      white-space: pre;
+      resize: vertical;
+    }
+
+    .tools-sticky-card {
+      position: sticky;
+      top: 8px;
+      z-index: 50;
+      background: #121a2d;
     }
 
     .tool-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 8px;
-    }
-
-    @media (max-width: 700px) {
-      .tool-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
     }
 
     .tool-btn {
@@ -207,17 +219,77 @@
       color: #111;
     }
 
-    .legend-note {
-      font-size: 13px;
-      color: #cbd5e1;
-      line-height: 1.4;
+    .tool-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
     }
 
-    .output-box {
-      min-height: 320px;
-      font-family: monospace;
-      white-space: pre;
-      resize: vertical;
+    .tool-actions button {
+      padding: 8px 10px;
+      font-size: 13px;
+      min-height: 40px;
+    }
+
+    @media (max-width: 700px) {
+      body {
+        padding: 10px;
+      }
+
+      .card {
+        padding: 12px;
+        border-radius: 16px;
+      }
+
+      .controls-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .tools-sticky-card {
+        top: 6px;
+      }
+
+      .tool-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .tool-btn {
+        min-height: 38px;
+        padding: 4px 5px;
+        font-size: 11px;
+        border-radius: 10px;
+      }
+
+      .tool-actions {
+        gap: 6px;
+      }
+
+      .tool-actions button {
+        font-size: 12px;
+        min-height: 36px;
+        padding: 7px 8px;
+      }
+
+      .meta-cell {
+        width: 38px;
+        height: 38px;
+      }
+
+      .meta-cell .base-number {
+        font-size: 14px;
+      }
+
+      .meta-cell .base-type {
+        font-size: 6px;
+      }
+
+      .btn-row button {
+        font-size: 13px;
+        padding: 9px 11px;
+      }
     }
   </style>
 </head>
@@ -265,7 +337,6 @@
 
       <div class="btn-row">
         <button class="btn-action" onclick="mpLoadSelectedChamber()">Load Chamber</button>
-        <button class="btn-neutral" onclick="mpClearCurrentMetadata()">Clear Current Chamber Metadata</button>
         <button class="btn-good" onclick="mpGenerateOutput()">Generate Output</button>
         <button class="btn-good" onclick="mpCopyOutput()">Copy Output</button>
         <button class="btn-action" onclick="mpDownloadOutput()">Download Output</button>
@@ -274,16 +345,16 @@
       <div id="metaPainterStatus" class="status"></div>
     </div>
 
-    <div class="card">
+    <div class="card tools-sticky-card">
       <h2>Tools</h2>
 
-      <div class="tool-section">
-        <div class="tool-grid" id="toolGrid"></div>
-      </div>
+      <div class="tool-grid" id="toolGrid"></div>
 
-      <div class="btn-row">
-        <button class="btn-neutral" onclick="mpSetTool('plain')">Plain</button>
-        <button class="btn-neutral" onclick="mpSetTool('clear')">Clear</button>
+      <div class="tool-actions">
+        <button class="btn-neutral" type="button" onclick="mpUndoLastAction()">Undo</button>
+        <button class="btn-neutral" type="button" onclick="mpSetTool('plain')">Plain</button>
+        <button class="btn-neutral" type="button" onclick="mpSetTool('clear')">Clear</button>
+        <button class="btn-warn" type="button" onclick="mpClearCurrentMetadata()">Clear Chamber Meta</button>
       </div>
     </div>
 
