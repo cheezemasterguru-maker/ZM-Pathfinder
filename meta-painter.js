@@ -36,6 +36,7 @@ let mpCurrentContext = {
 };
 
 let mpCurrentMeta = {};
+let mpUndoStack = [];
 
 const MP_TOOL_ORDER = [
   "gems",
@@ -54,6 +55,29 @@ const MP_TOOL_ORDER = [
 function mpStatus(msg) {
   const el = document.getElementById("metaPainterStatus");
   if (el) el.textContent = msg;
+}
+
+function mpCloneMeta(meta) {
+  return JSON.parse(JSON.stringify(meta || {}));
+}
+
+function mpPushUndoState() {
+  mpUndoStack.push(mpCloneMeta(mpCurrentMeta));
+  if (mpUndoStack.length > 100) {
+    mpUndoStack.shift();
+  }
+}
+
+function mpUndoLastAction() {
+  if (!mpUndoStack.length) {
+    mpStatus("Nothing to undo.");
+    return;
+  }
+
+  mpCurrentMeta = mpUndoStack.pop();
+  mpRenderGrid();
+  mpGenerateOutput();
+  mpStatus("Undo applied.");
 }
 
 function mpHasUsableGridRecord(record) {
@@ -364,6 +388,8 @@ function mpLoadSelectedChamber() {
     Array.from({ length: MP_COLS }, (_, c) => source[r]?.[c] ?? "")
   );
 
+  mpUndoStack = [];
+
   if (path.eventType === "Legacy") {
     mpCurrentMeta =
       window.ZM_TILE_META?.[path.eventType]?.[path.eventName]?.[path.eventMine]?.[path.chamberName]?.tiles
@@ -406,6 +432,7 @@ function mpBuildToolGrid() {
     const btn = document.createElement("button");
     btn.className = "tool-btn";
     btn.dataset.tool = tool;
+    btn.type = "button";
 
     let label = tool;
     let fill = "#e5e7eb";
@@ -440,6 +467,7 @@ function mpClickTile(r, c) {
   if (typeof val !== "number") return;
 
   const key = `${r},${c}`;
+  mpPushUndoState();
 
   if (mpCurrentTool === "plain" || mpCurrentTool === "clear") {
     delete mpCurrentMeta[key];
@@ -601,6 +629,7 @@ function mpDownloadOutput() {
 }
 
 function mpClearCurrentMetadata() {
+  mpPushUndoState();
   mpCurrentMeta = {};
   mpRenderGrid();
   mpGenerateOutput();
@@ -617,6 +646,7 @@ window.mpGenerateOutput = mpGenerateOutput;
 window.mpCopyOutput = mpCopyOutput;
 window.mpDownloadOutput = mpDownloadOutput;
 window.mpClearCurrentMetadata = mpClearCurrentMetadata;
+window.mpUndoLastAction = mpUndoLastAction;
 
 window.addEventListener("load", () => {
   mpPopulateEventTypeSelect();
