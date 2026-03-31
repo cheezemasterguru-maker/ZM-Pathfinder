@@ -771,12 +771,11 @@ window.ZM_TILE_META = {
         "9,3": { object: "emblems" }
       }
     }
-  }
+  },
+
+  "Mine 5": {},
+  "The Deep": {}
 },
-      
-      "Mine 5": {},
-      "The Deep": {}
-    },
 
     "4th of July": {
       "Mine 1": {},
