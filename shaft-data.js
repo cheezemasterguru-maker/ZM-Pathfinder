@@ -26,25 +26,25 @@ window.ZM_SHAFT_DATA = {
 
   Main: {
     "Treasures in Ice": {
-      "Chamber 1": [
-        { shaftType: "Beryl", level: null, auto: null },
-        { shaftType: "Quartz", level: null, auto: null }
-      ],
-      "Chamber 2": [
-        { shaftType: "Cobalt", level: null, auto: null },
-        { shaftType: "Amber", level: null, auto: null },
-        { shaftType: "Ametrine", level: null, auto: null }
-      ],
-      "Chamber 3": [
-        { shaftType: "Barite", level: null, auto: null },
-        { shaftType: "Elendir", level: null, auto: null },
-        { shaftType: "Lapis Lazuli", level: null, auto: null }
-      ],
-      "Chamber 4": [
-        { shaftType: "Aventurine", level: null, auto: null }
-      ],
-      "Graveyard": []
-    },
+  "Chamber 1": [
+    { shaftType: "Beryl", level: 3, auto: 3 },
+    { shaftType: "Quartz", level: 7, auto: 4 }
+  ],
+  "Chamber 2": [
+    { shaftType: "Cobalt", level: 6, auto: 5 },
+    { shaftType: "Amber", level: 15, auto: 5 },
+    { shaftType: "Ametrine", level: 19, auto: 6 }
+  ],
+  "Chamber 3": [
+    { shaftType: "Barite", level: 21, auto: 5 },
+    { shaftType: "Elendir", level: 25, auto: 6 },
+    { shaftType: "Lapis Lazuli", level: 27, auto: 7 }
+  ],
+  "Chamber 4": [
+    { shaftType: "Aventurine", level: 31, auto: 7 }
+  ],
+  "Graveyard": []
+},
 
     "Excavations in the Sand": {
       "Chamber 1": [
