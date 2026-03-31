@@ -190,17 +190,34 @@ window.ZM_SHAFT_DATA = {
   },
 
   "Legacy": {
-    "Easter Egg Hunt": {
-      "Mine 1": {
-        "Chamber 1": [
-          { shaftType: "Beryl", level: 3, auto: 3 },
-          { shaftType: "Quartz", level: 6, auto: 4 }
-        ],
-        "Chamber 2": [
-          { shaftType: "Cobalt", level: 5, auto: 4 },
-          { shaftType: "Amber", level: 7, auto: 3 }
-        ]
-      }
+  "Easter Egg Hunt": {
+
+    "Mine 1": {
+      "Chamber 1": [
+        { shaftType: "Beryl", level: 3, auto: 3 },
+        { shaftType: "Quartz", level: 6, auto: 4 }
+      ],
+      "Chamber 2": [
+        { shaftType: "Cobalt", level: 5, auto: 4 },
+        { shaftType: "Amber", level: 7, auto: 3 }
+      ]
+    },
+
+    "Mine 2": {
+      "Chamber 1": [
+        { shaftType: "Beryl", level: 4, auto: 5 },
+        { shaftType: "Quartz", level: 8, auto: 5 }
+      ],
+      "Chamber 2": [
+        { shaftType: "Cobalt", level: 6, auto: 7 },
+        { shaftType: "Amber", level: 10, auto: 7 },
+        { shaftType: "Ametrine", level: 11, auto: 6 }
+      ],
+      "Chamber 3": [
+        { shaftType: "Barite", level: 9, auto: 5 }
+      ]
     }
+
   }
+}
 };
