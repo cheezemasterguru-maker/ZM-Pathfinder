@@ -700,5 +700,40 @@ window.ZM_MAP_DATA = {
     }
   },
 
-  Legacy: {}
+  "Legacy": {
+  "Easter Egg Hunt": {
+    "Mine 1": {
+
+      "Chamber 1": {
+        title: "Easter Egg Hunt - Mine 1 - Chamber 1",
+        gateType: "standard",
+        grid: [
+          ["X", 6, 8, 6, 7, 9, 6],
+          ["X","X", 7, 9,"X", 6, 8],
+          ["S","S","X", 8, 5, 7, 5],
+          ["S","S", 7, 5, 6, 5, 6],
+          ["S","S", 5,"B", 5, 4,"X"],
+          ["X", 5, 4, 5, 4,"S","S"],
+          ["X", 4, 3, 4, 3,"S","S"],
+          ["X","X", 4, 3, 2,"S","S"],
+          ["X","X", 3, 2,"X", 1,"X"]
+        ]
+      },
+
+      "Chamber 2": {
+        title: "Easter Egg Hunt - Mine 1 - Chamber 2",
+        gateType: "end",
+        grid: [
+          ["X","X", 8, 6, 7,"X","X"],
+          ["X","X", 7, 9, 6,"X","X"],
+          ["S","S","X", 6, 9, 6,"X"],
+          ["S","S","B", 7, 6, 6,"X"],
+          ["S","S", 7, 6, 7,"X","X"],
+          [ 6, 7, 6, 7,"X","S","S"],
+          [ 6,"X", 7, 6, 7,"S","S"],
+          ["X", 5, 6, 5,"X","S","S"]
+          ]
+    }
+  }
+}
 };
