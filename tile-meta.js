@@ -165,10 +165,114 @@ window.ZM_TILE_META = {
     },
 
     "Moon Odyssey": {
-      "Chamber 1": { tiles: {} },
-      "Chamber 2": { tiles: {} },
-      "Chamber 3": { tiles: {} },
-      "Chamber 4": { tiles: {} },
+      "Chamber 1": {
+  tiles: {
+    "0,0": { object: "keys" },
+    "0,2": { object: "emblems" },
+    "0,5": { object: "chest", subtype: "iron" },
+    "1,1": { object: "essence" },
+    "1,5": { object: "essence" },
+    "2,6": { object: "keys" },
+    "3,3": { object: "chest", subtype: "wood" },
+    "3,5": { object: "emblems" },
+    "4,4": { object: "keys" },
+    "5,0": { object: "essence" },
+    "6,3": { object: "chest", subtype: "iron" },
+    "7,0": { object: "keys" },
+    "9,3": { object: "emblems" },
+    "9,4": { object: "essence" },
+    "10,4": { object: "keys" },
+    "10,6": { object: "chest", subtype: "wood" }
+  }
+},
+
+"Chamber 2": {
+  tiles: {
+    "0,1": { object: "keys" },
+    "0,3": { object: "emblems" },
+    "0,4": { object: "essence" },
+    "1,0": { object: "chest", subtype: "wood" },
+    "1,1": { object: "emblems" },
+    "1,3": { object: "essence" },
+    "1,5": { object: "chest", subtype: "steel" },
+    "2,1": { object: "chest", subtype: "iron" },
+    "2,2": { object: "emblems" },
+    "2,6": { object: "keys" },
+    "3,2": { object: "keys" },
+    "3,5": { object: "chest", subtype: "iron" },
+    "4,4": { object: "essence" },
+    "5,2": { object: "chest", subtype: "wood" },
+    "6,0": { object: "keys" },
+    "7,1": { object: "emblems" },
+    "7,3": { object: "essence" },
+    "8,4": { object: "keys" },
+    "8,5": { object: "emblems" },
+    "9,2": { object: "chest", subtype: "wood" },
+    "9,5": { object: "chest", subtype: "wood" }
+  }
+},
+
+"Chamber 3": {
+  tiles: {
+    "0,1": { object: "essence" },
+    "0,4": { object: "emblems" },
+    "1,3": { object: "keys" },
+    "1,5": { object: "chest", subtype: "steel" },
+    "2,6": { object: "keys" },
+    "3,3": { object: "essence" },
+    "3,5": { object: "chest", subtype: "wood" },
+    "3,6": { object: "essence" },
+    "4,1": { object: "chest", subtype: "wood" },
+    "5,0": { object: "emblems" },
+    "5,3": { object: "chest", subtype: "iron" },
+    "6,1": { object: "keys" },
+    "6,4": { object: "emblems" },
+    "7,3": { object: "essence" },
+    "7,5": { object: "keys" },
+    "8,2": { object: "essence" },
+    "8,4": { object: "chest", subtype: "wood" },
+    "9,3": { object: "chest", subtype: "wood" },
+    "9,5": { object: "essence" },
+    "10,0": { object: "emblems" },
+    "10,4": { object: "essence" }
+  }
+},
+
+"Chamber 4": {
+  tiles: {
+    "0,0": { object: "keys" },
+    "0,3": { object: "essence" },
+    "0,5": { object: "essence" },
+    "0,6": { object: "keys" },
+    "1,1": { object: "chest", subtype: "steel" },
+    "1,4": { object: "emblems" },
+    "1,6": { object: "essence" },
+    "2,0": { object: "essence" },
+    "2,3": { object: "chest", subtype: "steel" },
+    "2,4": { object: "keys" },
+    "3,2": { object: "emblems" },
+    "3,5": { object: "emblems" },
+    "4,0": { object: "chest", subtype: "wood" },
+    "4,1": { object: "keys" },
+    "4,3": { object: "essence" },
+    "5,0": { object: "essence" },
+    "5,2": { object: "chest", subtype: "steel" },
+    "5,5": { object: "chest", subtype: "steel" },
+    "6,1": { object: "emblems" },
+    "6,5": { object: "essence" },
+    "6,6": { object: "keys" },
+    "7,2": { object: "essence" },
+    "7,4": { object: "chest", subtype: "iron" },
+    "7,6": { object: "chest", subtype: "steel" },
+    "8,3": { object: "keys" },
+    "9,0": { object: "essence" },
+    "9,4": { object: "chest", subtype: "steel" },
+    "10,0": { object: "emblems" },
+    "10,2": { object: "essence" },
+    "11,1": { object: "chest", subtype: "wood" }
+  }
+},
+      
       "Graveyard": { tiles: {} }
     },
 
