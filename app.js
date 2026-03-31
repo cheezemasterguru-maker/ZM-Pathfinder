@@ -37,8 +37,6 @@ const LEGACY_MINE_ORDER = [
   "The Deep"
 ];
 
-// "overlay" = number stays visible and object code shows underneath
-// "object_only" = code replaces number
 const OBJECT_RENDER_MODE = "overlay";
 
 let currentLanguage = localStorage.getItem("zm_language") || "en";
@@ -74,10 +72,158 @@ function t(key) {
     || key;
 }
 
+function formatT(key, vars = {}) {
+  let str = t(key);
+  Object.keys(vars).forEach(k => {
+    str = str.replaceAll(`{${k}}`, String(vars[k]));
+  });
+  return str;
+}
+
+function getEventTranslationKey(name) {
+  const map = {
+    "Treasures in Ice": "treasuresInIce",
+    "Treasure Trove of Gems": "treasureTroveOfGems",
+    "Essence Cave": "essenceCave",
+    "Excavations in the Sand": "excavationsInTheSand",
+    "Sweet Valley": "sweetValley",
+    "Grand Canyon": "grandCanyon",
+    "Volcano Awakening": "volcanoAwakening",
+    "Moon Odyssey": "moonOdyssey",
+    "Love Story": "loveStory",
+    "Clover Valley": "cloverValley",
+    "Easter Egg Hunt": "easterEggHunt",
+    "4th of July": "fourthOfJuly",
+    "Mystery Reef": "mysteryReef",
+    "Teamwork Festival": "teamworkFestival",
+    "Halloween": "halloween",
+    "Fall Festival": "fallFestival",
+    "Winter Break": "winterBreak"
+  };
+  return map[name] || null;
+}
+
+function getMineTranslationKey(name) {
+  const map = {
+    "Mine 1": "mine1",
+    "Mine 2": "mine2",
+    "Mine 3": "mine3",
+    "Mine 4": "mine4",
+    "Mine 5": "mine5",
+    "The Deep": "theDeep"
+  };
+  return map[name] || null;
+}
+
+function getChamberTranslationKey(name) {
+  const map = {
+    "Chamber 1": "chamber1",
+    "Chamber 2": "chamber2",
+    "Chamber 3": "chamber3",
+    "Chamber 4": "chamber4",
+    "Graveyard": "graveyard"
+  };
+  return map[name] || null;
+}
+
+function getDeepTranslationKey(name) {
+  const map = {
+    "DEEP 1": "deep1",
+    "DEEP 2": "deep2",
+    "DEEP 3": "deep3",
+    "DEEP 4": "deep4"
+  };
+  return map[name] || null;
+}
+
+function getShaftTypeTranslationKey(name) {
+  const map = {
+    "Beryl": "beryl",
+    "Quartz": "quartz",
+    "Cobalt": "cobalt",
+    "Amber": "amber",
+    "Ametrine": "ametrine",
+    "Barite": "barite",
+    "Elendir": "elendir",
+    "Lapis Lazuli": "lapisLazuli",
+    "Aventurine": "aventurine",
+    "Obsidian": "obsidian"
+  };
+  return map[name] || null;
+}
+
+function translateEventName(name) {
+  const key = getEventTranslationKey(name);
+  return key ? t(key) : name;
+}
+
+function translateMineName(name) {
+  const key = getMineTranslationKey(name);
+  return key ? t(key) : name;
+}
+
+function translateChamberName(name) {
+  const key = getChamberTranslationKey(name);
+  return key ? t(key) : name;
+}
+
+function translateDeepName(name) {
+  const key = getDeepTranslationKey(name);
+  return key ? t(key) : name;
+}
+
+function translateShaftType(name) {
+  const key = getShaftTypeTranslationKey(name);
+  return key ? t(key) : name;
+}
+
 function changeLanguage(lang) {
   currentLanguage = lang || "en";
   localStorage.setItem("zm_language", currentLanguage);
   applyLanguage();
+  populateEventTypeSelect();
+  if (document.getElementById("eventTypeSelect")?.value) {
+    refreshTranslatedLoaderSelections();
+  }
+  render();
+  renderPreview();
+  renderRouteAudit(solveState.routeAnalysis || []);
+}
+
+function refreshTranslatedLoaderSelections() {
+  const eventType = document.getElementById("eventTypeSelect");
+  const eventName = document.getElementById("eventNameSelect");
+  const eventMine = document.getElementById("eventMineSelect");
+  const eventChamber = document.getElementById("eventChamberSelect");
+
+  const selectedType = eventType?.value || "";
+  const selectedEvent = eventName?.value || "";
+  const selectedMine = eventMine?.value || "";
+  const selectedChamber = eventChamber?.value || "";
+
+  if (eventType) {
+    populateEventTypeSelect();
+    eventType.value = selectedType;
+  }
+
+  if (selectedType) {
+    handleEventTypeChange();
+    if (eventName) eventName.value = selectedEvent;
+  }
+
+  if (selectedType && selectedEvent) {
+    handleEventNameChange();
+    if (eventMine) eventMine.value = selectedMine;
+  }
+
+  if (selectedType === "Legacy" && selectedEvent && selectedMine) {
+    handleEventMineChange();
+  }
+
+  if (eventChamber) eventChamber.value = selectedChamber;
+  if (selectedType && selectedEvent && selectedChamber) {
+    handleEventChamberChange();
+  }
 }
 
 function applyLanguage() {
@@ -130,32 +276,6 @@ function applyLanguage() {
 
   const eventChamberLabel = document.getElementById("eventChamberLabel");
   if (eventChamberLabel) eventChamberLabel.textContent = t("eventChamber");
-
-  const eventTypeSelect = document.getElementById("eventTypeSelect");
-  if (eventTypeSelect && eventTypeSelect.options.length > 0) {
-    eventTypeSelect.options[0].textContent = t("selectEventType");
-    for (let i = 1; i < eventTypeSelect.options.length; i++) {
-      const opt = eventTypeSelect.options[i];
-      if (opt.value === "MainDeep") opt.textContent = t("mainDeep");
-      if (opt.value === "Main") opt.textContent = t("mainEvents");
-      if (opt.value === "Legacy") opt.textContent = t("legacyEvents");
-    }
-  }
-
-  const eventNameSelect = document.getElementById("eventNameSelect");
-  if (eventNameSelect && eventNameSelect.options.length > 0) {
-    eventNameSelect.options[0].textContent = t("selectEventName");
-  }
-
-  const eventMineSelect = document.getElementById("eventMineSelect");
-  if (eventMineSelect && eventMineSelect.options.length > 0) {
-    eventMineSelect.options[0].textContent = t("selectEventMine");
-  }
-
-  const eventChamberSelect = document.getElementById("eventChamberSelect");
-  if (eventChamberSelect && eventChamberSelect.options.length > 0) {
-    eventChamberSelect.options[0].textContent = t("selectEventChamber");
-  }
 
   const loadMapBtn = document.getElementById("loadMapBtn");
   if (loadMapBtn) loadMapBtn.textContent = t("loadMap");
@@ -260,15 +380,15 @@ function renderRouteAudit(routeAnalysis){
   summarySection.className = "help-section";
 
   const summaryTitle = document.createElement("h3");
-  summaryTitle.textContent = "Solve Summary";
+  summaryTitle.textContent = t("solveSummary");
 
   const summaryText = document.createElement("p");
   summaryText.innerHTML =
-    `Solved: <b>${solveState.solved ? "Yes" : "No"}</b><br>` +
+    `${t("solve")}: <b>${solveState.solved ? t("solvedYes") : t("solvedNo")}</b><br>` +
     `Red path cells: <b>${solveState.redPath.length}</b><br>` +
     `Blue route count: <b>${solveState.bluePaths.length}</b><br>` +
-    `Physical shaft cluster count: <b>${shaftClusters.length}</b><br>` +
-    `Chamber shaft data entries: <b>${shaftData.length}</b>`;
+    `${t("physicalShaftClusters")}: <b>${shaftClusters.length}</b><br>` +
+    `${t("shaftData")}: <b>${shaftData.length}</b>`;
 
   summarySection.appendChild(summaryTitle);
   summarySection.appendChild(summaryText);
@@ -278,27 +398,27 @@ function renderRouteAudit(routeAnalysis){
   shaftSection.className = "help-section";
 
   const shaftTitle = document.createElement("h3");
-  shaftTitle.textContent = "Shaft Data";
+  shaftTitle.textContent = t("shaftData");
 
   const shaftText = document.createElement("p");
 
   if (!currentMapContext.eventType || !currentMapContext.eventName || !currentMapContext.chamberName) {
-    shaftText.innerHTML = `No chamber is currently loaded, so no chamber-level shaft data can be shown.`;
+    shaftText.innerHTML = t("noChamberLoadedForShafts");
   } else if (!shaftData.length) {
     shaftText.innerHTML =
-      `Resolved shaft data path:<br>` +
+      `${t("resolvedShaftDataPath")}<br>` +
       `<b>${getCurrentShaftDataPathLabel()}</b><br><br>` +
-      `This chamber currently has <b>0</b> shaft data entries.`;
+      t("noShaftEntries");
   } else {
     const lines = shaftData.map((shaft, index) => {
-      const shaftType = shaft?.shaftType ?? "Unknown";
+      const shaftType = translateShaftType(shaft?.shaftType ?? "Unknown");
       const level = shaft?.level ?? "null";
       const auto = shaft?.auto ?? "null";
-      return `${index + 1}. ${shaftType} | level: ${level} | auto: ${auto}`;
+      return `${index + 1}. ${shaftType} | ${t("level")}: ${level} | ${t("auto")}: ${auto}`;
     });
 
     shaftText.innerHTML =
-      `Resolved shaft data path:<br>` +
+      `${t("resolvedShaftDataPath")}<br>` +
       `<b>${getCurrentShaftDataPathLabel()}</b><br><br>` +
       lines.map(line => line.replace(/</g, "&lt;").replace(/>/g, "&gt;")).join("<br>");
   }
@@ -311,11 +431,11 @@ function renderRouteAudit(routeAnalysis){
   physicalSection.className = "help-section";
 
   const physicalTitle = document.createElement("h3");
-  physicalTitle.textContent = "Physical Shaft Clusters";
+  physicalTitle.textContent = t("physicalShaftClusters");
 
   const physicalText = document.createElement("p");
   if (!shaftClusters.length) {
-    physicalText.innerHTML = `No physical shaft clusters were found from grid S tiles.`;
+    physicalText.innerHTML = t("noPhysicalShaftClusters");
   } else {
     const clusterLines = shaftClusters.map((cluster, index) => {
       const rows = cluster.map(([r]) => r);
@@ -325,7 +445,7 @@ function renderRouteAudit(routeAnalysis){
       const minC = Math.min(...cols);
       const maxC = Math.max(...cols);
       const labelLines = getShaftDisplayLines(index, shaftData);
-      return `${index + 1}. rows ${minR}-${maxR}, cols ${minC}-${maxC}, cells: ${cluster.length} | label: ${labelLines.join(" / ")}`;
+      return `${index + 1}. ${t("rows")} ${minR}-${maxR}, ${t("cols")} ${minC}-${maxC}, ${t("cells")}: ${cluster.length} | ${t("label")}: ${labelLines.join(" / ")}`;
     });
 
     physicalText.innerHTML = clusterLines.join("<br>");
@@ -339,13 +459,13 @@ function renderRouteAudit(routeAnalysis){
   reportSection.className = "help-section";
 
   const reportTitle = document.createElement("h3");
-  reportTitle.textContent = "Route Analysis";
+  reportTitle.textContent = t("routeAnalysis");
 
   reportSection.appendChild(reportTitle);
 
   if (!routeAnalysis || !routeAnalysis.length) {
     const emptyText = document.createElement("p");
-    emptyText.innerHTML = `No route analysis is available yet. Solve a board first.`;
+    emptyText.innerHTML = t("noRouteAnalysis");
     reportSection.appendChild(emptyText);
     body.appendChild(reportSection);
     return;
@@ -365,7 +485,7 @@ function renderRouteAudit(routeAnalysis){
     box.style.boxSizing = "border-box";
 
     const heading = document.createElement("div");
-    heading.textContent = isApproved ? "APPROVED ROUTE" : "IGNORED ROUTE";
+    heading.textContent = isApproved ? t("approvedRoute") : t("ignoredRoute");
     heading.style.fontWeight = "700";
     heading.style.fontSize = "18px";
     heading.style.marginBottom = "8px";
@@ -390,12 +510,12 @@ function renderRouteAudit(routeAnalysis){
     meta.style.fontSize = "14px";
     meta.style.lineHeight = "1.5";
     meta.innerHTML =
-      `Mode: <b>${item.redMode}</b> | Variant: <b>${item.redVariant}</b><br>` +
-      `Effective total: <b>${item.effectiveTotal}</b>` +
-      (isApproved ? "" : ` | Worse by: <b>${item.deltaFromBest}</b>`) + `<br>` +
-      `Red cost: <b>${item.redCost}</b> | Blue cost: <b>${item.blueCost}</b><br>` +
-      `Unresolved targets: <b>${item.unresolvedTargets}</b><br>` +
-      `Reason: <b>${item.reason}</b>`;
+      `${t("mode")}: <b>${item.redMode}</b> | ${t("variant")}: <b>${item.redVariant}</b><br>` +
+      `${t("effectiveTotal")}: <b>${item.effectiveTotal}</b>` +
+      (isApproved ? "" : ` | ${t("worseBy")}: <b>${item.deltaFromBest}</b>`) + `<br>` +
+      `${t("redCost")}: <b>${item.redCost}</b> | ${t("blueCost")}: <b>${item.blueCost}</b><br>` +
+      `${t("unresolvedTargets")}: <b>${item.unresolvedTargets}</b><br>` +
+      `${t("reason")}: <b>${item.reason}</b>`;
 
     box.appendChild(heading);
     box.appendChild(pathLine);
@@ -562,10 +682,10 @@ function getOrderedPhysicalShaftClusters() {
 
 function getShaftDisplayLines(index, shaftData) {
   const shaft = shaftData[index];
-  if (!shaft) return ["Shaft"];
+  if (!shaft) return [t("shaft")];
 
   const lines = [];
-  const shaftType = shaft.shaftType ? String(shaft.shaftType) : "Shaft";
+  const shaftType = shaft.shaftType ? translateShaftType(String(shaft.shaftType)) : t("shaft");
 
   lines.push(shaftType);
 
@@ -917,7 +1037,7 @@ function handleEventTypeChange(){
   validNames.forEach(name => {
     const option = document.createElement("option");
     option.value = name;
-    option.textContent = name;
+    option.textContent = eventType === "MainDeep" ? translateDeepName(name) : translateEventName(name);
     eventNameSelect.appendChild(option);
   });
 
@@ -955,7 +1075,7 @@ function handleEventNameChange(){
     chambers.forEach(chamber => {
       const option = document.createElement("option");
       option.value = chamber;
-      option.textContent = chamber;
+      option.textContent = translateChamberName(chamber);
       eventChamberSelect.appendChild(option);
     });
   } else if (eventType === "Main") {
@@ -972,7 +1092,7 @@ function handleEventNameChange(){
     chambers.forEach(chamber => {
       const option = document.createElement("option");
       option.value = chamber;
-      option.textContent = chamber;
+      option.textContent = translateChamberName(chamber);
       eventChamberSelect.appendChild(option);
     });
   } else if (eventType === "Legacy") {
@@ -989,7 +1109,7 @@ function handleEventNameChange(){
     validMines.forEach(mineName => {
       const option = document.createElement("option");
       option.value = mineName;
-      option.textContent = mineName;
+      option.textContent = translateMineName(mineName);
       eventMineSelect.appendChild(option);
     });
   }
@@ -1024,7 +1144,7 @@ function handleEventMineChange(){
   chambers.forEach(chamber => {
     const option = document.createElement("option");
     option.value = chamber;
-    option.textContent = chamber;
+    option.textContent = translateChamberName(chamber);
     eventChamberSelect.appendChild(option);
   });
 
@@ -1040,19 +1160,23 @@ function buildAutoTitle(){
 
   if (!eventType || !eventName || !eventChamber) return null;
 
+  const displayEvent = eventType === "MainDeep" ? translateDeepName(eventName) : translateEventName(eventName);
+  const displayMine = translateMineName(eventMine);
+  const displayChamber = translateChamberName(eventChamber);
+
   if (eventType === "MainDeep") {
-    return `${eventName} - ${eventChamber}`;
+    return `${displayEvent} - ${displayChamber}`;
   }
 
   if (eventType === "Main") {
-    return `${eventName} - ${eventChamber}`;
+    return `${displayEvent} - ${displayChamber}`;
   }
 
   if (eventType === "Legacy" && eventMine) {
-    return `${eventName} - ${eventMine} - ${eventChamber}`;
+    return `${displayEvent} - ${displayMine} - ${displayChamber}`;
   }
 
-  return eventChamber;
+  return displayChamber;
 }
 
 function handleEventChamberChange(){
@@ -1123,7 +1247,7 @@ function getSelectedMapRecord(){
 function loadSelectedMap(){
   const mapRecord = getSelectedMapRecord();
   if (!mapRecord) {
-    setReport("Selected map data was not found in maps.js.");
+    setReport(t("selectedMapMissing"));
     return;
   }
 
@@ -1137,7 +1261,7 @@ function loadSelectedMap(){
   };
 
   const autoTitle = buildAutoTitle();
-  currentPreviewTitle = mapRecord.title || autoTitle || "Loaded Map";
+  currentPreviewTitle = autoTitle || "Loaded Map";
   document.getElementById("titleInput").value = currentPreviewTitle;
   document.getElementById("gateType").value = mapRecord.gateType || "standard";
 
@@ -1148,7 +1272,7 @@ function loadSelectedMap(){
 
   const integrity = runLoadedGridIntegrityCheck(sourceGrid, currentPreviewTitle);
   if (!integrity.ok) {
-    setReport(`Map integrity check failed: ${integrity.errors[0]}`);
+    setReport(`${t("mapIntegrityFailed")} ${integrity.errors[0]}`);
     return;
   }
 
@@ -1161,7 +1285,7 @@ function loadSelectedMap(){
   resetSolve();
   render();
   renderPreview();
-  setReport(`Loaded map: ${currentPreviewTitle}`);
+  setReport(`${t("loadedMap")} ${currentPreviewTitle}`);
   updateDifficultyMeter();
 }
 
@@ -1327,7 +1451,7 @@ async function pasteFromClipboard(){
     const text = await navigator.clipboard.readText();
     applyText(text);
   } catch(e){
-    setReport("Clipboard access was blocked by the browser. Copy again, tap a cell, then retry Paste From Clipboard.");
+    setReport(t("clipboardBlocked"));
   }
 }
 
@@ -1373,7 +1497,7 @@ function applyText(text){
   resetSolve();
   render();
   renderPreview();
-  setReport(`Pasted into board starting at Row ${startR + 1}, Col ${startC + 1}.`);
+  setReport(formatT("pastedIntoBoard", { row: startR + 1, col: startC + 1 }));
 }
 
 function clearBoard(updateReport = true){
@@ -1393,7 +1517,7 @@ function clearBoard(updateReport = true){
   resetSolve();
   render();
   renderPreview();
-  if (updateReport) setReport("Board cleared.");
+  if (updateReport) setReport(t("boardCleared"));
   updateDifficultyMeter();
 }
 
@@ -1427,13 +1551,13 @@ function loadSampleGrid(){
   resetSolve();
   render();
   renderPreview();
-  setReport("Sample Grid loaded.");
+  setReport(t("sampleLoaded"));
   updateDifficultyMeter();
 }
 
 function solveBoard(){
   if(!window.ZMPathfinderSolver || typeof window.ZMPathfinderSolver.solveGrid !== "function"){
-    setReport("solver.js is missing or not loaded.");
+    setReport(t("solverMissing"));
     return;
   }
 
@@ -1444,7 +1568,7 @@ function solveBoard(){
 
   if(!result || !result.ok){
     resetSolve();
-    setReport(result && result.message ? result.message : "Solver failed.");
+    setReport(result && result.message ? result.message : t("solverFailed"));
     renderPreview();
     return;
   }
@@ -1456,11 +1580,11 @@ function solveBoard(){
     shaftClusters: result.shaftClusters || [],
     attackPoints: result.attackPoints || [],
     solved: true,
-    message: result.message || "Solved.",
+    message: result.message || t("solvedMessage"),
     routeAnalysis: result.routeAnalysis || []
   };
 
-  setReport("Solved.");
+  setReport(t("solvedMessage"));
   renderRouteAudit(result.routeAnalysis || []);
   renderPreview();
 }
@@ -1690,7 +1814,7 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
   ctx.fillStyle = "#111";
   ctx.font = "700 18px Arial";
   ctx.textAlign = "left";
-  ctx.fillText("1st Strongest Z", 126, ly + 6);
+  ctx.fillText(t("strongestRed"), 126, ly + 6);
 
   ctx.lineWidth = 16;
   ctx.strokeStyle = "#000";
@@ -1707,7 +1831,7 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
   ctx.stroke();
 
   ctx.fillStyle = "#111";
-  ctx.fillText("2nd Strongest Z", 460, ly + 6);
+  ctx.fillText(t("strongestBlue"), 460, ly + 6);
 }
 
 function getShaftClustersFromGrid(){
@@ -1827,7 +1951,8 @@ function getCurrentEventName(){
 
   const names = Object.keys(EVENT_TOTALS).sort((a, b) => b.length - a.length);
   for (const name of names) {
-    if (title === name || title.startsWith(name + " -")) {
+    const translated = translateEventName(name);
+    if (title === name || title.startsWith(name + " -") || title === translated || title.startsWith(translated + " -")) {
       return name;
     }
   }
@@ -1958,16 +2083,16 @@ function init(){
   }
 
   if (!window.ZM_MAP_DATA) {
-    setReport("ZM_MAP_DATA not loaded.");
+    setReport(t("zmMapDataNotLoaded"));
   } else if (!window.ZMMapValidator) {
-    setReport("ZMMapValidator not loaded.");
+    setReport(t("validatorNotLoaded"));
   } else {
     const allErrors = window.ZMMapValidator.validateMainMapData(window.ZM_MAP_DATA);
     if (allErrors.length) {
       console.error("Map data integrity errors:", allErrors);
-      setReport(`Map data integrity warning: ${allErrors[0]}`);
+      setReport(`${t("mapIntegrityWarning")} ${allErrors[0]}`);
     } else {
-      setReport("Ready.");
+      setReport(t("ready"));
     }
   }
 
