@@ -277,10 +277,121 @@ window.ZM_TILE_META = {
     },
 
     "Volcano Awakening": {
-      "Chamber 1": { tiles: {} },
-      "Chamber 2": { tiles: {} },
-      "Chamber 3": { tiles: {} },
-      "Chamber 4": { tiles: {} },
+      "Chamber 1": {
+  tiles: {
+    "0,0": { object: "chest", subtype: "iron" },
+    "0,1": { object: "essence" },
+    "0,4": { object: "keys" },
+    "0,5": { object: "chest", subtype: "wood" },
+    "1,0": { object: "keys" },
+    "1,3": { object: "emblems" },
+    "2,1": { object: "emblems" },
+    "2,2": { object: "chest", subtype: "wood" },
+    "2,4": { object: "essence" },
+    "3,3": { object: "keys" },
+    "4,1": { object: "emblems" },
+    "5,6": { object: "essence" },
+    "6,2": { object: "emblems" },
+    "6,5": { object: "chest", subtype: "wood" },
+    "7,6": { object: "keys" },
+    "8,4": { object: "chest", subtype: "wood" },
+    "9,3": { object: "keys" },
+    "9,5": { object: "essence" },
+    "10,1": { object: "emblems" }
+  }
+},
+
+"Chamber 2": {
+  tiles: {
+    "0,1": { object: "chest", subtype: "iron" },
+    "0,4": { object: "keys" },
+    "0,5": { object: "emblems" },
+    "1,0": { object: "essence" },
+    "1,2": { object: "emblems" },
+    "2,0": { object: "chest", subtype: "wood" },
+    "2,1": { object: "keys" },
+    "2,3": { object: "essence" },
+    "4,0": { object: "essence" },
+    "4,4": { object: "chest", subtype: "iron" },
+    "4,6": { object: "keys" },
+    "5,4": { object: "essence" },
+    "5,5": { object: "emblems" },
+    "6,2": { object: "emblems" },
+    "7,3": { object: "keys" },
+    "7,5": { object: "chest", subtype: "wood" },
+    "9,0": { object: "keys" },
+    "9,2": { object: "essence" },
+    "9,3": { object: "chest", subtype: "wood" },
+    "10,0": { object: "chest", subtype: "wood" }
+  }
+},
+
+"Chamber 3": {
+  tiles: {
+    "0,0": { object: "essence" },
+    "0,1": { object: "essence" },
+    "0,3": { object: "emblems" },
+    "0,4": { object: "keys" },
+    "0,5": { object: "chest", subtype: "wood" },
+    "1,0": { object: "chest", subtype: "iron" },
+    "1,3": { object: "essence" },
+    "1,4": { object: "emblems" },
+    "2,1": { object: "keys" },
+    "3,1": { object: "chest", subtype: "iron" },
+    "4,2": { object: "emblems" },
+    "4,4": { object: "essence" },
+    "4,6": { object: "essence" },
+    "5,2": { object: "essence" },
+    "5,5": { object: "keys" },
+    "6,3": { object: "chest", subtype: "iron" },
+    "7,2": { object: "keys" },
+    "8,1": { object: "emblems" },
+    "8,3": { object: "essence" },
+    "9,0": { object: "essence" },
+    "9,1": { object: "essence" },
+    "9,4": { object: "keys" },
+    "10,0": { object: "essence" },
+    "10,1": { object: "essence" },
+    "10,5": { object: "chest", subtype: "wood" },
+    "10,6": { object: "emblems" }
+  }
+},
+
+"Chamber 4": {
+  tiles: {
+    "0,0": { object: "keys" },
+    "0,2": { object: "chest", subtype: "steel" },
+    "0,4": { object: "emblems" },
+    "0,6": { object: "chest", subtype: "iron" },
+    "1,1": { object: "emblems" },
+    "1,5": { object: "keys" },
+    "2,2": { object: "essence" },
+    "2,3": { object: "essence" },
+    "2,4": { object: "chest", subtype: "steel" },
+    "2,6": { object: "essence" },
+    "3,1": { object: "essence" },
+    "3,4": { object: "essence" },
+    "3,6": { object: "chest", subtype: "wood" },
+    "4,3": { object: "essence" },
+    "5,1": { object: "essence" },
+    "5,5": { object: "emblems" },
+    "5,6": { object: "keys" },
+    "6,1": { object: "essence" },
+    "6,4": { object: "essence" },
+    "6,6": { object: "chest", subtype: "iron" },
+    "7,0": { object: "keys" },
+    "7,2": { object: "emblems" },
+    "8,0": { object: "emblems" },
+    "8,3": { object: "essence" },
+    "9,1": { object: "chest", subtype: "steel" },
+    "9,4": { object: "keys" },
+    "10,0": { object: "essence" },
+    "10,2": { object: "essence" },
+    "11,1": { object: "chest", subtype: "wood" },
+    "11,5": { object: "emblems" }
+  }
+},
+      
       "Graveyard": { tiles: {} }
     },
 
