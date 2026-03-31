@@ -115,7 +115,27 @@ window.ZM_SHAFT_DATA = {
   ]
 },
       
-      "Mine 4": {},
+      "Mine 4": {
+  "Chamber 1": [
+    { shaftType: "Beryl", level: 8, auto: 8 },
+    { shaftType: "Quartz", level: 11, auto: 8 },
+    { shaftType: "Cobalt", level: 13, auto: 9 }
+  ],
+  "Chamber 2": [
+    { shaftType: "Amber", level: 14, auto: 9 },
+    { shaftType: "Ametrine", level: 19, auto: 10 }
+  ],
+  "Chamber 3": [
+    { shaftType: "Barite", level: 17, auto: 9 },
+    { shaftType: "Elendir", level: 21, auto: 9 },
+    { shaftType: "Lapis Lazuli", level: 23, auto: 9 }
+  ],
+  "Chamber 4": [
+    { shaftType: "Aventurine", level: 23, auto: 8 },
+    { shaftType: "Obsidian", level: 27, auto: 7 }
+  ]
+},
+      
       "Mine 5": {},
       "The Deep": {}
 
