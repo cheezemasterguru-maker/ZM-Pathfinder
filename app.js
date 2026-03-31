@@ -516,22 +516,32 @@ function closeSolverHelp(){
   document.getElementById("solverHelpOverlay").classList.remove("show");
 }
 
+function hasUsableGridRecord(record){
+  if (!record || typeof record !== "object") return false;
+  if (!Array.isArray(record.grid) || !record.grid.length) return false;
+
+  return record.grid.some(row =>
+    Array.isArray(row) &&
+    row.some(cell => cell !== "" && cell !== null && cell !== undefined)
+  );
+}
+
 function hasAnyMainMapData(eventName){
   const event = window.ZM_MAP_DATA?.Main?.[eventName];
   if (!event || typeof event !== "object") return false;
-  return Object.values(event).some(chamber => !!chamber?.grid);
+  return Object.values(event).some(record => hasUsableGridRecord(record));
 }
 
 function hasAnyMainDeepData(eventName){
   const event = window.ZM_MAP_DATA?.MainDeep?.[eventName];
   if (!event || typeof event !== "object") return false;
-  return Object.values(event).some(chamber => !!chamber?.grid);
+  return Object.values(event).some(record => hasUsableGridRecord(record));
 }
 
 function hasAnyLegacyMineData(eventName, mineName){
   const mine = window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName];
   if (!mine || typeof mine !== "object") return false;
-  return Object.values(mine).some(chamber => !!chamber?.grid);
+  return Object.values(mine).some(record => hasUsableGridRecord(record));
 }
 
 function hasAnyLegacyEventData(eventName){
@@ -583,8 +593,8 @@ function getOrderedMainDeepChambers(eventName) {
   const libraryChambers = window.ZM_MAP_LIBRARY?.MainDeep?.[eventName] || [];
   const dataChambers = Object.keys(window.ZM_MAP_DATA?.MainDeep?.[eventName] || {});
   return mergeOrderedUnique(
-    libraryChambers.filter(chamber => !!window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[chamber]?.grid),
-    dataChambers.filter(chamber => !!window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[chamber]?.grid)
+    libraryChambers.filter(chamber => hasUsableGridRecord(window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[chamber])),
+    dataChambers.filter(chamber => hasUsableGridRecord(window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[chamber]))
   );
 }
 
@@ -592,8 +602,8 @@ function getOrderedMainChambers(eventName) {
   const libraryChambers = window.ZM_MAP_LIBRARY?.Main?.[eventName] || [];
   const dataChambers = Object.keys(window.ZM_MAP_DATA?.Main?.[eventName] || {});
   return mergeOrderedUnique(
-    libraryChambers.filter(chamber => !!window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber]?.grid),
-    dataChambers.filter(chamber => !!window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber]?.grid)
+    libraryChambers.filter(chamber => hasUsableGridRecord(window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber])),
+    dataChambers.filter(chamber => hasUsableGridRecord(window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber]))
   );
 }
 
@@ -610,8 +620,8 @@ function getOrderedLegacyChambers(eventName, eventMine) {
   const libraryChambers = window.ZM_MAP_LIBRARY?.Legacy?.[eventName]?.[eventMine] || [];
   const dataChambers = Object.keys(window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine] || {});
   return mergeOrderedUnique(
-    libraryChambers.filter(chamber => !!window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine]?.[chamber]?.grid),
-    dataChambers.filter(chamber => !!window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine]?.[chamber]?.grid)
+    libraryChambers.filter(chamber => hasUsableGridRecord(window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine]?.[chamber])),
+    dataChambers.filter(chamber => hasUsableGridRecord(window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine]?.[chamber]))
   );
 }
 
