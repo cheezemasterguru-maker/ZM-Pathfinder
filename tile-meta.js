@@ -872,6 +872,7 @@ window.ZM_TILE_META = {
       "12,4": { object: "essence" },
       "13,3": { object: "essence" },
       "13,5": { object: "chest", subtype: "wood" }
+      }
     }
   },
 
