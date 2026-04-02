@@ -1,5 +1,5 @@
 const MAX_ROWS = 20;
-const MINED_ROWS = 13;
+const MINED_ROWS = 15;
 const COLS = 7;
 
 const EVENT_TOTALS = {
