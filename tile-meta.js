@@ -856,6 +856,7 @@ window.ZM_TILE_META = {
       "6,3": { object: "chest", subtype: "silver" },
       "7,0": { object: "chest", subtype: "wood" },
       "7,3": { object: "essence" },
+      "7,4": { object: "emblems" },
       "7,6": { object: "essence" },
       "8,0": { object: "essence" },
       "8,1": { object: "emblems" },
@@ -872,8 +873,7 @@ window.ZM_TILE_META = {
       "13,3": { object: "essence" },
       "13,5": { object: "chest", subtype: "wood" }
     }
-  }
-},
+  },
 
 "Mine 6": {
   "Chamber 1": {
