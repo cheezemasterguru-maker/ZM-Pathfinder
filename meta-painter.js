@@ -1,6 +1,6 @@
 const MP_COLS = 7;
 const MP_MAX_ROWS = 20;
-const MP_MINED_ROWS = 13;
+const MP_MINED_ROWS = 15;
 
 const MP_LEGACY_EVENT_ORDER = [
   "Love Story",
