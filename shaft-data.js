@@ -136,7 +136,57 @@ window.ZM_SHAFT_DATA = {
   ]
 },
       
-      "Mine 5": {},
+      "Mine 5": {
+  "Chamber 1": [
+    { shaftType: "Beryl", level: 11, auto: 10 },
+    { shaftType: "Quartz", level: 17, auto: 10 },
+    { shaftType: "Cobalt", level: 20, auto: 11 }
+  ],
+
+  "Chamber 2": [
+    { shaftType: "Amber", level: 16, auto: 10 },
+    { shaftType: "Ametrine", level: 23, auto: 11 },
+    { shaftType: "Barite", level: 25, auto: 10 }
+  ],
+
+  "Chamber 3": [
+    { shaftType: "Elendir", level: 23, auto: 10 },
+    { shaftType: "Lapis Lazuli", level: 26, auto: 10 },
+    { shaftType: "Aventurine", level: 30, auto: 10 }
+  ],
+
+  "Chamber 4": [
+    { shaftType: "Obsidian", level: 34, auto: 9 },
+    { shaftType: "Peridot", level: 37, auto: 9 }
+  ]
+},
+
+"Mine 6": {
+  "Chamber 1": [
+    { shaftType: "Beryl", level: 10, auto: 11 },
+    { shaftType: "Quartz", level: 22, auto: 11 }
+  ],
+
+  "Chamber 2": [
+    { shaftType: "Cobalt", level: 23, auto: 12 },
+    { shaftType: "Amber", level: 26, auto: 12 },
+    { shaftType: "Ametrine", level: 28, auto: 12 }
+  ],
+
+  "Chamber 3": [
+    { shaftType: "Barite", level: 33, auto: 12 },
+    { shaftType: "Elendir", level: 35, auto: 12 },
+    { shaftType: "Lapis Lazuli", level: 37, auto: 12 }
+  ],
+
+  "Chamber 4": [
+    { shaftType: "Aventurine", level: 39, auto: 12 },
+    { shaftType: "Obsidian", level: 43, auto: 12 },
+    { shaftType: "Peridot", level: 47, auto: 12 }
+  ],
+
+  "Graveyard": []
+},
       "The Deep": {}
 
     },
