@@ -110,7 +110,7 @@ window.ZM_TRANSLATIONS = {
     moonOdyssey: "Moon Odyssey",
 
     loveStory: "Love Story",
-    cloverValley: "Clover Valley",
+    cloverFestival: "Clover Festival",
     easterEggHunt: "Easter Egg Hunt",
     fourthOfJuly: "4th of July",
     mysteryReef: "Mystery Reef",
@@ -124,6 +124,7 @@ window.ZM_TRANSLATIONS = {
     mine3: "Mine 3",
     mine4: "Mine 4",
     mine5: "Mine 5",
+    mine6: "Mine 6",
     theDeep: "The Deep",
 
     chamber1: "Chamber 1",
@@ -141,7 +142,8 @@ window.ZM_TRANSLATIONS = {
     elendir: "Elendir",
     lapisLazuli: "Lapis Lazuli",
     aventurine: "Aventurine",
-    obsidian: "Obsidian"
+    obsidian: "Obsidian",
+    peridot: "Peridot"
   },
 
   ru: {
@@ -255,7 +257,7 @@ window.ZM_TRANSLATIONS = {
     moonOdyssey: "Лунная одиссея",
 
     loveStory: "История любви",
-    cloverValley: "Долина клевера",
+    cloverFestival: "Фестиваль клевера",
     easterEggHunt: "Пасхальная охота за яйцами",
     fourthOfJuly: "4 июля",
     mysteryReef: "Таинственный риф",
@@ -269,6 +271,7 @@ window.ZM_TRANSLATIONS = {
     mine3: "Шахта 3",
     mine4: "Шахта 4",
     mine5: "Шахта 5",
+    mine6: "Шахта 6",
     theDeep: "Глубина",
 
     chamber1: "Камера 1",
@@ -286,7 +289,8 @@ window.ZM_TRANSLATIONS = {
     elendir: "Элендир",
     lapisLazuli: "Лазурит",
     aventurine: "Авантюрин",
-    obsidian: "Обсидиан"
+    obsidian: "Обсидиан",
+    peridot: "Перидот"
   },
 
   de: {
@@ -400,7 +404,7 @@ window.ZM_TRANSLATIONS = {
     moonOdyssey: "Mond-Odyssee",
 
     loveStory: "Liebesgeschichte",
-    cloverValley: "Kleetal",
+    cloverFestival: "Kleefestival",
     easterEggHunt: "Ostereiersuche",
     fourthOfJuly: "4. Juli",
     mysteryReef: "Geheimnisriff",
@@ -414,6 +418,7 @@ window.ZM_TRANSLATIONS = {
     mine3: "Mine 3",
     mine4: "Mine 4",
     mine5: "Mine 5",
+    mine6: "Mine 6",
     theDeep: "Die Tiefe",
 
     chamber1: "Kammer 1",
@@ -431,7 +436,8 @@ window.ZM_TRANSLATIONS = {
     elendir: "Elendir",
     lapisLazuli: "Lapislazuli",
     aventurine: "Aventurin",
-    obsidian: "Obsidian"
+    obsidian: "Obsidian",
+    peridot: "Peridot"
   },
 
   es: {
@@ -545,7 +551,7 @@ window.ZM_TRANSLATIONS = {
     moonOdyssey: "Odisea lunar",
 
     loveStory: "Historia de amor",
-    cloverValley: "Valle trébol",
+    cloverFestival: "Festival del trébol",
     easterEggHunt: "Búsqueda de huevos de Pascua",
     fourthOfJuly: "4 de julio",
     mysteryReef: "Arrecife misterioso",
@@ -559,6 +565,7 @@ window.ZM_TRANSLATIONS = {
     mine3: "Mina 3",
     mine4: "Mina 4",
     mine5: "Mina 5",
+    mine6: "Mina 6",
     theDeep: "La profundidad",
 
     chamber1: "Cámara 1",
@@ -576,6 +583,7 @@ window.ZM_TRANSLATIONS = {
     elendir: "Elendir",
     lapisLazuli: "Lapislázuli",
     aventurine: "Aventurina",
-    obsidian: "Obsidiana"
+    obsidian: "Obsidiana",
+    peridot: "Peridoto"
   }
 };
