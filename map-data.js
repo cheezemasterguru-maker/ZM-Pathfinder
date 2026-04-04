@@ -1217,6 +1217,8 @@ window.ZM_MAP_DATA = {
   }
 
 },
+  
+  },
     
   "4th of July": {
     "Mine 1": {},
