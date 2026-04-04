@@ -64,7 +64,14 @@ let solveState = {
   attackPoints: [],
   solved: false,
   message: "No solve yet.",
-  routeAnalysis: []
+  routeAnalysis: [],
+  solverVersion: null,
+  legacyEndMode: false,
+  redBubbleCount: 0,
+  firstBubbleTravelCost: null,
+  effectiveTotal: null,
+  redCost: null,
+  blueCost: null
 };
 
 function t(key) {
@@ -388,6 +395,12 @@ function renderRouteAudit(routeAnalysis){
   const summaryText = document.createElement("p");
   summaryText.innerHTML =
     `${t("solve")}: <b>${solveState.solved ? t("solvedYes") : t("solvedNo")}</b><br>` +
+    `Solver version: <b>${solveState.solverVersion || "unknown"}</b><br>` +
+    `Legacy end mode: <b>${solveState.legacyEndMode ? "Yes" : "No"}</b><br>` +
+    `Red bubble count: <b>${solveState.redBubbleCount ?? 0}</b><br>` +
+    `First bubble travel cost: <b>${solveState.firstBubbleTravelCost ?? "n/a"}</b><br>` +
+    `Red cost: <b>${solveState.redCost ?? "n/a"}</b> | Blue cost: <b>${solveState.blueCost ?? "n/a"}</b><br>` +
+    `Effective total: <b>${solveState.effectiveTotal ?? "n/a"}</b><br>` +
     `Red path cells: <b>${solveState.redPath.length}</b><br>` +
     `Blue route count: <b>${solveState.bluePaths.length}</b><br>` +
     `${t("physicalShaftClusters")}: <b>${shaftClusters.length}</b><br>` +
@@ -512,8 +525,13 @@ function renderRouteAudit(routeAnalysis){
     const meta = document.createElement("div");
     meta.style.fontSize = "14px";
     meta.style.lineHeight = "1.5";
+
+    const redBubbleCount = item.redBubbleCount ?? 0;
+    const firstBubbleTravelCost = item.firstBubbleTravelCost ?? "n/a";
+
     meta.innerHTML =
       `${t("mode")}: <b>${item.redMode}</b> | ${t("variant")}: <b>${item.redVariant}</b><br>` +
+      `Red bubble count: <b>${redBubbleCount}</b> | First bubble travel cost: <b>${firstBubbleTravelCost}</b><br>` +
       `${t("effectiveTotal")}: <b>${item.effectiveTotal}</b>` +
       (isApproved ? "" : ` | ${t("worseBy")}: <b>${item.deltaFromBest}</b>`) + `<br>` +
       `${t("redCost")}: <b>${item.redCost}</b> | ${t("blueCost")}: <b>${item.blueCost}</b><br>` +
@@ -543,7 +561,14 @@ function resetSolve(){
     attackPoints: [],
     solved: false,
     message: "No solve yet.",
-    routeAnalysis: []
+    routeAnalysis: [],
+    solverVersion: null,
+    legacyEndMode: false,
+    redBubbleCount: 0,
+    firstBubbleTravelCost: null,
+    effectiveTotal: null,
+    redCost: null,
+    blueCost: null
   };
   renderRouteAudit([]);
 }
@@ -1565,10 +1590,13 @@ function solveBoard(){
   }
 
   const result = window.ZMPathfinderSolver.solveGrid({
-  grid: getVisibleGridSlice(),
-  gateType: "end",
-  eventType: "Legacy"
-});
+    grid: getVisibleGridSlice(),
+    gateType: document.getElementById("gateType").value,
+    eventType: currentMapContext.eventType,
+    eventName: currentMapContext.eventName,
+    eventMine: currentMapContext.eventMine,
+    chamberName: currentMapContext.chamberName
+  });
 
   if(!result || !result.ok){
     resetSolve();
@@ -1585,10 +1613,17 @@ function solveBoard(){
     attackPoints: result.attackPoints || [],
     solved: true,
     message: result.message || t("solvedMessage"),
-    routeAnalysis: result.routeAnalysis || []
+    routeAnalysis: result.routeAnalysis || [],
+    solverVersion: result.solverVersion || null,
+    legacyEndMode: !!result.legacyEndMode,
+    redBubbleCount: result.redBubbleCount ?? 0,
+    firstBubbleTravelCost: result.firstBubbleTravelCost ?? null,
+    effectiveTotal: result.effectiveTotal ?? null,
+    redCost: result.redCost ?? null,
+    blueCost: result.blueCost ?? null
   };
 
-  setReport(t("solvedMessage"));
+  setReport(result.message || t("solvedMessage"));
   renderRouteAudit(result.routeAnalysis || []);
   renderPreview();
 }
