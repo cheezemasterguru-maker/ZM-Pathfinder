@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V4.7 loaded");
+  console.log("ZM Solver V4.8 loaded");
 
-  const SOLVER_VERSION = "V4.7";
+  const SOLVER_VERSION = "V4.8";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -382,6 +382,23 @@
     candidates.push(candidate);
   }
 
+  function countRedBubbles(path, grid) {
+    let count = 0;
+    for (const [r, c] of path || []) {
+      if (grid[r] && grid[r][c] === "B") count++;
+    }
+    return count;
+  }
+
+  function firstBubbleStep(path, grid) {
+    if (!path || !path.length) return Infinity;
+    for (let i = 0; i < path.length; i++) {
+      const [r, c] = path[i];
+      if (grid[r] && grid[r][c] === "B") return i;
+    }
+    return Infinity;
+  }
+
   function buildRedCandidates(grid, starts, gateGoals, bubbles) {
     const candidates = [];
 
@@ -392,6 +409,7 @@
           mode: "direct",
           variant: "base",
           redBubble: null,
+          redBubbles: [],
           path: uniquePath(direct.path),
           redCost: direct.cost,
           gateGoal
@@ -408,6 +426,7 @@
             mode: "direct",
             variant: "penalized",
             redBubble: null,
+            redBubbles: [],
             path: uniquePath(penalized.path),
             redCost: penalized.cost,
             gateGoal
@@ -425,6 +444,7 @@
             mode: "direct",
             variant: "blocked",
             redBubble: null,
+            redBubbles: [],
             path: uniquePath(blocked.path),
             redCost: blocked.cost,
             gateGoal
@@ -437,6 +457,7 @@
             mode: "direct",
             variant: "fork-detour",
             redBubble: null,
+            redBubbles: [],
             path: uniquePath(fork.path),
             redCost: fork.cost,
             gateGoal
@@ -456,6 +477,7 @@
             mode: "via bubble",
             variant: "base",
             redBubble: bubble,
+            redBubbles: [bubble],
             path: uniquePath(mergePaths(a.path, b.path)),
             redCost: a.cost + b.cost,
             gateGoal
@@ -473,6 +495,7 @@
             mode: "via bubble",
             variant: "penalized",
             redBubble: bubble,
+            redBubbles: [bubble],
             path: uniquePath(mergePaths(a.path, bPenalized.path)),
             redCost: a.cost + bPenalized.cost,
             gateGoal
@@ -490,6 +513,7 @@
             mode: "via bubble",
             variant: "blocked",
             redBubble: bubble,
+            redBubbles: [bubble],
             path: uniquePath(mergePaths(a.path, bBlocked.path)),
             redCost: a.cost + bBlocked.cost,
             gateGoal
@@ -502,6 +526,7 @@
             mode: "via bubble",
             variant: "fork-detour",
             redBubble: bubble,
+            redBubbles: [bubble],
             path: uniquePath(mergePaths(a.path, fork.path)),
             redCost: a.cost + fork.cost,
             gateGoal
@@ -520,6 +545,89 @@
 
     deduped.sort((a, b) => a.redCost - b.redCost || a.path.length - b.path.length);
     return deduped.slice(0, 36);
+  }
+
+  function buildLegacyEndRedCandidates(grid, starts, gateGoals, bubbles) {
+    const candidates = [];
+
+    for (const gateGoal of gateGoals) {
+      const direct = dijkstra({ grid, starts, goals: [gateGoal] });
+      if (direct) {
+        addCandidate(candidates, {
+          mode: "legacy end",
+          variant: "direct",
+          redBubble: null,
+          redBubbles: [],
+          path: uniquePath(direct.path),
+          redCost: direct.cost,
+          gateGoal
+        });
+      }
+    }
+
+    for (const bubble1 of bubbles) {
+      const a = dijkstra({ grid, starts, goals: [bubble1] });
+      if (!a) continue;
+
+      for (const gateGoal of gateGoals) {
+        const b = dijkstra({ grid, starts: [bubble1], goals: [gateGoal] });
+        if (!b) continue;
+
+        addCandidate(candidates, {
+          mode: "legacy end",
+          variant: "via-1-bubble",
+          redBubble: bubble1,
+          redBubbles: [bubble1],
+          path: uniquePath(mergePaths(a.path, b.path)),
+          redCost: a.cost + b.cost,
+          gateGoal
+        });
+      }
+
+      for (const bubble2 of bubbles) {
+        if (bubble1[0] === bubble2[0] && bubble1[1] === bubble2[1]) continue;
+
+        const b12 = dijkstra({ grid, starts: [bubble1], goals: [bubble2] });
+        if (!b12) continue;
+
+        for (const gateGoal of gateGoals) {
+          const c = dijkstra({ grid, starts: [bubble2], goals: [gateGoal] });
+          if (!c) continue;
+
+          addCandidate(candidates, {
+            mode: "legacy end",
+            variant: "via-2-bubbles",
+            redBubble: bubble1,
+            redBubbles: [bubble1, bubble2],
+            path: uniquePath(mergePaths(mergePaths(a.path, b12.path), c.path)),
+            redCost: a.cost + b12.cost + c.cost,
+            gateGoal
+          });
+        }
+      }
+    }
+
+    const seen = new Set();
+    const deduped = candidates.filter((cand) => {
+      const key = cand.path.map(([r, c]) => `${r},${c}`).join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    deduped.sort((a, b) => {
+      const aBubbleCount = countRedBubbles(a.path, grid);
+      const bBubbleCount = countRedBubbles(b.path, grid);
+      if (aBubbleCount !== bBubbleCount) return bBubbleCount - aBubbleCount;
+
+      const aFirst = firstBubbleStep(a.path, grid);
+      const bFirst = firstBubbleStep(b.path, grid);
+      if (aFirst !== bFirst) return aFirst - bFirst;
+
+      return a.redCost - b.redCost || a.path.length - b.path.length;
+    });
+
+    return deduped.slice(0, 64);
   }
 
   function getLowestShaftPreferenceBonus(route, entry, cluster, routeKind, isLowestShaft) {
@@ -864,13 +972,11 @@
       );
     }
 
-    const redBubbleKey = redCandidate.redBubble
-      ? `${redCandidate.redBubble[0]},${redCandidate.redBubble[1]}`
-      : null;
+    const redBubbleKeys = new Set((redCandidate.redBubbles || []).map(([r, c]) => `${r},${c}`));
 
     for (const bubble of bubbles) {
       const key = `${bubble[0]},${bubble[1]}`;
-      if (key === redBubbleKey) continue;
+      if (redBubbleKeys.has(key)) continue;
 
       const bubbleRoute = dijkstra({
         grid,
@@ -981,9 +1087,14 @@
     });
   }
 
-  function solveGrid({ grid, gateType = "standard" }) {
+  function isLegacyEndPriorityMode(eventType, gateType) {
+    return eventType === "Legacy" && gateType === "end";
+  }
+
+  function solveGrid({ grid, gateType = "standard", eventType = null }) {
     const rows = grid.length;
     const cols = grid[0].length;
+    const legacyEndMode = isLegacyEndPriorityMode(eventType, gateType);
 
     const { startRow, starts } = getStartCells(grid);
     if (!starts.length) {
@@ -1007,7 +1118,10 @@
     const shaftClusters = getShaftClusters(grid);
     const shaftClustersOrdered = sortShaftClustersBottomToTop(shaftClusters);
 
-    const redCandidates = buildRedCandidates(grid, starts, gateGoals, bubbles);
+    const redCandidates = legacyEndMode
+      ? buildLegacyEndRedCandidates(grid, starts, gateGoals, bubbles)
+      : buildRedCandidates(grid, starts, gateGoals, bubbles);
+
     if (!redCandidates.length) {
       return {
         ok: false,
@@ -1028,7 +1142,11 @@
         bubbles
       );
 
-      const effectiveTotal =
+      const redBubbleCount = countRedBubbles(redCandidate.path, grid);
+      const firstRedBubbleAt = firstBubbleStep(redCandidate.path, grid);
+      const firstRedBubbleBonus = firstRedBubbleAt === Infinity ? 0 : Math.max(0, 140 - firstRedBubbleAt * 6);
+
+      let effectiveTotal =
         redCandidate.redCost +
         blueEval.blueCost +
         blueEval.dependencyCost -
@@ -1038,10 +1156,19 @@
         blueEval.redLoopPenalty +
         blueEval.overAssistPenalty;
 
+      if (legacyEndMode) {
+        effectiveTotal -= redBubbleCount * 250;
+        effectiveTotal -= firstRedBubbleBonus;
+      }
+
       const candidate = {
         redMode: redCandidate.mode,
         redVariant: redCandidate.variant,
         redBubble: redCandidate.redBubble,
+        redBubbles: redCandidate.redBubbles || (redCandidate.redBubble ? [redCandidate.redBubble] : []),
+        redBubbleCount,
+        firstRedBubbleAt,
+        firstRedBubbleBonus,
         redPath: redCandidate.path,
         redCost: redCandidate.redCost,
         gateGoal: redCandidate.gateGoal,
@@ -1071,20 +1198,32 @@
         continue;
       }
 
-      if (
-        candidate.unresolvedTargets === best.unresolvedTargets &&
-        candidate.effectiveTotal < best.effectiveTotal
-      ) {
-        best = candidate;
-        continue;
-      }
+      if (candidate.unresolvedTargets === best.unresolvedTargets) {
+        if (legacyEndMode) {
+          if (candidate.redBubbleCount > best.redBubbleCount) {
+            best = candidate;
+            continue;
+          }
+          if (
+            candidate.redBubbleCount === best.redBubbleCount &&
+            candidate.firstRedBubbleAt < best.firstRedBubbleAt
+          ) {
+            best = candidate;
+            continue;
+          }
+        }
 
-      if (
-        candidate.unresolvedTargets === best.unresolvedTargets &&
-        candidate.effectiveTotal === best.effectiveTotal &&
-        candidate.redCost < best.redCost
-      ) {
-        best = candidate;
+        if (candidate.effectiveTotal < best.effectiveTotal) {
+          best = candidate;
+          continue;
+        }
+
+        if (
+          candidate.effectiveTotal === best.effectiveTotal &&
+          candidate.redCost < best.redCost
+        ) {
+          best = candidate;
+        }
       }
     }
 
@@ -1095,11 +1234,17 @@
       rows,
       cols,
       gateType,
+      eventType,
+      legacyEndMode,
       startRow,
       solverVersion: SOLVER_VERSION,
       redMode: best.redMode,
       redVariant: best.redVariant,
       redBubble: best.redBubble,
+      redBubbles: best.redBubbles,
+      redBubbleCount: best.redBubbleCount,
+      firstRedBubbleAt: best.firstRedBubbleAt,
+      firstRedBubbleBonus: roundCost(best.firstRedBubbleBonus),
       redPath: best.redPath,
       redCost: roundCost(best.redCost),
       bluePaths: best.bluePaths,
@@ -1122,14 +1267,19 @@
       message:
         `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
         "solver_status: solved\n" +
+        `event_type: ${eventType || "unknown"}\n` +
+        `legacy_end_mode: ${legacyEndMode ? "yes" : "no"}\n` +
         `red_mode: ${best.redMode}\n` +
         `red_variant: ${best.redVariant}\n` +
+        `red_bubble_count: ${best.redBubbleCount}\n` +
+        `first_red_bubble_at: ${best.firstRedBubbleAt === Infinity ? "none" : best.firstRedBubbleAt}\n` +
         `red_cost: ${roundCost(best.redCost)}\n` +
         `blue_cost: ${roundCost(best.blueCost)}\n` +
         `dependency_cost: ${roundCost(best.dependencyCost)}\n` +
         `assist_bonus: ${roundCost(best.assistBonus)}\n` +
         `lower_shaft_bonus: ${roundCost(best.lowerShaftBonus)}\n` +
         `bubble_bonus: ${roundCost(best.bubbleBonus)}\n` +
+        `first_red_bubble_bonus: ${roundCost(best.firstRedBubbleBonus)}\n` +
         `red_loop_penalty: ${roundCost(best.redLoopPenalty)}\n` +
         `over_assist_penalty: ${roundCost(best.overAssistPenalty)}\n` +
         `bubble_count: ${bubbles.length}\n` +
