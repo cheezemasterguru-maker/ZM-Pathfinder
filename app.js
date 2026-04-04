@@ -1566,11 +1566,8 @@ function solveBoard(){
 
   const result = window.ZMPathfinderSolver.solveGrid({
   grid: getVisibleGridSlice(),
-  gateType: document.getElementById("gateType").value,
-  eventType: currentMapContext.eventType,
-  eventName: currentMapContext.eventName,
-  eventMine: currentMapContext.eventMine,
-  chamberName: currentMapContext.chamberName
+  gateType: "end",
+  eventType: "Legacy"
 });
 
   if(!result || !result.ok){
