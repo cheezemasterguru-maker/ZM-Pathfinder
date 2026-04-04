@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V5.3 loaded");
+  console.log("ZM Solver V5.4 loaded");
 
-  const SOLVER_VERSION = "V5.3";
+  const SOLVER_VERSION = "V5.4";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -334,9 +334,31 @@
     return m;
   }
 
+  function buildPenaltyCellsForWeightedPath(path, grid, multiplier = 0.35) {
+    const m = new Map();
+    for (const [r, c] of path || []) {
+      const v = grid[r]?.[c];
+      if (typeof v === "number") {
+        m.set(`${r},${c}`, numberCost(v) * multiplier);
+      }
+    }
+    return m;
+  }
+
   function buildBlockedEdgesFromPath(path) {
     const s = new Set();
     for (let i = 0; i < (path || []).length - 1; i++) {
+      const [r1, c1] = path[i];
+      const [r2, c2] = path[i + 1];
+      s.add(`${r1},${c1}->${r2},${c2}`);
+      s.add(`${r2},${c2}->${r1},${c1}`);
+    }
+    return s;
+  }
+
+  function buildEarlyBlockedEdgesFromPath(path, count = 3) {
+    const s = new Set();
+    for (let i = 0; i < Math.min(count, Math.max(0, (path || []).length - 1)); i++) {
       const [r1, c1] = path[i];
       const [r2, c2] = path[i + 1];
       s.add(`${r1},${c1}->${r2},${c2}`);
@@ -428,9 +450,21 @@
     let total = 0;
     for (let i = 1; i <= idx; i++) {
       const [r, c] = path[i];
-      if (typeof grid[r][c] === "number") total += numberCost(grid[r][c]);
+      if (typeof grid[r][c] === "number") {
+        total += numberCost(grid[r][c]);
+      }
     }
     return total;
+  }
+
+  function pathMinerCount(path, grid, freeCells = new Set()) {
+    let count = 0;
+    for (const [r, c] of path || []) {
+      const key = `${r},${c}`;
+      if (freeCells.has(key)) continue;
+      if (typeof grid[r][c] === "number") count++;
+    }
+    return count;
   }
 
   function pathRawNumberSum(path, grid, freeCells = new Set()) {
@@ -443,74 +477,238 @@
     return total;
   }
 
-  function addBubbleLegVariants(grid, starts, bubble) {
-    const variants = [];
+  function pathSharesWithRed(path, redPath) {
+    const redSet = new Set((redPath || []).map(([r, c]) => `${r},${c}`));
+    let shared = 0;
+    for (const [r, c] of path || []) {
+      if (redSet.has(`${r},${c}`)) shared++;
+    }
+    return shared;
+  }
 
-    function pushVariant(tag, route) {
+  function pathHasHeavyMineralBeforeFirstBubble(path, grid, threshold = 28) {
+    const idx = firstBubbleStep(path, grid);
+    if (idx === Infinity) return false;
+
+    for (let i = 0; i <= idx; i++) {
+      const [r, c] = path[i];
+      const v = grid[r]?.[c];
+      if (typeof v === "number" && v >= threshold) return true;
+    }
+    return false;
+  }
+
+  function getEntryBottomDepth(entry, cluster) {
+    if (!entry || !cluster || !cluster.length) return 0;
+    const bottom = Math.max(...cluster.map(([r]) => r));
+    return entry[0] / Math.max(1, bottom);
+  }
+
+  function buildSingleAttackRouteOption({
+    grid,
+    starts,
+    goals,
+    reusable,
+    redPath,
+    entryMap,
+    cluster,
+    routeKind,
+    isLowestShaft
+  }) {
+    const route = dijkstra({
+      grid,
+      starts,
+      goals,
+      freeCells: reusable
+    });
+    if (!route) return null;
+
+    const entry = entryMap.get(`${route.goal[0]},${route.goal[1]}`);
+    const finalPath = route.path;
+
+    const rawCost = route.cost;
+    const minerCount = pathMinerCount(finalPath, grid, reusable);
+    const rawValueSum = pathRawNumberSum(finalPath, grid, reusable);
+    const sharedCount = pathSharesWithRed(finalPath, redPath);
+    const adjacentShared = countAdjacentSharedOpens(redPath, finalPath);
+    const lowerBonus = getLowestShaftPreferenceBonus(route, entry, cluster, routeKind, isLowestShaft);
+    const bubbleBonus = bubblePathBonus(finalPath, entry, grid);
+    const entryDepth = getEntryBottomDepth(entry, cluster);
+
+    return {
+      kind: routeKind,
+      route,
+      entry,
+      finalPath,
+      rawCost,
+      minerCount,
+      rawValueSum,
+      sharedCount,
+      adjacentShared,
+      lowerBonus,
+      bubbleBonus,
+      entryDepth
+    };
+  }
+
+  function chooseBestBlueRouteOption(options, isLowestShaft) {
+    if (!options.length) return null;
+
+    const baseOptions = options.filter(o => o.kind === "base");
+    const bestBase = baseOptions.length
+      ? [...baseOptions].sort((a, b) =>
+          a.rawCost - b.rawCost ||
+          a.minerCount - b.minerCount ||
+          a.rawValueSum - b.rawValueSum ||
+          b.entryDepth - a.entryDepth ||
+          a.route.len - b.route.len
+        )[0]
+      : null;
+
+    for (const o of options) {
+      let score = o.rawCost;
+      score += o.minerCount * 10;
+      score += o.rawValueSum * 0.35;
+      score -= o.lowerBonus;
+      score -= o.bubbleBonus;
+      score -= Math.min(0.8, o.sharedCount * 0.08);
+      score -= Math.min(0.5, o.adjacentShared * 0.05);
+
+      if (isLowestShaft) {
+        score -= o.entryDepth * 3.5;
+      }
+
+      o.score = score;
+    }
+
+    options.sort((a, b) =>
+      a.score - b.score ||
+      a.rawCost - b.rawCost ||
+      a.minerCount - b.minerCount ||
+      a.rawValueSum - b.rawValueSum ||
+      b.entryDepth - a.entryDepth ||
+      a.route.len - b.route.len
+    );
+
+    let chosen = options[0];
+
+    if (bestBase) {
+      const scoreGap = chosen.score - bestBase.score;
+      const baseClearlyCleaner =
+        bestBase.minerCount < chosen.minerCount ||
+        bestBase.rawValueSum < chosen.rawValueSum;
+
+      const baseStronglyPreferredLowest =
+        isLowestShaft &&
+        bestBase.entryDepth > chosen.entryDepth &&
+        bestBase.rawCost <= chosen.rawCost * 1.08;
+
+      const baseNearEqual =
+        scoreGap >= -6 &&
+        bestBase.rawCost <= chosen.rawCost * 1.10;
+
+      if (
+        chosen.kind !== "base" &&
+        (baseStronglyPreferredLowest || (baseNearEqual && baseClearlyCleaner))
+      ) {
+        chosen = bestBase;
+      }
+
+      if (
+        chosen.kind !== "base" &&
+        bestBase.rawCost < chosen.rawCost &&
+        bestBase.minerCount <= chosen.minerCount &&
+        bestBase.rawValueSum <= chosen.rawValueSum
+      ) {
+        chosen = bestBase;
+      }
+    }
+
+    return chosen;
+  }
+
+  function makePathVariants(grid, starts, goal) {
+    const out = [];
+
+    function push(tag, route) {
       if (!route || !route.path || !route.path.length) return;
       const path = uniquePath(route.path);
       if (hasPathLoop(path)) return;
-      variants.push({
+      out.push({
         tag,
-        route: {
-          ...route,
-          path
-        }
+        route: { ...route, path }
       });
     }
 
-    const base = dijkstra({ grid, starts, goals: [bubble] });
-    pushVariant("base", base);
+    const base = dijkstra({ grid, starts, goals: [goal] });
+    push("base", base);
 
     if (base) {
-      pushVariant(
+      push(
         "path-penalized",
         dijkstra({
           grid,
           starts,
-          goals: [bubble],
+          goals: [goal],
           penaltyCells: buildPenaltyCellsFromPath(base.path, 0.9)
         })
       );
 
-      pushVariant(
+      push(
+        "weighted-path-penalized",
+        dijkstra({
+          grid,
+          starts,
+          goals: [goal],
+          penaltyCells: buildPenaltyCellsForWeightedPath(base.path, grid, 0.45)
+        })
+      );
+
+      push(
         "high-mineral-penalized",
         dijkstra({
           grid,
           starts,
-          goals: [bubble],
-          penaltyCells: buildPenaltyCellsForHighMinerals(base.path, grid, 300000, 28)
+          goals: [goal],
+          penaltyCells: buildPenaltyCellsForHighMinerals(base.path, grid, 400000, 28)
         })
       );
 
-      pushVariant(
+      push(
         "edge-blocked",
         dijkstra({
           grid,
           starts,
-          goals: [bubble],
+          goals: [goal],
           blockedEdges: buildBlockedEdgesFromPath(base.path)
+        })
+      );
+
+      push(
+        "early-edge-blocked",
+        dijkstra({
+          grid,
+          starts,
+          goals: [goal],
+          blockedEdges: buildEarlyBlockedEdgesFromPath(base.path, 3)
         })
       );
     }
 
-    const detours = buildForkDetours(grid, starts, bubble);
+    const detours = buildForkDetours(grid, starts, goal);
     for (const detour of detours) {
-      pushVariant("fork-detour", detour);
+      push("fork-detour", detour);
     }
 
     const seen = new Set();
-    const deduped = variants.filter(v => {
-      const key = v.route.path.map(([r, c]) => `${r},${c}`).join("|");
+    const deduped = out.filter(item => {
+      const key = item.route.path.map(([r, c]) => `${r},${c}`).join("|");
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
 
     deduped.sort((a, b) => {
-      const aTravel = firstBubbleTravelCost(a.route.path, grid);
-      const bTravel = firstBubbleTravelCost(b.route.path, grid);
-      if (aTravel !== bTravel) return aTravel - bTravel;
       if (a.route.cost !== b.route.cost) return a.route.cost - b.route.cost;
       const aRaw = pathRawNumberSum(a.route.path, grid);
       const bRaw = pathRawNumberSum(b.route.path, grid);
@@ -685,67 +883,26 @@
     }
 
     for (const gateGoal of gateGoals) {
-      const direct = dijkstra({ grid, starts, goals: [gateGoal] });
-      if (direct) {
-        addLegacyCandidate("legacy end", "direct", [], direct.path, direct.cost, gateGoal);
-
-        const directHighMineralPenalized = dijkstra({
-          grid,
-          starts,
-          goals: [gateGoal],
-          penaltyCells: buildPenaltyCellsForHighMinerals(direct.path, grid, 300000, 28)
-        });
-        if (directHighMineralPenalized) {
-          addLegacyCandidate("legacy end", "direct-high-mineral-penalized", [], directHighMineralPenalized.path, directHighMineralPenalized.cost, gateGoal);
-        }
+      const directVariants = makePathVariants(grid, starts, gateGoal);
+      for (const direct of directVariants) {
+        addLegacyCandidate("legacy end", `direct-${direct.tag}`, [], direct.route.path, direct.route.cost, gateGoal);
       }
     }
 
     for (const bubble1 of bubbles) {
-      const leg1Variants = addBubbleLegVariants(grid, starts, bubble1);
-      if (!leg1Variants.length) continue;
+      const toBubbleVariants = makePathVariants(grid, starts, bubble1);
+      if (!toBubbleVariants.length) continue;
 
-      for (const leg1 of leg1Variants) {
+      for (const leg1 of toBubbleVariants) {
         for (const gateGoal of gateGoals) {
-          const b1ToGateBase = dijkstra({ grid, starts: [bubble1], goals: [gateGoal] });
-          if (b1ToGateBase) {
+          const toGateVariants = makePathVariants(grid, [bubble1], gateGoal);
+          for (const legGate of toGateVariants) {
             addLegacyCandidate(
               "legacy end",
-              `via-1-bubble-${leg1.tag}`,
+              `via-1-bubble-${leg1.tag}-${legGate.tag}`,
               [bubble1],
-              mergePaths(leg1.route.path, b1ToGateBase.path),
-              leg1.route.cost + b1ToGateBase.cost,
-              gateGoal
-            );
-          }
-
-          const b1ToGateHigh = b1ToGateBase
-            ? dijkstra({
-                grid,
-                starts: [bubble1],
-                goals: [gateGoal],
-                penaltyCells: buildPenaltyCellsForHighMinerals(b1ToGateBase.path, grid, 300000, 28)
-              })
-            : null;
-          if (b1ToGateHigh) {
-            addLegacyCandidate(
-              "legacy end",
-              `via-1-bubble-${leg1.tag}-gate-high-mineral-penalized`,
-              [bubble1],
-              mergePaths(leg1.route.path, b1ToGateHigh.path),
-              leg1.route.cost + b1ToGateHigh.cost,
-              gateGoal
-            );
-          }
-
-          const b1GateDetours = buildForkDetours(grid, [bubble1], gateGoal);
-          for (const detour of b1GateDetours) {
-            addLegacyCandidate(
-              "legacy end",
-              `via-1-bubble-${leg1.tag}-gate-fork-detour`,
-              [bubble1],
-              mergePaths(leg1.route.path, detour.path),
-              leg1.route.cost + detour.cost,
+              mergePaths(leg1.route.path, legGate.route.path),
+              leg1.route.cost + legGate.route.cost,
               gateGoal
             );
           }
@@ -754,50 +911,20 @@
         for (const bubble2 of bubbles) {
           if (bubble1[0] === bubble2[0] && bubble1[1] === bubble2[1]) continue;
 
-          const leg2Variants = addBubbleLegVariants(grid, [bubble1], bubble2);
-          if (!leg2Variants.length) continue;
+          const toBubble2Variants = makePathVariants(grid, [bubble1], bubble2);
+          if (!toBubble2Variants.length) continue;
 
-          for (const leg2 of leg2Variants) {
+          for (const leg2 of toBubble2Variants) {
             for (const gateGoal of gateGoals) {
-              const b2ToGateBase = dijkstra({ grid, starts: [bubble2], goals: [gateGoal] });
-              if (b2ToGateBase) {
-                addLegacyCandidate(
-                  "legacy end",
-                  `via-2-bubbles-${leg1.tag}-${leg2.tag}`,
-                  [bubble1, bubble2],
-                  mergePaths(mergePaths(leg1.route.path, leg2.route.path), b2ToGateBase.path),
-                  leg1.route.cost + leg2.route.cost + b2ToGateBase.cost,
-                  gateGoal
-                );
-              }
+              const toGate2Variants = makePathVariants(grid, [bubble2], gateGoal);
 
-              const b2ToGateHigh = b2ToGateBase
-                ? dijkstra({
-                    grid,
-                    starts: [bubble2],
-                    goals: [gateGoal],
-                    penaltyCells: buildPenaltyCellsForHighMinerals(b2ToGateBase.path, grid, 300000, 28)
-                  })
-                : null;
-              if (b2ToGateHigh) {
+              for (const legGate of toGate2Variants) {
                 addLegacyCandidate(
                   "legacy end",
-                  `via-2-bubbles-${leg1.tag}-${leg2.tag}-gate-high-mineral-penalized`,
+                  `via-2-bubbles-${leg1.tag}-${leg2.tag}-${legGate.tag}`,
                   [bubble1, bubble2],
-                  mergePaths(mergePaths(leg1.route.path, leg2.route.path), b2ToGateHigh.path),
-                  leg1.route.cost + leg2.route.cost + b2ToGateHigh.cost,
-                  gateGoal
-                );
-              }
-
-              const b2GateDetours = buildForkDetours(grid, [bubble2], gateGoal);
-              for (const detour of b2GateDetours) {
-                addLegacyCandidate(
-                  "legacy end",
-                  `via-2-bubbles-${leg1.tag}-${leg2.tag}-gate-fork-detour`,
-                  [bubble1, bubble2],
-                  mergePaths(mergePaths(leg1.route.path, leg2.route.path), detour.path),
-                  leg1.route.cost + leg2.route.cost + detour.cost,
+                  mergePaths(mergePaths(leg1.route.path, leg2.route.path), legGate.route.path),
+                  leg1.route.cost + leg2.route.cost + legGate.route.cost,
                   gateGoal
                 );
               }
@@ -830,6 +957,10 @@
       const bRaw = pathRawNumberSum(b.path, grid);
       if (aRaw !== bRaw) return aRaw - bRaw;
 
+      const aHeavy = pathHasHeavyMineralBeforeFirstBubble(a.path, grid, 28) ? 1 : 0;
+      const bHeavy = pathHasHeavyMineralBeforeFirstBubble(b.path, grid, 28) ? 1 : 0;
+      if (aHeavy !== bHeavy) return aHeavy - bHeavy;
+
       const aFirst = firstBubbleStep(a.path, grid);
       const bFirst = firstBubbleStep(b.path, grid);
       if (aFirst !== bFirst) return aFirst - bFirst;
@@ -837,7 +968,7 @@
       return a.path.length - b.path.length;
     });
 
-    return deduped.slice(0, 220);
+    return deduped.slice(0, 320);
   }
 
   function getLowestShaftPreferenceBonus(route, entry, cluster, routeKind, isLowestShaft) {
@@ -917,154 +1048,6 @@
     }
 
     return penalty;
-  }
-
-  function pathMinerCount(path, grid, freeCells = new Set()) {
-    let count = 0;
-    for (const [r, c] of path || []) {
-      const key = `${r},${c}`;
-      if (freeCells.has(key)) continue;
-      if (typeof grid[r][c] === "number") count++;
-    }
-    return count;
-  }
-
-  function pathSharesWithRed(path, redPath) {
-    const redSet = new Set((redPath || []).map(([r, c]) => `${r},${c}`));
-    let shared = 0;
-    for (const [r, c] of path || []) {
-      if (redSet.has(`${r},${c}`)) shared++;
-    }
-    return shared;
-  }
-
-  function getEntryBottomDepth(entry, cluster) {
-    if (!entry || !cluster || !cluster.length) return 0;
-    const bottom = Math.max(...cluster.map(([r]) => r));
-    return entry[0] / Math.max(1, bottom);
-  }
-
-  function buildSingleAttackRouteOption({
-    grid,
-    starts,
-    goals,
-    reusable,
-    redPath,
-    entryMap,
-    cluster,
-    routeKind,
-    isLowestShaft
-  }) {
-    const route = dijkstra({
-      grid,
-      starts,
-      goals,
-      freeCells: reusable
-    });
-    if (!route) return null;
-
-    const entry = entryMap.get(`${route.goal[0]},${route.goal[1]}`);
-    const finalPath = route.path;
-
-    const rawCost = route.cost;
-    const minerCount = pathMinerCount(finalPath, grid, reusable);
-    const rawValueSum = pathRawNumberSum(finalPath, grid, reusable);
-    const sharedCount = pathSharesWithRed(finalPath, redPath);
-    const adjacentShared = countAdjacentSharedOpens(redPath, finalPath);
-    const lowerBonus = getLowestShaftPreferenceBonus(route, entry, cluster, routeKind, isLowestShaft);
-    const bubbleBonus = bubblePathBonus(finalPath, entry, grid);
-    const entryDepth = getEntryBottomDepth(entry, cluster);
-
-    return {
-      kind: routeKind,
-      route,
-      entry,
-      finalPath,
-      rawCost,
-      minerCount,
-      rawValueSum,
-      sharedCount,
-      adjacentShared,
-      lowerBonus,
-      bubbleBonus,
-      entryDepth
-    };
-  }
-
-  function chooseBestBlueRouteOption(options, isLowestShaft) {
-    if (!options.length) return null;
-
-    const baseOptions = options.filter(o => o.kind === "base");
-    const bestBase = baseOptions.length
-      ? [...baseOptions].sort((a, b) =>
-          a.rawCost - b.rawCost ||
-          a.minerCount - b.minerCount ||
-          a.rawValueSum - b.rawValueSum ||
-          b.entryDepth - a.entryDepth ||
-          a.route.len - b.route.len
-        )[0]
-      : null;
-
-    for (const o of options) {
-      let score = o.rawCost;
-      score += o.minerCount * 10;
-      score += o.rawValueSum * 0.35;
-      score -= o.lowerBonus;
-      score -= o.bubbleBonus;
-      score -= Math.min(0.8, o.sharedCount * 0.08);
-      score -= Math.min(0.5, o.adjacentShared * 0.05);
-
-      if (isLowestShaft) {
-        score -= o.entryDepth * 3.5;
-      }
-
-      o.score = score;
-    }
-
-    options.sort((a, b) =>
-      a.score - b.score ||
-      a.rawCost - b.rawCost ||
-      a.minerCount - b.minerCount ||
-      a.rawValueSum - b.rawValueSum ||
-      b.entryDepth - a.entryDepth ||
-      a.route.len - b.route.len
-    );
-
-    let chosen = options[0];
-
-    if (bestBase) {
-      const scoreGap = chosen.score - bestBase.score;
-      const baseClearlyCleaner =
-        bestBase.minerCount < chosen.minerCount ||
-        bestBase.rawValueSum < chosen.rawValueSum;
-
-      const baseStronglyPreferredLowest =
-        isLowestShaft &&
-        bestBase.entryDepth > chosen.entryDepth &&
-        bestBase.rawCost <= chosen.rawCost * 1.08;
-
-      const baseNearEqual =
-        scoreGap >= -6 &&
-        bestBase.rawCost <= chosen.rawCost * 1.10;
-
-      if (
-        chosen.kind !== "base" &&
-        (baseStronglyPreferredLowest || (baseNearEqual && baseClearlyCleaner))
-      ) {
-        chosen = bestBase;
-      }
-
-      if (
-        chosen.kind !== "base" &&
-        bestBase.rawCost < chosen.rawCost &&
-        bestBase.minerCount <= chosen.minerCount &&
-        bestBase.rawValueSum <= chosen.rawValueSum
-      ) {
-        chosen = bestBase;
-      }
-    }
-
-    return chosen;
   }
 
   function evaluateOrderedBlueForRedCandidate(grid, starts, redCandidate, shaftClustersOrdered, bubbles) {
@@ -1255,6 +1238,11 @@
       if (a.redCost !== b.redCost) {
         return a.redCost - b.redCost;
       }
+      const aRaw = pathRawNumberSum(a.redPath, grid);
+      const bRaw = pathRawNumberSum(b.redPath, grid);
+      if (aRaw !== bRaw) {
+        return aRaw - bRaw;
+      }
       if (a.effectiveTotal !== b.effectiveTotal) {
         return a.effectiveTotal - b.effectiveTotal;
       }
@@ -1276,10 +1264,16 @@
           reason = `Higher first bubble travel cost by ${roundCost(candidate.firstBubbleTravelCost - best.firstBubbleTravelCost)}`;
         } else if (candidate.redCost > best.redCost) {
           reason = `Higher red cost by ${roundCost(candidate.redCost - best.redCost)}`;
-        } else if (candidate.effectiveTotal > best.effectiveTotal) {
-          reason = `Higher effective total by ${roundCost(candidate.effectiveTotal - best.effectiveTotal)}`;
         } else {
-          reason = "Lost tie-break";
+          const bestRaw = pathRawNumberSum(best.redPath, grid);
+          const candRaw = pathRawNumberSum(candidate.redPath, grid);
+          if (candRaw > bestRaw) {
+            reason = `Higher raw mineral burden by ${candRaw - bestRaw}`;
+          } else if (candidate.effectiveTotal > best.effectiveTotal) {
+            reason = `Higher effective total by ${roundCost(candidate.effectiveTotal - best.effectiveTotal)}`;
+          } else {
+            reason = "Lost tie-break";
+          }
         }
       }
 
@@ -1362,6 +1356,7 @@
       const redBubbleCount = countRedBubbles(redCandidate.path, grid);
       const firstRedBubbleAt = firstBubbleStep(redCandidate.path, grid);
       const firstBubbleCost = firstBubbleTravelCost(redCandidate.path, grid);
+      const redRaw = pathRawNumberSum(redCandidate.path, grid);
 
       let effectiveTotal =
         redCandidate.redCost +
@@ -1372,6 +1367,12 @@
         blueEval.bubbleBonus +
         blueEval.redLoopPenalty +
         blueEval.overAssistPenalty;
+
+      if (legacyEndMode) {
+        effectiveTotal += firstBubbleCost === Infinity ? 999999999999 : firstBubbleCost * 25;
+        effectiveTotal += redRaw * 1000;
+        effectiveTotal -= redBubbleCount * 1000000000;
+      }
 
       const candidate = {
         redMode: redCandidate.mode,
@@ -1429,7 +1430,19 @@
                 continue;
               }
 
-              if (candidate.redCost === best.redCost && candidate.effectiveTotal < best.effectiveTotal) {
+              const candidateRaw = pathRawNumberSum(candidate.redPath, grid);
+              const bestRaw = pathRawNumberSum(best.redPath, grid);
+
+              if (candidate.redCost === best.redCost && candidateRaw < bestRaw) {
+                best = candidate;
+                continue;
+              }
+
+              if (
+                candidate.redCost === best.redCost &&
+                candidateRaw === bestRaw &&
+                candidate.effectiveTotal < best.effectiveTotal
+              ) {
                 best = candidate;
                 continue;
               }
