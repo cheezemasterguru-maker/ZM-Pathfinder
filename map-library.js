@@ -24,71 +24,83 @@ window.ZM_MAP_LIBRARY = {
       "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
       "Mine 4": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
       "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
-      "Deep Mine": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
+      "The Deep": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
     },
+
     "Clover Festival": {
       "Mine 1": ["Chamber 1", "Chamber 2"],
       "Mine 2": ["Chamber 1", "Chamber 2", "Chamber 3"],
       "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
       "Mine 4": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
       "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
-      "Deep Mine": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
+      "The Deep": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
     },
+
     "Easter Egg Hunt": {
       "Mine 1": ["Chamber 1", "Chamber 2"],
       "Mine 2": ["Chamber 1", "Chamber 2", "Chamber 3"],
-      "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
+      "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3"],
       "Mine 4": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
-      "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
-      "Deep Mine": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
+      "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
+      "Mine 6": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
+      "The Deep": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
     },
+
     "4th of July": {
       "Mine 1": ["Chamber 1", "Chamber 2"],
       "Mine 2": ["Chamber 1", "Chamber 2", "Chamber 3"],
       "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
       "Mine 4": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
       "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
-      "Deep Mine": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
+      "The Deep": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
     },
+
     "Mystery Reef": {
       "Mine 1": ["Chamber 1", "Chamber 2"],
       "Mine 2": ["Chamber 1", "Chamber 2", "Chamber 3"],
       "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
       "Mine 4": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
       "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
-      "Deep Mine": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
+      "The Deep": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
     },
+
     "Teamwork Festival": {
       "Mine 1": ["Chamber 1", "Chamber 2"],
       "Mine 2": ["Chamber 1", "Chamber 2", "Chamber 3"],
       "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
       "Mine 4": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
       "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
-      "Deep Mine": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
+      "The Deep": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
     },
+
     "Halloween": {
       "Mine 1": ["Chamber 1", "Chamber 2"],
       "Mine 2": ["Chamber 1", "Chamber 2", "Chamber 3"],
-      "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
+      "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3"],
       "Mine 4": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
-      "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
-      "Deep Mine": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
+      "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
+      "Mine 6": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
+      "The Deep": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
     },
+
     "Fall Festival": {
       "Mine 1": ["Chamber 1", "Chamber 2"],
       "Mine 2": ["Chamber 1", "Chamber 2", "Chamber 3"],
-      "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
+      "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3"],
       "Mine 4": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
-      "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
-      "Deep Mine": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
+      "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
+      "Mine 6": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
+      "The Deep": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
     },
+
     "Winter Break": {
       "Mine 1": ["Chamber 1", "Chamber 2"],
       "Mine 2": ["Chamber 1", "Chamber 2", "Chamber 3"],
-      "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
+      "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3"],
       "Mine 4": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
-      "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
-      "Deep Mine": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
+      "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
+      "Mine 6": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
+      "The Deep": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
     }
   }
 };
