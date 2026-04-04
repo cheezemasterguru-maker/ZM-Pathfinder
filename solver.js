@@ -548,6 +548,74 @@
   }
 
   function buildLegacyEndRedCandidates(grid, starts, gateGoals, bubbles) {
+  const candidates = [];
+
+  for (const gateGoal of gateGoals) {
+    const direct = dijkstra({ grid, starts, goals: [gateGoal] });
+    if (direct) {
+      addCandidate(candidates, {
+        mode: "legacy end",
+        variant: "direct",
+        redBubble: null,
+        redBubbles: [],
+        path: uniquePath(direct.path),
+        redCost: direct.cost,
+        gateGoal
+      });
+    }
+  }
+
+  // 🔥 FORCE every bubble to be attempted FIRST
+  for (const bubble of bubbles) {
+    const toBubble = dijkstra({ grid, starts, goals: [bubble] });
+    if (!toBubble) continue;
+
+    for (const gateGoal of gateGoals) {
+      const toGate = dijkstra({ grid, starts: [bubble], goals: [gateGoal] });
+      if (!toGate) continue;
+
+      addCandidate(candidates, {
+        mode: "legacy end",
+        variant: "forced-bubble",
+        redBubble: bubble,
+        redBubbles: [bubble],
+        path: uniquePath(mergePaths(toBubble.path, toGate.path)),
+        redCost: toBubble.cost + toGate.cost,
+        gateGoal
+      });
+    }
+  }
+
+  // 🔥 ALSO allow chaining bubbles more aggressively
+  for (const bubble1 of bubbles) {
+    const a = dijkstra({ grid, starts, goals: [bubble1] });
+    if (!a) continue;
+
+    for (const bubble2 of bubbles) {
+      if (bubble1[0] === bubble2[0] && bubble1[1] === bubble2[1]) continue;
+
+      const b = dijkstra({ grid, starts: [bubble1], goals: [bubble2] });
+      if (!b) continue;
+
+      for (const gateGoal of gateGoals) {
+        const c = dijkstra({ grid, starts: [bubble2], goals: [gateGoal] });
+        if (!c) continue;
+
+        addCandidate(candidates, {
+          mode: "legacy end",
+          variant: "forced-2-bubble",
+          redBubble: bubble1,
+          redBubbles: [bubble1, bubble2],
+          path: uniquePath(mergePaths(mergePaths(a.path, b.path), c.path)),
+          redCost: a.cost + b.cost + c.cost,
+          gateGoal
+        });
+      }
+    }
+  }
+
+  return candidates;
+}
     const candidates = [];
 
     for (const gateGoal of gateGoals) {
