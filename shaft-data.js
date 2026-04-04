@@ -148,7 +148,7 @@ window.ZM_SHAFT_DATA = {
           { shaftType: "Aventurine", level: 30, auto: 10 }
         ],
         "Chamber 4": [
-          { shaftType: "Obsidian", level: 34, auto: 9 },
+          { shaftType: "Obsidian", level: 34, auto: 10 },
           { shaftType: "Peridot", level: 37, auto: 9 }
         ]
       },
