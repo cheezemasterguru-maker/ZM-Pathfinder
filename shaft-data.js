@@ -61,7 +61,7 @@ window.ZM_SHAFT_DATA = {
       "The Deep": {}
     },
 
-    "Clover Valley": {
+    "Clover Festival": {
       "Mine 1": {},
       "Mine 2": {},
       "Mine 3": {},
@@ -213,6 +213,7 @@ window.ZM_SHAFT_DATA = {
   "Graveyard": [
     { shaftType: "Peridot", level: 55, auto: 13 }
   ]
+}        
 },
 
     "4th of July": {
