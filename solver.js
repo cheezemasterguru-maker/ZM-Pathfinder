@@ -1157,9 +1157,15 @@
         blueEval.overAssistPenalty;
 
       if (legacyEndMode) {
-        effectiveTotal -= redBubbleCount * 250;
-        effectiveTotal -= firstRedBubbleBonus;
-      }
+  // HARD PRIORITY: bubbles override everything
+  effectiveTotal -= redBubbleCount * 1000;
+
+  // STRONG push for earlier bubbles
+  effectiveTotal -= firstRedBubbleBonus * 3;
+
+  // Reduce bias toward clean/cheap gate paths
+  effectiveTotal -= redCandidate.redCost * 0.15;
+}
 
       const candidate = {
         redMode: redCandidate.mode,
