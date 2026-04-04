@@ -966,6 +966,8 @@ window.ZM_MAP_DATA = {
   },
 
   "Chamber 3": {
+  title: "Easter Egg Hunt - Mine 5 - Chamber 3",
+  gateType: "standard",
   grid: [
     ["X","X",34,33,25,33,24],
     ["S","S",31,"B",35,25,23],
