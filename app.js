@@ -1877,7 +1877,10 @@ function getShaftClustersFromGrid(){
 }
 
 function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
-  if(!path || path.length < 2) return;
+  if(!path || path.length < 1) return;
+
+  const isRed = color === "#ef4444";
+  const isBlue = color === "#2563eb";
 
   function center(pt){
     return {
@@ -1886,29 +1889,126 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
     };
   }
 
+  function isInBounds(r, c){
+    return r >= 0 && c >= 0 && r < currentRowCount && c < COLS;
+  }
+
+  function getCellValue(r, c){
+    if (!isInBounds(r, c)) return null;
+    return grid[r]?.[c];
+  }
+
+  function getTouchPointForNeighbor(fromPt, toPt, targetType){
+    if (!fromPt || !toPt) return null;
+
+    const [fr, fc] = fromPt;
+    const [tr, tc] = toPt;
+
+    const targetVal = getCellValue(tr, tc);
+    if (targetVal !== targetType) return null;
+
+    const toCenter = center(toPt);
+
+    const dx = tc - fc;
+    const dy = tr - fr;
+
+    let tx = toCenter.x;
+    let ty = toCenter.y;
+
+    if (dx === 1 && dy === 0) {
+      tx = toCenter.x - cell / 2;
+      ty = toCenter.y;
+    } else if (dx === -1 && dy === 0) {
+      tx = toCenter.x + cell / 2;
+      ty = toCenter.y;
+    } else if (dx === 0 && dy === 1) {
+      tx = toCenter.x;
+      ty = toCenter.y - cell / 2;
+    } else if (dx === 0 && dy === -1) {
+      tx = toCenter.x;
+      ty = toCenter.y + cell / 2;
+    } else {
+      return null;
+    }
+
+    return { x: tx, y: ty };
+  }
+
+  function getEndpointPoint(){
+    if (path.length === 1) {
+      return center(path[0]);
+    }
+
+    const last = path[path.length - 1];
+    const prev = path[path.length - 2];
+
+    if (isBlue) {
+      const dirs = [
+        [0, 1],
+        [1, 0],
+        [0, -1],
+        [-1, 0]
+      ];
+
+      for (const [dr, dc] of dirs) {
+        const nr = last[0] + dr;
+        const nc = last[1] + dc;
+        if (prev && nr === prev[0] && nc === prev[1]) continue;
+
+        const touch = getTouchPointForNeighbor(last, [nr, nc], "S");
+        if (touch) return touch;
+      }
+    }
+
+    if (isRed) {
+      const dirs = [
+        [0, 1],
+        [1, 0],
+        [0, -1],
+        [-1, 0]
+      ];
+
+      for (const [dr, dc] of dirs) {
+        const nr = last[0] + dr;
+        const nc = last[1] + dc;
+        if (prev && nr === prev[0] && nc === prev[1]) continue;
+
+        const touch = getTouchPointForNeighbor(last, [nr, nc], "X");
+        if (touch) return touch;
+      }
+    }
+
+    return center(last);
+  }
+
+  const points = path.map(center);
+  const endpoint = getEndpointPoint();
+
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
   ctx.lineWidth = width + 5;
   ctx.strokeStyle = "#000";
   ctx.beginPath();
-  let p = center(path[0]);
-  ctx.moveTo(p.x, p.y);
-  for(let i = 1; i < path.length; i++){
-    p = center(path[i]);
-    ctx.lineTo(p.x, p.y);
+  ctx.moveTo(points[0].x, points[0].y);
+
+  for(let i = 1; i < points.length - 1; i++){
+    ctx.lineTo(points[i].x, points[i].y);
   }
+
+  ctx.lineTo(endpoint.x, endpoint.y);
   ctx.stroke();
 
   ctx.lineWidth = width;
   ctx.strokeStyle = color;
   ctx.beginPath();
-  p = center(path[0]);
-  ctx.moveTo(p.x, p.y);
-  for(let i = 1; i < path.length; i++){
-    p = center(path[i]);
-    ctx.lineTo(p.x, p.y);
+  ctx.moveTo(points[0].x, points[0].y);
+
+  for(let i = 1; i < points.length - 1; i++){
+    ctx.lineTo(points[i].x, points[i].y);
   }
+
+  ctx.lineTo(endpoint.x, endpoint.y);
   ctx.stroke();
 }
 
