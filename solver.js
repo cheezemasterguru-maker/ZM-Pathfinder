@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V5.1 loaded");
+  console.log("ZM Solver V5.2 loaded");
 
-  const SOLVER_VERSION = "V5.1";
+  const SOLVER_VERSION = "V5.2";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -411,14 +411,15 @@
   }
 
   function firstBubbleTravelCost(path, grid) {
-    if (!path || !path.length) return Infinity;
+    const idx = firstBubbleStep(path, grid);
+    if (idx === Infinity) return Infinity;
+
     let total = 0;
-    for (let i = 1; i < path.length; i++) {
+    for (let i = 1; i <= idx; i++) {
       const [r, c] = path[i];
-      total += cellWeight(grid, r, c, new Set());
-      if (grid[r] && grid[r][c] === "B") return total;
+      if (typeof grid[r][c] === "number") total += numberCost(grid[r][c]);
     }
-    return Infinity;
+    return total;
   }
 
   function buildRedCandidates(grid, starts, gateGoals, bubbles) {
@@ -434,8 +435,7 @@
           redBubbles: [],
           path: uniquePath(direct.path),
           redCost: direct.cost,
-          gateGoal,
-          firstBubbleTravelCost: firstBubbleTravelCost(uniquePath(direct.path), grid)
+          gateGoal
         });
 
         const penalized = dijkstra({
@@ -452,8 +452,7 @@
             redBubbles: [],
             path: uniquePath(penalized.path),
             redCost: penalized.cost,
-            gateGoal,
-            firstBubbleTravelCost: firstBubbleTravelCost(uniquePath(penalized.path), grid)
+            gateGoal
           });
         }
 
@@ -471,23 +470,20 @@
             redBubbles: [],
             path: uniquePath(blocked.path),
             redCost: blocked.cost,
-            gateGoal,
-            firstBubbleTravelCost: firstBubbleTravelCost(uniquePath(blocked.path), grid)
+            gateGoal
           });
         }
 
         const forkDetours = buildForkDetours(grid, starts, gateGoal);
         for (const fork of forkDetours) {
-          const path = uniquePath(fork.path);
           addCandidate(candidates, {
             mode: "direct",
             variant: "fork-detour",
             redBubble: null,
             redBubbles: [],
-            path,
+            path: uniquePath(fork.path),
             redCost: fork.cost,
-            gateGoal,
-            firstBubbleTravelCost: firstBubbleTravelCost(path, grid)
+            gateGoal
           });
         }
       }
@@ -500,16 +496,14 @@
       for (const gateGoal of gateGoals) {
         const b = dijkstra({ grid, starts: [bubble], goals: [gateGoal] });
         if (b) {
-          const path = uniquePath(mergePaths(a.path, b.path));
           addCandidate(candidates, {
             mode: "via bubble",
             variant: "base",
             redBubble: bubble,
             redBubbles: [bubble],
-            path,
+            path: uniquePath(mergePaths(a.path, b.path)),
             redCost: a.cost + b.cost,
-            gateGoal,
-            firstBubbleTravelCost: a.cost
+            gateGoal
           });
         }
 
@@ -520,16 +514,14 @@
           penaltyCells: b ? buildPenaltyCellsFromPath(b.path, 0.35) : new Map()
         });
         if (bPenalized) {
-          const path = uniquePath(mergePaths(a.path, bPenalized.path));
           addCandidate(candidates, {
             mode: "via bubble",
             variant: "penalized",
             redBubble: bubble,
             redBubbles: [bubble],
-            path,
+            path: uniquePath(mergePaths(a.path, bPenalized.path)),
             redCost: a.cost + bPenalized.cost,
-            gateGoal,
-            firstBubbleTravelCost: a.cost
+            gateGoal
           });
         }
 
@@ -540,31 +532,27 @@
           blockedEdges: b ? buildBlockedEdgesFromPath(b.path) : new Set()
         });
         if (bBlocked) {
-          const path = uniquePath(mergePaths(a.path, bBlocked.path));
           addCandidate(candidates, {
             mode: "via bubble",
             variant: "blocked",
             redBubble: bubble,
             redBubbles: [bubble],
-            path,
+            path: uniquePath(mergePaths(a.path, bBlocked.path)),
             redCost: a.cost + bBlocked.cost,
-            gateGoal,
-            firstBubbleTravelCost: a.cost
+            gateGoal
           });
         }
 
         const forkDetours = buildForkDetours(grid, [bubble], gateGoal);
         for (const fork of forkDetours) {
-          const path = uniquePath(mergePaths(a.path, fork.path));
           addCandidate(candidates, {
             mode: "via bubble",
             variant: "fork-detour",
             redBubble: bubble,
             redBubbles: [bubble],
-            path,
+            path: uniquePath(mergePaths(a.path, fork.path)),
             redCost: a.cost + fork.cost,
-            gateGoal,
-            firstBubbleTravelCost: a.cost
+            gateGoal
           });
         }
       }
@@ -585,7 +573,7 @@
   function buildLegacyEndRedCandidates(grid, starts, gateGoals, bubbles) {
     const candidates = [];
 
-    function addLegacyCandidate(mode, variant, redBubbles, path, redCost, gateGoal, bubbleTravelCost) {
+    function addLegacyCandidate(mode, variant, redBubbles, path, redCost, gateGoal) {
       addCandidate(candidates, {
         mode,
         variant,
@@ -593,17 +581,38 @@
         redBubbles: redBubbles || [],
         path: uniquePath(path),
         redCost,
-        gateGoal,
-        firstBubbleTravelCost: bubbleTravelCost
+        gateGoal
       });
     }
 
-    // Only allow direct-to-gate if there are literally no bubbles on the map.
-    if (!bubbles.length) {
-      for (const gateGoal of gateGoals) {
-        const direct = dijkstra({ grid, starts, goals: [gateGoal] });
-        if (direct) {
-          addLegacyCandidate("legacy end", "direct", [], direct.path, direct.cost, gateGoal, Infinity);
+    for (const gateGoal of gateGoals) {
+      const direct = dijkstra({ grid, starts, goals: [gateGoal] });
+      if (direct) {
+        addLegacyCandidate("legacy end", "direct", [], direct.path, direct.cost, gateGoal);
+
+        const penalized = dijkstra({
+          grid,
+          starts,
+          goals: [gateGoal],
+          penaltyCells: buildPenaltyCellsFromPath(direct.path, 0.9)
+        });
+        if (penalized) {
+          addLegacyCandidate("legacy end", "direct-penalized", [], penalized.path, penalized.cost, gateGoal);
+        }
+
+        const blocked = dijkstra({
+          grid,
+          starts,
+          goals: [gateGoal],
+          blockedEdges: buildBlockedEdgesFromPath(direct.path)
+        });
+        if (blocked) {
+          addLegacyCandidate("legacy end", "direct-blocked", [], blocked.path, blocked.cost, gateGoal);
+        }
+
+        const detours = buildForkDetours(grid, starts, gateGoal);
+        for (const detour of detours) {
+          addLegacyCandidate("legacy end", "direct-fork-detour", [], detour.path, detour.cost, gateGoal);
         }
       }
     }
@@ -647,8 +656,7 @@
               [bubble1],
               mergePaths(leg1.route.path, b1ToGate.path),
               leg1.route.cost + b1ToGate.cost,
-              gateGoal,
-              leg1.route.cost
+              gateGoal
             );
           }
 
@@ -667,8 +675,7 @@
               [bubble1],
               mergePaths(leg1.route.path, b1ToGatePenalized.path),
               leg1.route.cost + b1ToGatePenalized.cost,
-              gateGoal,
-              leg1.route.cost
+              gateGoal
             );
           }
 
@@ -687,8 +694,7 @@
               [bubble1],
               mergePaths(leg1.route.path, b1ToGateBlocked.path),
               leg1.route.cost + b1ToGateBlocked.cost,
-              gateGoal,
-              leg1.route.cost
+              gateGoal
             );
           }
 
@@ -700,8 +706,7 @@
               [bubble1],
               mergePaths(leg1.route.path, detour.path),
               leg1.route.cost + detour.cost,
-              gateGoal,
-              leg1.route.cost
+              gateGoal
             );
           }
         }
@@ -747,8 +752,7 @@
                   [bubble1, bubble2],
                   mergePaths(mergePaths(leg1.route.path, leg2.route.path), b2ToGate.path),
                   leg1.route.cost + leg2.route.cost + b2ToGate.cost,
-                  gateGoal,
-                  leg1.route.cost
+                  gateGoal
                 );
               }
 
@@ -767,8 +771,7 @@
                   [bubble1, bubble2],
                   mergePaths(mergePaths(leg1.route.path, leg2.route.path), b2ToGatePenalized.path),
                   leg1.route.cost + leg2.route.cost + b2ToGatePenalized.cost,
-                  gateGoal,
-                  leg1.route.cost
+                  gateGoal
                 );
               }
 
@@ -787,8 +790,7 @@
                   [bubble1, bubble2],
                   mergePaths(mergePaths(leg1.route.path, leg2.route.path), b2ToGateBlocked.path),
                   leg1.route.cost + leg2.route.cost + b2ToGateBlocked.cost,
-                  gateGoal,
-                  leg1.route.cost
+                  gateGoal
                 );
               }
 
@@ -800,8 +802,7 @@
                   [bubble1, bubble2],
                   mergePaths(mergePaths(leg1.route.path, leg2.route.path), detour.path),
                   leg1.route.cost + leg2.route.cost + detour.cost,
-                  gateGoal,
-                  leg1.route.cost
+                  gateGoal
                 );
               }
             }
@@ -823,9 +824,9 @@
       const bBubbleCount = countRedBubbles(b.path, grid);
       if (aBubbleCount !== bBubbleCount) return bBubbleCount - aBubbleCount;
 
-      const aFirstBubbleCost = Number.isFinite(a.firstBubbleTravelCost) ? a.firstBubbleTravelCost : Infinity;
-      const bFirstBubbleCost = Number.isFinite(b.firstBubbleTravelCost) ? b.firstBubbleTravelCost : Infinity;
-      if (aFirstBubbleCost !== bFirstBubbleCost) return aFirstBubbleCost - bFirstBubbleCost;
+      const aTravel = firstBubbleTravelCost(a.path, grid);
+      const bTravel = firstBubbleTravelCost(b.path, grid);
+      if (aTravel !== bTravel) return aTravel - bTravel;
 
       const aFirst = firstBubbleStep(a.path, grid);
       const bFirst = firstBubbleStep(b.path, grid);
@@ -1253,22 +1254,19 @@
       if (a.unresolvedTargets !== b.unresolvedTargets) {
         return a.unresolvedTargets - b.unresolvedTargets;
       }
-
-      if ((a.redBubbleCount || 0) !== (b.redBubbleCount || 0)) {
-        return (b.redBubbleCount || 0) - (a.redBubbleCount || 0);
+      if (a.redBubbleCount !== b.redBubbleCount) {
+        return b.redBubbleCount - a.redBubbleCount;
       }
-
-      const aFirstBubbleCost = Number.isFinite(a.firstBubbleTravelCost) ? a.firstBubbleTravelCost : Infinity;
-      const bFirstBubbleCost = Number.isFinite(b.firstBubbleTravelCost) ? b.firstBubbleTravelCost : Infinity;
-      if (aFirstBubbleCost !== bFirstBubbleCost) {
-        return aFirstBubbleCost - bFirstBubbleCost;
+      if (a.firstBubbleTravelCost !== b.firstBubbleTravelCost) {
+        return a.firstBubbleTravelCost - b.firstBubbleTravelCost;
       }
-
+      if (a.redCost !== b.redCost) {
+        return a.redCost - b.redCost;
+      }
       if (a.effectiveTotal !== b.effectiveTotal) {
         return a.effectiveTotal - b.effectiveTotal;
       }
-
-      return a.redCost - b.redCost;
+      return 0;
     });
 
     const sliced = sorted.slice(0, 12);
@@ -1280,14 +1278,14 @@
       if (!approved) {
         if (candidate.unresolvedTargets > best.unresolvedTargets) {
           reason = `More unresolved targets (${candidate.unresolvedTargets} vs ${best.unresolvedTargets})`;
-        } else if ((candidate.redBubbleCount || 0) < (best.redBubbleCount || 0)) {
-          reason = `Fewer red bubbles (${candidate.redBubbleCount || 0} vs ${best.redBubbleCount || 0})`;
-        } else if ((candidate.firstBubbleTravelCost ?? Infinity) > (best.firstBubbleTravelCost ?? Infinity)) {
-          reason = `Higher first-bubble cost by ${roundCost((candidate.firstBubbleTravelCost ?? Infinity) - (best.firstBubbleTravelCost ?? Infinity))}`;
-        } else if (candidate.effectiveTotal > best.effectiveTotal) {
-          reason = `Higher effective total by ${roundCost(candidate.effectiveTotal - best.effectiveTotal)}`;
+        } else if (candidate.redBubbleCount < best.redBubbleCount) {
+          reason = `Fewer red bubbles (${candidate.redBubbleCount} vs ${best.redBubbleCount})`;
+        } else if (candidate.firstBubbleTravelCost > best.firstBubbleTravelCost) {
+          reason = `Higher first bubble travel cost by ${roundCost(candidate.firstBubbleTravelCost - best.firstBubbleTravelCost)}`;
         } else if (candidate.redCost > best.redCost) {
           reason = `Higher red cost by ${roundCost(candidate.redCost - best.redCost)}`;
+        } else if (candidate.effectiveTotal > best.effectiveTotal) {
+          reason = `Higher effective total by ${roundCost(candidate.effectiveTotal - best.effectiveTotal)}`;
         } else {
           reason = "Lost tie-break";
         }
@@ -1300,8 +1298,8 @@
         redMode: candidate.redMode,
         redVariant: candidate.redVariant,
         unresolvedTargets: candidate.unresolvedTargets,
-        redBubbleCount: candidate.redBubbleCount || 0,
-        firstBubbleTravelCost: roundCost(Number.isFinite(candidate.firstBubbleTravelCost) ? candidate.firstBubbleTravelCost : 0),
+        redBubbleCount: candidate.redBubbleCount,
+        firstBubbleTravelCost: roundCost(candidate.firstBubbleTravelCost),
         redPathValues: getPathValueLabel(grid, candidate.redPath),
         redPathCoords: getPathCoordLabel(candidate.redPath),
         redCost: roundCost(candidate.redCost),
@@ -1371,10 +1369,8 @@
 
       const redBubbleCount = countRedBubbles(redCandidate.path, grid);
       const firstRedBubbleAt = firstBubbleStep(redCandidate.path, grid);
-      const firstRedBubbleCost =
-        Number.isFinite(redCandidate.firstBubbleTravelCost)
-          ? redCandidate.firstBubbleTravelCost
-          : firstBubbleTravelCost(redCandidate.path, grid);
+      const firstRedBubbleBonus = firstRedBubbleAt === Infinity ? 0 : Math.max(0, 140 - firstRedBubbleAt * 6);
+      const firstBubbleCost = firstBubbleTravelCost(redCandidate.path, grid);
 
       let effectiveTotal =
         redCandidate.redCost +
@@ -1386,6 +1382,12 @@
         blueEval.redLoopPenalty +
         blueEval.overAssistPenalty;
 
+      if (legacyEndMode) {
+        effectiveTotal -= redBubbleCount * 1000;
+        effectiveTotal -= firstRedBubbleBonus * 3;
+        effectiveTotal -= redCandidate.redCost * 0.15;
+      }
+
       const candidate = {
         redMode: redCandidate.mode,
         redVariant: redCandidate.variant,
@@ -1393,7 +1395,8 @@
         redBubbles: redCandidate.redBubbles || (redCandidate.redBubble ? [redCandidate.redBubble] : []),
         redBubbleCount,
         firstRedBubbleAt,
-        firstBubbleTravelCost: firstRedBubbleCost,
+        firstRedBubbleBonus,
+        firstBubbleTravelCost: firstBubbleCost,
         redPath: redCandidate.path,
         redCost: redCandidate.redCost,
         gateGoal: redCandidate.gateGoal,
@@ -1431,17 +1434,21 @@
           }
 
           if (candidate.redBubbleCount === best.redBubbleCount) {
-            const candFirstCost = Number.isFinite(candidate.firstBubbleTravelCost) ? candidate.firstBubbleTravelCost : Infinity;
-            const bestFirstCost = Number.isFinite(best.firstBubbleTravelCost) ? best.firstBubbleTravelCost : Infinity;
-
-            if (candFirstCost < bestFirstCost) {
+            if (candidate.firstBubbleTravelCost < best.firstBubbleTravelCost) {
               best = candidate;
               continue;
             }
 
-            if (candFirstCost === bestFirstCost && candidate.redCost < best.redCost) {
-              best = candidate;
-              continue;
+            if (candidate.firstBubbleTravelCost === best.firstBubbleTravelCost) {
+              if (candidate.redCost < best.redCost) {
+                best = candidate;
+                continue;
+              }
+
+              if (candidate.redCost === best.redCost && candidate.effectiveTotal < best.effectiveTotal) {
+                best = candidate;
+                continue;
+              }
             }
           }
         }
@@ -1485,7 +1492,8 @@
       redBubbles: best.redBubbles,
       redBubbleCount: best.redBubbleCount,
       firstRedBubbleAt: best.firstRedBubbleAt,
-      firstBubbleTravelCost: roundCost(Number.isFinite(best.firstBubbleTravelCost) ? best.firstBubbleTravelCost : 0),
+      firstRedBubbleBonus: roundCost(best.firstRedBubbleBonus),
+      firstBubbleTravelCost: best.firstBubbleTravelCost === Infinity ? null : roundCost(best.firstBubbleTravelCost),
       redPath: best.redPath,
       redCost: roundCost(best.redCost),
       bluePaths: best.bluePaths,
@@ -1514,13 +1522,14 @@
         `red_variant: ${best.redVariant}\n` +
         `red_bubble_count: ${best.redBubbleCount}\n` +
         `first_red_bubble_at: ${best.firstRedBubbleAt === Infinity ? "none" : best.firstRedBubbleAt}\n` +
-        `first_bubble_travel_cost: ${roundCost(Number.isFinite(best.firstBubbleTravelCost) ? best.firstBubbleTravelCost : 0)}\n` +
+        `first_bubble_travel_cost: ${best.firstBubbleTravelCost === Infinity ? "none" : roundCost(best.firstBubbleTravelCost)}\n` +
         `red_cost: ${roundCost(best.redCost)}\n` +
         `blue_cost: ${roundCost(best.blueCost)}\n` +
         `dependency_cost: ${roundCost(best.dependencyCost)}\n` +
         `assist_bonus: ${roundCost(best.assistBonus)}\n` +
         `lower_shaft_bonus: ${roundCost(best.lowerShaftBonus)}\n` +
         `bubble_bonus: ${roundCost(best.bubbleBonus)}\n` +
+        `first_red_bubble_bonus: ${roundCost(best.firstRedBubbleBonus)}\n` +
         `red_loop_penalty: ${roundCost(best.redLoopPenalty)}\n` +
         `over_assist_penalty: ${roundCost(best.overAssistPenalty)}\n` +
         `bubble_count: ${bubbles.length}\n` +
