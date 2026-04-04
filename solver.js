@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V4.8 FIXED loaded");
+  console.log("ZM Solver V4.9 loaded");
 
-  const SOLVER_VERSION = "V4.8-FIXED";
+  const SOLVER_VERSION = "V4.9";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -550,64 +550,240 @@
   function buildLegacyEndRedCandidates(grid, starts, gateGoals, bubbles) {
     const candidates = [];
 
+    function addLegacyCandidate(mode, variant, redBubbles, path, redCost, gateGoal) {
+      addCandidate(candidates, {
+        mode,
+        variant,
+        redBubble: redBubbles && redBubbles.length ? redBubbles[0] : null,
+        redBubbles: redBubbles || [],
+        path: uniquePath(path),
+        redCost,
+        gateGoal
+      });
+    }
+
     for (const gateGoal of gateGoals) {
       const direct = dijkstra({ grid, starts, goals: [gateGoal] });
       if (direct) {
-        addCandidate(candidates, {
-          mode: "legacy end",
-          variant: "direct",
-          redBubble: null,
-          redBubbles: [],
-          path: uniquePath(direct.path),
-          redCost: direct.cost,
-          gateGoal
+        addLegacyCandidate("legacy end", "direct", [], direct.path, direct.cost, gateGoal);
+
+        const penalized = dijkstra({
+          grid,
+          starts,
+          goals: [gateGoal],
+          penaltyCells: buildPenaltyCellsFromPath(direct.path, 0.9)
         });
-      }
-    }
+        if (penalized) {
+          addLegacyCandidate("legacy end", "direct-penalized", [], penalized.path, penalized.cost, gateGoal);
+        }
 
-    for (const bubble of bubbles) {
-      const toBubble = dijkstra({ grid, starts, goals: [bubble] });
-      if (!toBubble) continue;
-
-      for (const gateGoal of gateGoals) {
-        const toGate = dijkstra({ grid, starts: [bubble], goals: [gateGoal] });
-        if (!toGate) continue;
-
-        addCandidate(candidates, {
-          mode: "legacy end",
-          variant: "forced-bubble",
-          redBubble: bubble,
-          redBubbles: [bubble],
-          path: uniquePath(mergePaths(toBubble.path, toGate.path)),
-          redCost: toBubble.cost + toGate.cost,
-          gateGoal
+        const blocked = dijkstra({
+          grid,
+          starts,
+          goals: [gateGoal],
+          blockedEdges: buildBlockedEdgesFromPath(direct.path)
         });
+        if (blocked) {
+          addLegacyCandidate("legacy end", "direct-blocked", [], blocked.path, blocked.cost, gateGoal);
+        }
+
+        const detours = buildForkDetours(grid, starts, gateGoal);
+        for (const detour of detours) {
+          addLegacyCandidate("legacy end", "direct-fork-detour", [], detour.path, detour.cost, gateGoal);
+        }
       }
     }
 
     for (const bubble1 of bubbles) {
-      const a = dijkstra({ grid, starts, goals: [bubble1] });
-      if (!a) continue;
+      const sToB1 = dijkstra({ grid, starts, goals: [bubble1] });
+      if (!sToB1) continue;
 
-      for (const bubble2 of bubbles) {
-        if (bubble1[0] === bubble2[0] && bubble1[1] === bubble2[1]) continue;
+      const sToB1Penalized = dijkstra({
+        grid,
+        starts,
+        goals: [bubble1],
+        penaltyCells: buildPenaltyCellsFromPath(sToB1.path, 0.9)
+      });
 
-        const b = dijkstra({ grid, starts: [bubble1], goals: [bubble2] });
-        if (!b) continue;
+      const sToB1Blocked = dijkstra({
+        grid,
+        starts,
+        goals: [bubble1],
+        blockedEdges: buildBlockedEdgesFromPath(sToB1.path)
+      });
 
+      const leg1Variants = [
+        { tag: "base", route: sToB1 },
+        { tag: "penalized", route: sToB1Penalized },
+        { tag: "blocked", route: sToB1Blocked }
+      ].filter(v => v.route && v.route.path && v.route.path.length);
+
+      const leg1Detours = buildForkDetours(grid, starts, bubble1);
+      for (const detour of leg1Detours) {
+        leg1Variants.push({ tag: "fork-detour", route: detour });
+      }
+
+      for (const leg1 of leg1Variants) {
         for (const gateGoal of gateGoals) {
-          const c = dijkstra({ grid, starts: [bubble2], goals: [gateGoal] });
-          if (!c) continue;
+          const b1ToGate = dijkstra({ grid, starts: [bubble1], goals: [gateGoal] });
+          if (b1ToGate) {
+            addLegacyCandidate(
+              "legacy end",
+              `via-1-bubble-${leg1.tag}`,
+              [bubble1],
+              mergePaths(leg1.route.path, b1ToGate.path),
+              leg1.route.cost + b1ToGate.cost,
+              gateGoal
+            );
+          }
 
-          addCandidate(candidates, {
-            mode: "legacy end",
-            variant: "forced-2-bubble",
-            redBubble: bubble1,
-            redBubbles: [bubble1, bubble2],
-            path: uniquePath(mergePaths(mergePaths(a.path, b.path), c.path)),
-            redCost: a.cost + b.cost + c.cost,
-            gateGoal
+          const b1ToGatePenalized = b1ToGate
+            ? dijkstra({
+                grid,
+                starts: [bubble1],
+                goals: [gateGoal],
+                penaltyCells: buildPenaltyCellsFromPath(b1ToGate.path, 0.9)
+              })
+            : null;
+          if (b1ToGatePenalized) {
+            addLegacyCandidate(
+              "legacy end",
+              `via-1-bubble-${leg1.tag}-gate-penalized`,
+              [bubble1],
+              mergePaths(leg1.route.path, b1ToGatePenalized.path),
+              leg1.route.cost + b1ToGatePenalized.cost,
+              gateGoal
+            );
+          }
+
+          const b1ToGateBlocked = b1ToGate
+            ? dijkstra({
+                grid,
+                starts: [bubble1],
+                goals: [gateGoal],
+                blockedEdges: buildBlockedEdgesFromPath(b1ToGate.path)
+              })
+            : null;
+          if (b1ToGateBlocked) {
+            addLegacyCandidate(
+              "legacy end",
+              `via-1-bubble-${leg1.tag}-gate-blocked`,
+              [bubble1],
+              mergePaths(leg1.route.path, b1ToGateBlocked.path),
+              leg1.route.cost + b1ToGateBlocked.cost,
+              gateGoal
+            );
+          }
+
+          const gateDetours = buildForkDetours(grid, [bubble1], gateGoal);
+          for (const detour of gateDetours) {
+            addLegacyCandidate(
+              "legacy end",
+              `via-1-bubble-${leg1.tag}-gate-fork-detour`,
+              [bubble1],
+              mergePaths(leg1.route.path, detour.path),
+              leg1.route.cost + detour.cost,
+              gateGoal
+            );
+          }
+        }
+
+        for (const bubble2 of bubbles) {
+          if (bubble1[0] === bubble2[0] && bubble1[1] === bubble2[1]) continue;
+
+          const b1ToB2 = dijkstra({ grid, starts: [bubble1], goals: [bubble2] });
+          if (!b1ToB2) continue;
+
+          const b1ToB2Penalized = dijkstra({
+            grid,
+            starts: [bubble1],
+            goals: [bubble2],
+            penaltyCells: buildPenaltyCellsFromPath(b1ToB2.path, 0.9)
           });
+
+          const b1ToB2Blocked = dijkstra({
+            grid,
+            starts: [bubble1],
+            goals: [bubble2],
+            blockedEdges: buildBlockedEdgesFromPath(b1ToB2.path)
+          });
+
+          const leg2Variants = [
+            { tag: "base", route: b1ToB2 },
+            { tag: "penalized", route: b1ToB2Penalized },
+            { tag: "blocked", route: b1ToB2Blocked }
+          ].filter(v => v.route && v.route.path && v.route.path.length);
+
+          const b2DetoursMid = buildForkDetours(grid, [bubble1], bubble2);
+          for (const detour of b2DetoursMid) {
+            leg2Variants.push({ tag: "fork-detour", route: detour });
+          }
+
+          for (const leg2 of leg2Variants) {
+            for (const gateGoal of gateGoals) {
+              const b2ToGate = dijkstra({ grid, starts: [bubble2], goals: [gateGoal] });
+              if (b2ToGate) {
+                addLegacyCandidate(
+                  "legacy end",
+                  `via-2-bubbles-${leg1.tag}-${leg2.tag}`,
+                  [bubble1, bubble2],
+                  mergePaths(mergePaths(leg1.route.path, leg2.route.path), b2ToGate.path),
+                  leg1.route.cost + leg2.route.cost + b2ToGate.cost,
+                  gateGoal
+                );
+              }
+
+              const b2ToGatePenalized = b2ToGate
+                ? dijkstra({
+                    grid,
+                    starts: [bubble2],
+                    goals: [gateGoal],
+                    penaltyCells: buildPenaltyCellsFromPath(b2ToGate.path, 0.9)
+                  })
+                : null;
+              if (b2ToGatePenalized) {
+                addLegacyCandidate(
+                  "legacy end",
+                  `via-2-bubbles-${leg1.tag}-${leg2.tag}-gate-penalized`,
+                  [bubble1, bubble2],
+                  mergePaths(mergePaths(leg1.route.path, leg2.route.path), b2ToGatePenalized.path),
+                  leg1.route.cost + leg2.route.cost + b2ToGatePenalized.cost,
+                  gateGoal
+                );
+              }
+
+              const b2ToGateBlocked = b2ToGate
+                ? dijkstra({
+                    grid,
+                    starts: [bubble2],
+                    goals: [gateGoal],
+                    blockedEdges: buildBlockedEdgesFromPath(b2ToGate.path)
+                  })
+                : null;
+              if (b2ToGateBlocked) {
+                addLegacyCandidate(
+                  "legacy end",
+                  `via-2-bubbles-${leg1.tag}-${leg2.tag}-gate-blocked`,
+                  [bubble1, bubble2],
+                  mergePaths(mergePaths(leg1.route.path, leg2.route.path), b2ToGateBlocked.path),
+                  leg1.route.cost + leg2.route.cost + b2ToGateBlocked.cost,
+                  gateGoal
+                );
+              }
+
+              const b2GateDetours = buildForkDetours(grid, [bubble2], gateGoal);
+              for (const detour of b2GateDetours) {
+                addLegacyCandidate(
+                  "legacy end",
+                  `via-2-bubbles-${leg1.tag}-${leg2.tag}-gate-fork-detour`,
+                  [bubble1, bubble2],
+                  mergePaths(mergePaths(leg1.route.path, leg2.route.path), detour.path),
+                  leg1.route.cost + leg2.route.cost + detour.cost,
+                  gateGoal
+                );
+              }
+            }
+          }
         }
       }
     }
@@ -632,7 +808,7 @@
       return a.redCost - b.redCost || a.path.length - b.path.length;
     });
 
-    return deduped.slice(0, 64);
+    return deduped.slice(0, 160);
   }
 
   function getLowestShaftPreferenceBonus(route, entry, cluster, routeKind, isLowestShaft) {
