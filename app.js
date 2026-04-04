@@ -1907,31 +1907,27 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
     const targetVal = getCellValue(tr, tc);
     if (targetVal !== targetType) return null;
 
-    const toCenter = center(toPt);
-
     const dx = tc - fc;
     const dy = tr - fr;
 
-    let tx = toCenter.x;
-    let ty = toCenter.y;
+    if (Math.abs(dx) + Math.abs(dy) !== 1) return null;
 
-    if (dx === 1 && dy === 0) {
-      tx = toCenter.x - cell / 2;
-      ty = toCenter.y;
-    } else if (dx === -1 && dy === 0) {
-      tx = toCenter.x + cell / 2;
-      ty = toCenter.y;
-    } else if (dx === 0 && dy === 1) {
-      tx = toCenter.x;
-      ty = toCenter.y - cell / 2;
-    } else if (dx === 0 && dy === -1) {
-      tx = toCenter.x;
-      ty = toCenter.y + cell / 2;
-    } else {
-      return null;
+    const fromCenter = center(fromPt);
+
+    if (dx === 1) {
+      return { x: fromCenter.x + cell / 2, y: fromCenter.y };
+    }
+    if (dx === -1) {
+      return { x: fromCenter.x - cell / 2, y: fromCenter.y };
+    }
+    if (dy === 1) {
+      return { x: fromCenter.x, y: fromCenter.y + cell / 2 };
+    }
+    if (dy === -1) {
+      return { x: fromCenter.x, y: fromCenter.y - cell / 2 };
     }
 
-    return { x: tx, y: ty };
+    return null;
   }
 
   function getEndpointPoint(){
@@ -1942,14 +1938,14 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
     const last = path[path.length - 1];
     const prev = path[path.length - 2];
 
-    if (isBlue) {
-      const dirs = [
-        [0, 1],
-        [1, 0],
-        [0, -1],
-        [-1, 0]
-      ];
+    const dirs = [
+      [0, 1],
+      [1, 0],
+      [0, -1],
+      [-1, 0]
+    ];
 
+    if (isBlue) {
       for (const [dr, dc] of dirs) {
         const nr = last[0] + dr;
         const nc = last[1] + dc;
@@ -1961,13 +1957,6 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
     }
 
     if (isRed) {
-      const dirs = [
-        [0, 1],
-        [1, 0],
-        [0, -1],
-        [-1, 0]
-      ];
-
       for (const [dr, dc] of dirs) {
         const nr = last[0] + dr;
         const nc = last[1] + dc;
@@ -1983,6 +1972,7 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
 
   const points = path.map(center);
   const endpoint = getEndpointPoint();
+  const lastPoint = points[points.length - 1];
 
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -1992,11 +1982,14 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
 
-  for(let i = 1; i < points.length - 1; i++){
+  for(let i = 1; i < points.length; i++){
     ctx.lineTo(points[i].x, points[i].y);
   }
 
-  ctx.lineTo(endpoint.x, endpoint.y);
+  if (endpoint.x !== lastPoint.x || endpoint.y !== lastPoint.y) {
+    ctx.lineTo(endpoint.x, endpoint.y);
+  }
+
   ctx.stroke();
 
   ctx.lineWidth = width;
@@ -2004,11 +1997,14 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
 
-  for(let i = 1; i < points.length - 1; i++){
+  for(let i = 1; i < points.length; i++){
     ctx.lineTo(points[i].x, points[i].y);
   }
 
-  ctx.lineTo(endpoint.x, endpoint.y);
+  if (endpoint.x !== lastPoint.x || endpoint.y !== lastPoint.y) {
+    ctx.lineTo(endpoint.x, endpoint.y);
+  }
+
   ctx.stroke();
 }
 
