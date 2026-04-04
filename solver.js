@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V4.9 loaded");
+  console.log("ZM Solver V5.0 loaded");
 
-  const SOLVER_VERSION = "V4.9";
+  const SOLVER_VERSION = "V5.0";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -232,6 +232,16 @@
     return out;
   }
 
+  function hasPathLoop(path) {
+    const seen = new Set();
+    for (const [r, c] of path || []) {
+      const key = `${r},${c}`;
+      if (seen.has(key)) return true;
+      seen.add(key);
+    }
+    return false;
+  }
+
   function dedupeCells(cells) {
     const seen = new Set();
     const out = [];
@@ -379,6 +389,7 @@
 
   function addCandidate(candidates, candidate) {
     if (!candidate || !candidate.path || !candidate.path.length) return;
+    if (hasPathLoop(candidate.path)) return;
     candidates.push(candidate);
   }
 
@@ -1315,6 +1326,8 @@
     const allCandidates = [];
 
     for (const redCandidate of redCandidates) {
+      if (hasPathLoop(redCandidate.path)) continue;
+
       const blueEval = evaluateOrderedBlueForRedCandidate(
         grid,
         starts,
@@ -1407,6 +1420,14 @@
           best = candidate;
         }
       }
+    }
+
+    if (!best) {
+      return {
+        ok: false,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid non-loop red path to gate.`,
+        startRow,
+      };
     }
 
     const routeAnalysis = buildRouteAnalysis(grid, allCandidates, best);
