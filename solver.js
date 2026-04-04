@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V5.2 loaded");
+  console.log("ZM Solver V5.1 loaded");
 
-  const SOLVER_VERSION = "V5.2";
+  const SOLVER_VERSION = "V5.1";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -410,6 +410,17 @@
     return Infinity;
   }
 
+  function firstBubbleTravelCost(path, grid) {
+    if (!path || !path.length) return Infinity;
+    let total = 0;
+    for (let i = 1; i < path.length; i++) {
+      const [r, c] = path[i];
+      total += cellWeight(grid, r, c, new Set());
+      if (grid[r] && grid[r][c] === "B") return total;
+    }
+    return Infinity;
+  }
+
   function buildRedCandidates(grid, starts, gateGoals, bubbles) {
     const candidates = [];
 
@@ -423,7 +434,8 @@
           redBubbles: [],
           path: uniquePath(direct.path),
           redCost: direct.cost,
-          gateGoal
+          gateGoal,
+          firstBubbleTravelCost: firstBubbleTravelCost(uniquePath(direct.path), grid)
         });
 
         const penalized = dijkstra({
@@ -440,7 +452,8 @@
             redBubbles: [],
             path: uniquePath(penalized.path),
             redCost: penalized.cost,
-            gateGoal
+            gateGoal,
+            firstBubbleTravelCost: firstBubbleTravelCost(uniquePath(penalized.path), grid)
           });
         }
 
@@ -458,20 +471,23 @@
             redBubbles: [],
             path: uniquePath(blocked.path),
             redCost: blocked.cost,
-            gateGoal
+            gateGoal,
+            firstBubbleTravelCost: firstBubbleTravelCost(uniquePath(blocked.path), grid)
           });
         }
 
         const forkDetours = buildForkDetours(grid, starts, gateGoal);
         for (const fork of forkDetours) {
+          const path = uniquePath(fork.path);
           addCandidate(candidates, {
             mode: "direct",
             variant: "fork-detour",
             redBubble: null,
             redBubbles: [],
-            path: uniquePath(fork.path),
+            path,
             redCost: fork.cost,
-            gateGoal
+            gateGoal,
+            firstBubbleTravelCost: firstBubbleTravelCost(path, grid)
           });
         }
       }
@@ -484,14 +500,16 @@
       for (const gateGoal of gateGoals) {
         const b = dijkstra({ grid, starts: [bubble], goals: [gateGoal] });
         if (b) {
+          const path = uniquePath(mergePaths(a.path, b.path));
           addCandidate(candidates, {
             mode: "via bubble",
             variant: "base",
             redBubble: bubble,
             redBubbles: [bubble],
-            path: uniquePath(mergePaths(a.path, b.path)),
+            path,
             redCost: a.cost + b.cost,
-            gateGoal
+            gateGoal,
+            firstBubbleTravelCost: a.cost
           });
         }
 
@@ -502,14 +520,16 @@
           penaltyCells: b ? buildPenaltyCellsFromPath(b.path, 0.35) : new Map()
         });
         if (bPenalized) {
+          const path = uniquePath(mergePaths(a.path, bPenalized.path));
           addCandidate(candidates, {
             mode: "via bubble",
             variant: "penalized",
             redBubble: bubble,
             redBubbles: [bubble],
-            path: uniquePath(mergePaths(a.path, bPenalized.path)),
+            path,
             redCost: a.cost + bPenalized.cost,
-            gateGoal
+            gateGoal,
+            firstBubbleTravelCost: a.cost
           });
         }
 
@@ -520,27 +540,31 @@
           blockedEdges: b ? buildBlockedEdgesFromPath(b.path) : new Set()
         });
         if (bBlocked) {
+          const path = uniquePath(mergePaths(a.path, bBlocked.path));
           addCandidate(candidates, {
             mode: "via bubble",
             variant: "blocked",
             redBubble: bubble,
             redBubbles: [bubble],
-            path: uniquePath(mergePaths(a.path, bBlocked.path)),
+            path,
             redCost: a.cost + bBlocked.cost,
-            gateGoal
+            gateGoal,
+            firstBubbleTravelCost: a.cost
           });
         }
 
         const forkDetours = buildForkDetours(grid, [bubble], gateGoal);
         for (const fork of forkDetours) {
+          const path = uniquePath(mergePaths(a.path, fork.path));
           addCandidate(candidates, {
             mode: "via bubble",
             variant: "fork-detour",
             redBubble: bubble,
             redBubbles: [bubble],
-            path: uniquePath(mergePaths(a.path, fork.path)),
+            path,
             redCost: a.cost + fork.cost,
-            gateGoal
+            gateGoal,
+            firstBubbleTravelCost: a.cost
           });
         }
       }
@@ -561,7 +585,7 @@
   function buildLegacyEndRedCandidates(grid, starts, gateGoals, bubbles) {
     const candidates = [];
 
-    function addLegacyCandidate(mode, variant, redBubbles, path, redCost, gateGoal) {
+    function addLegacyCandidate(mode, variant, redBubbles, path, redCost, gateGoal, bubbleTravelCost) {
       addCandidate(candidates, {
         mode,
         variant,
@@ -569,49 +593,24 @@
         redBubbles: redBubbles || [],
         path: uniquePath(path),
         redCost,
-        gateGoal
+        gateGoal,
+        firstBubbleTravelCost: bubbleTravelCost
       });
     }
 
-    // direct gate routes still allowed, but they should lose to bubble routes unless no bubble route exists
-    for (const gateGoal of gateGoals) {
-      const direct = dijkstra({ grid, starts, goals: [gateGoal] });
-      if (direct) {
-        addLegacyCandidate("legacy end", "direct", [], direct.path, direct.cost, gateGoal);
-
-        const penalized = dijkstra({
-          grid,
-          starts,
-          goals: [gateGoal],
-          penaltyCells: buildPenaltyCellsFromPath(direct.path, 0.9)
-        });
-        if (penalized) {
-          addLegacyCandidate("legacy end", "direct-penalized", [], penalized.path, penalized.cost, gateGoal);
-        }
-
-        const blocked = dijkstra({
-          grid,
-          starts,
-          goals: [gateGoal],
-          blockedEdges: buildBlockedEdgesFromPath(direct.path)
-        });
-        if (blocked) {
-          addLegacyCandidate("legacy end", "direct-blocked", [], blocked.path, blocked.cost, gateGoal);
-        }
-
-        const detours = buildForkDetours(grid, starts, gateGoal);
-        for (const detour of detours) {
-          addLegacyCandidate("legacy end", "direct-fork-detour", [], detour.path, detour.cost, gateGoal);
+    // Only allow direct-to-gate if there are literally no bubbles on the map.
+    if (!bubbles.length) {
+      for (const gateGoal of gateGoals) {
+        const direct = dijkstra({ grid, starts, goals: [gateGoal] });
+        if (direct) {
+          addLegacyCandidate("legacy end", "direct", [], direct.path, direct.cost, gateGoal, Infinity);
         }
       }
     }
 
-    // one-bubble and two-bubble routes
     for (const bubble1 of bubbles) {
       const sToB1 = dijkstra({ grid, starts, goals: [bubble1] });
       if (!sToB1) continue;
-
-      const leg1Variants = [sToB1];
 
       const sToB1Penalized = dijkstra({
         grid,
@@ -619,7 +618,6 @@
         goals: [bubble1],
         penaltyCells: buildPenaltyCellsFromPath(sToB1.path, 0.9)
       });
-      if (sToB1Penalized) leg1Variants.push(sToB1Penalized);
 
       const sToB1Blocked = dijkstra({
         grid,
@@ -627,10 +625,17 @@
         goals: [bubble1],
         blockedEdges: buildBlockedEdgesFromPath(sToB1.path)
       });
-      if (sToB1Blocked) leg1Variants.push(sToB1Blocked);
 
-      const sToB1Detours = buildForkDetours(grid, starts, bubble1);
-      for (const detour of sToB1Detours) leg1Variants.push(detour);
+      const leg1Variants = [
+        { tag: "base", route: sToB1 },
+        { tag: "penalized", route: sToB1Penalized },
+        { tag: "blocked", route: sToB1Blocked }
+      ].filter(v => v.route && v.route.path && v.route.path.length);
+
+      const leg1Detours = buildForkDetours(grid, starts, bubble1);
+      for (const detour of leg1Detours) {
+        leg1Variants.push({ tag: "fork-detour", route: detour });
+      }
 
       for (const leg1 of leg1Variants) {
         for (const gateGoal of gateGoals) {
@@ -638,11 +643,65 @@
           if (b1ToGate) {
             addLegacyCandidate(
               "legacy end",
-              "via-1-bubble",
+              `via-1-bubble-${leg1.tag}`,
               [bubble1],
-              mergePaths(leg1.path, b1ToGate.path),
-              leg1.cost + b1ToGate.cost,
-              gateGoal
+              mergePaths(leg1.route.path, b1ToGate.path),
+              leg1.route.cost + b1ToGate.cost,
+              gateGoal,
+              leg1.route.cost
+            );
+          }
+
+          const b1ToGatePenalized = b1ToGate
+            ? dijkstra({
+                grid,
+                starts: [bubble1],
+                goals: [gateGoal],
+                penaltyCells: buildPenaltyCellsFromPath(b1ToGate.path, 0.9)
+              })
+            : null;
+          if (b1ToGatePenalized) {
+            addLegacyCandidate(
+              "legacy end",
+              `via-1-bubble-${leg1.tag}-gate-penalized`,
+              [bubble1],
+              mergePaths(leg1.route.path, b1ToGatePenalized.path),
+              leg1.route.cost + b1ToGatePenalized.cost,
+              gateGoal,
+              leg1.route.cost
+            );
+          }
+
+          const b1ToGateBlocked = b1ToGate
+            ? dijkstra({
+                grid,
+                starts: [bubble1],
+                goals: [gateGoal],
+                blockedEdges: buildBlockedEdgesFromPath(b1ToGate.path)
+              })
+            : null;
+          if (b1ToGateBlocked) {
+            addLegacyCandidate(
+              "legacy end",
+              `via-1-bubble-${leg1.tag}-gate-blocked`,
+              [bubble1],
+              mergePaths(leg1.route.path, b1ToGateBlocked.path),
+              leg1.route.cost + b1ToGateBlocked.cost,
+              gateGoal,
+              leg1.route.cost
+            );
+          }
+
+          const gateDetours = buildForkDetours(grid, [bubble1], gateGoal);
+          for (const detour of gateDetours) {
+            addLegacyCandidate(
+              "legacy end",
+              `via-1-bubble-${leg1.tag}-gate-fork-detour`,
+              [bubble1],
+              mergePaths(leg1.route.path, detour.path),
+              leg1.route.cost + detour.cost,
+              gateGoal,
+              leg1.route.cost
             );
           }
         }
@@ -653,15 +712,12 @@
           const b1ToB2 = dijkstra({ grid, starts: [bubble1], goals: [bubble2] });
           if (!b1ToB2) continue;
 
-          const leg2Variants = [b1ToB2];
-
           const b1ToB2Penalized = dijkstra({
             grid,
             starts: [bubble1],
             goals: [bubble2],
             penaltyCells: buildPenaltyCellsFromPath(b1ToB2.path, 0.9)
           });
-          if (b1ToB2Penalized) leg2Variants.push(b1ToB2Penalized);
 
           const b1ToB2Blocked = dijkstra({
             grid,
@@ -669,24 +725,85 @@
             goals: [bubble2],
             blockedEdges: buildBlockedEdgesFromPath(b1ToB2.path)
           });
-          if (b1ToB2Blocked) leg2Variants.push(b1ToB2Blocked);
 
-          const b1ToB2Detours = buildForkDetours(grid, [bubble1], bubble2);
-          for (const detour of b1ToB2Detours) leg2Variants.push(detour);
+          const leg2Variants = [
+            { tag: "base", route: b1ToB2 },
+            { tag: "penalized", route: b1ToB2Penalized },
+            { tag: "blocked", route: b1ToB2Blocked }
+          ].filter(v => v.route && v.route.path && v.route.path.length);
+
+          const b2DetoursMid = buildForkDetours(grid, [bubble1], bubble2);
+          for (const detour of b2DetoursMid) {
+            leg2Variants.push({ tag: "fork-detour", route: detour });
+          }
 
           for (const leg2 of leg2Variants) {
             for (const gateGoal of gateGoals) {
               const b2ToGate = dijkstra({ grid, starts: [bubble2], goals: [gateGoal] });
-              if (!b2ToGate) continue;
+              if (b2ToGate) {
+                addLegacyCandidate(
+                  "legacy end",
+                  `via-2-bubbles-${leg1.tag}-${leg2.tag}`,
+                  [bubble1, bubble2],
+                  mergePaths(mergePaths(leg1.route.path, leg2.route.path), b2ToGate.path),
+                  leg1.route.cost + leg2.route.cost + b2ToGate.cost,
+                  gateGoal,
+                  leg1.route.cost
+                );
+              }
 
-              addLegacyCandidate(
-                "legacy end",
-                "via-2-bubbles",
-                [bubble1, bubble2],
-                mergePaths(mergePaths(leg1.path, leg2.path), b2ToGate.path),
-                leg1.cost + leg2.cost + b2ToGate.cost,
-                gateGoal
-              );
+              const b2ToGatePenalized = b2ToGate
+                ? dijkstra({
+                    grid,
+                    starts: [bubble2],
+                    goals: [gateGoal],
+                    penaltyCells: buildPenaltyCellsFromPath(b2ToGate.path, 0.9)
+                  })
+                : null;
+              if (b2ToGatePenalized) {
+                addLegacyCandidate(
+                  "legacy end",
+                  `via-2-bubbles-${leg1.tag}-${leg2.tag}-gate-penalized`,
+                  [bubble1, bubble2],
+                  mergePaths(mergePaths(leg1.route.path, leg2.route.path), b2ToGatePenalized.path),
+                  leg1.route.cost + leg2.route.cost + b2ToGatePenalized.cost,
+                  gateGoal,
+                  leg1.route.cost
+                );
+              }
+
+              const b2ToGateBlocked = b2ToGate
+                ? dijkstra({
+                    grid,
+                    starts: [bubble2],
+                    goals: [gateGoal],
+                    blockedEdges: buildBlockedEdgesFromPath(b2ToGate.path)
+                  })
+                : null;
+              if (b2ToGateBlocked) {
+                addLegacyCandidate(
+                  "legacy end",
+                  `via-2-bubbles-${leg1.tag}-${leg2.tag}-gate-blocked`,
+                  [bubble1, bubble2],
+                  mergePaths(mergePaths(leg1.route.path, leg2.route.path), b2ToGateBlocked.path),
+                  leg1.route.cost + leg2.route.cost + b2ToGateBlocked.cost,
+                  gateGoal,
+                  leg1.route.cost
+                );
+              }
+
+              const b2GateDetours = buildForkDetours(grid, [bubble2], gateGoal);
+              for (const detour of b2GateDetours) {
+                addLegacyCandidate(
+                  "legacy end",
+                  `via-2-bubbles-${leg1.tag}-${leg2.tag}-gate-fork-detour`,
+                  [bubble1, bubble2],
+                  mergePaths(mergePaths(leg1.route.path, leg2.route.path), detour.path),
+                  leg1.route.cost + leg2.route.cost + detour.cost,
+                  gateGoal,
+                  leg1.route.cost
+                );
+              }
             }
           }
         }
@@ -701,23 +818,20 @@
       return true;
     });
 
-    // IMPORTANT:
-    // legacy end chambers must prefer:
-    // 1) most bubbles
-    // 2) lowest cost
-    // 3) earliest first bubble
     deduped.sort((a, b) => {
       const aBubbleCount = countRedBubbles(a.path, grid);
       const bBubbleCount = countRedBubbles(b.path, grid);
       if (aBubbleCount !== bBubbleCount) return bBubbleCount - aBubbleCount;
 
-      if (a.redCost !== b.redCost) return a.redCost - b.redCost;
+      const aFirstBubbleCost = Number.isFinite(a.firstBubbleTravelCost) ? a.firstBubbleTravelCost : Infinity;
+      const bFirstBubbleCost = Number.isFinite(b.firstBubbleTravelCost) ? b.firstBubbleTravelCost : Infinity;
+      if (aFirstBubbleCost !== bFirstBubbleCost) return aFirstBubbleCost - bFirstBubbleCost;
 
       const aFirst = firstBubbleStep(a.path, grid);
       const bFirst = firstBubbleStep(b.path, grid);
       if (aFirst !== bFirst) return aFirst - bFirst;
 
-      return a.path.length - b.path.length;
+      return a.redCost - b.redCost || a.path.length - b.path.length;
     });
 
     return deduped.slice(0, 160);
@@ -1065,8 +1179,6 @@
       );
     }
 
-    // IMPORTANT:
-    // blue must NOT chase bubbles already taken by red
     const redBubbleKeys = new Set((redCandidate.redBubbles || []).map(([r, c]) => `${r},${c}`));
 
     for (const bubble of bubbles) {
@@ -1141,9 +1253,21 @@
       if (a.unresolvedTargets !== b.unresolvedTargets) {
         return a.unresolvedTargets - b.unresolvedTargets;
       }
+
+      if ((a.redBubbleCount || 0) !== (b.redBubbleCount || 0)) {
+        return (b.redBubbleCount || 0) - (a.redBubbleCount || 0);
+      }
+
+      const aFirstBubbleCost = Number.isFinite(a.firstBubbleTravelCost) ? a.firstBubbleTravelCost : Infinity;
+      const bFirstBubbleCost = Number.isFinite(b.firstBubbleTravelCost) ? b.firstBubbleTravelCost : Infinity;
+      if (aFirstBubbleCost !== bFirstBubbleCost) {
+        return aFirstBubbleCost - bFirstBubbleCost;
+      }
+
       if (a.effectiveTotal !== b.effectiveTotal) {
         return a.effectiveTotal - b.effectiveTotal;
       }
+
       return a.redCost - b.redCost;
     });
 
@@ -1156,6 +1280,10 @@
       if (!approved) {
         if (candidate.unresolvedTargets > best.unresolvedTargets) {
           reason = `More unresolved targets (${candidate.unresolvedTargets} vs ${best.unresolvedTargets})`;
+        } else if ((candidate.redBubbleCount || 0) < (best.redBubbleCount || 0)) {
+          reason = `Fewer red bubbles (${candidate.redBubbleCount || 0} vs ${best.redBubbleCount || 0})`;
+        } else if ((candidate.firstBubbleTravelCost ?? Infinity) > (best.firstBubbleTravelCost ?? Infinity)) {
+          reason = `Higher first-bubble cost by ${roundCost((candidate.firstBubbleTravelCost ?? Infinity) - (best.firstBubbleTravelCost ?? Infinity))}`;
         } else if (candidate.effectiveTotal > best.effectiveTotal) {
           reason = `Higher effective total by ${roundCost(candidate.effectiveTotal - best.effectiveTotal)}`;
         } else if (candidate.redCost > best.redCost) {
@@ -1172,6 +1300,8 @@
         redMode: candidate.redMode,
         redVariant: candidate.redVariant,
         unresolvedTargets: candidate.unresolvedTargets,
+        redBubbleCount: candidate.redBubbleCount || 0,
+        firstBubbleTravelCost: roundCost(Number.isFinite(candidate.firstBubbleTravelCost) ? candidate.firstBubbleTravelCost : 0),
         redPathValues: getPathValueLabel(grid, candidate.redPath),
         redPathCoords: getPathCoordLabel(candidate.redPath),
         redCost: roundCost(candidate.redCost),
@@ -1241,6 +1371,10 @@
 
       const redBubbleCount = countRedBubbles(redCandidate.path, grid);
       const firstRedBubbleAt = firstBubbleStep(redCandidate.path, grid);
+      const firstRedBubbleCost =
+        Number.isFinite(redCandidate.firstBubbleTravelCost)
+          ? redCandidate.firstBubbleTravelCost
+          : firstBubbleTravelCost(redCandidate.path, grid);
 
       let effectiveTotal =
         redCandidate.redCost +
@@ -1252,17 +1386,6 @@
         blueEval.redLoopPenalty +
         blueEval.overAssistPenalty;
 
-      if (legacyEndMode) {
-        // RULE:
-        // in legacy end chambers the order is:
-        // 1) most bubbles
-        // 2) lowest weight cost
-        // 3) earlier first bubble
-        effectiveTotal -= redBubbleCount * 1000000;
-        effectiveTotal += redCandidate.redCost;
-        effectiveTotal += firstRedBubbleAt * 5;
-      }
-
       const candidate = {
         redMode: redCandidate.mode,
         redVariant: redCandidate.variant,
@@ -1270,6 +1393,7 @@
         redBubbles: redCandidate.redBubbles || (redCandidate.redBubble ? [redCandidate.redBubble] : []),
         redBubbleCount,
         firstRedBubbleAt,
+        firstBubbleTravelCost: firstRedBubbleCost,
         redPath: redCandidate.path,
         redCost: redCandidate.redCost,
         gateGoal: redCandidate.gateGoal,
@@ -1307,15 +1431,15 @@
           }
 
           if (candidate.redBubbleCount === best.redBubbleCount) {
-            if (candidate.redCost < best.redCost) {
+            const candFirstCost = Number.isFinite(candidate.firstBubbleTravelCost) ? candidate.firstBubbleTravelCost : Infinity;
+            const bestFirstCost = Number.isFinite(best.firstBubbleTravelCost) ? best.firstBubbleTravelCost : Infinity;
+
+            if (candFirstCost < bestFirstCost) {
               best = candidate;
               continue;
             }
 
-            if (
-              candidate.redCost === best.redCost &&
-              candidate.firstRedBubbleAt < best.firstRedBubbleAt
-            ) {
+            if (candFirstCost === bestFirstCost && candidate.redCost < best.redCost) {
               best = candidate;
               continue;
             }
@@ -1361,6 +1485,7 @@
       redBubbles: best.redBubbles,
       redBubbleCount: best.redBubbleCount,
       firstRedBubbleAt: best.firstRedBubbleAt,
+      firstBubbleTravelCost: roundCost(Number.isFinite(best.firstBubbleTravelCost) ? best.firstBubbleTravelCost : 0),
       redPath: best.redPath,
       redCost: roundCost(best.redCost),
       bluePaths: best.bluePaths,
@@ -1389,8 +1514,15 @@
         `red_variant: ${best.redVariant}\n` +
         `red_bubble_count: ${best.redBubbleCount}\n` +
         `first_red_bubble_at: ${best.firstRedBubbleAt === Infinity ? "none" : best.firstRedBubbleAt}\n` +
+        `first_bubble_travel_cost: ${roundCost(Number.isFinite(best.firstBubbleTravelCost) ? best.firstBubbleTravelCost : 0)}\n` +
         `red_cost: ${roundCost(best.redCost)}\n` +
         `blue_cost: ${roundCost(best.blueCost)}\n` +
+        `dependency_cost: ${roundCost(best.dependencyCost)}\n` +
+        `assist_bonus: ${roundCost(best.assistBonus)}\n` +
+        `lower_shaft_bonus: ${roundCost(best.lowerShaftBonus)}\n` +
+        `bubble_bonus: ${roundCost(best.bubbleBonus)}\n` +
+        `red_loop_penalty: ${roundCost(best.redLoopPenalty)}\n` +
+        `over_assist_penalty: ${roundCost(best.overAssistPenalty)}\n` +
         `bubble_count: ${bubbles.length}\n` +
         `shaft_count: ${shaftClustersOrdered.length}\n` +
         `red_candidate_count: ${redCandidates.length}\n` +
