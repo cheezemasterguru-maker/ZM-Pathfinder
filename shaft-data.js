@@ -187,9 +187,33 @@ window.ZM_SHAFT_DATA = {
 
   "Graveyard": []
 },
-      "The Deep": {}
+      "The Deep": {
+  "Chamber 1": [
+    { shaftType: "Beryl", level: 9, auto: 12 },
+    { shaftType: "Quartz", level: 21, auto: 12 }
+  ],
 
-    },
+  "Chamber 2": [
+    { shaftType: "Cobalt", level: 22, auto: 13 },
+    { shaftType: "Amber", level: 25, auto: 13 },
+    { shaftType: "Ametrine", level: 28, auto: 13 }
+  ],
+
+  "Chamber 3": [
+    { shaftType: "Barite", level: 32, auto: 13 },
+    { shaftType: "Elendir", level: 34, auto: 13 },
+    { shaftType: "Lapis Lazuli", level: 37, auto: 13 }
+  ],
+
+  "Chamber 4": [
+    { shaftType: "Aventurine", level: 41, auto: 13 },
+    { shaftType: "Obsidian", level: 44, auto: 13 }
+  ],
+
+  "Graveyard": [
+    { shaftType: "Peridot", level: 55, auto: 13 }
+  ]
+},
 
     "4th of July": {
       "Mine 1": {},
