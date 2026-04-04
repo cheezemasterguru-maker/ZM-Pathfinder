@@ -1889,6 +1889,10 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
     };
   }
 
+  function manhattan(a, b){
+    return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
+  }
+
   function isInBounds(r, c){
     return r >= 0 && c >= 0 && r < currentRowCount && c < COLS;
   }
@@ -1898,14 +1902,11 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
     return grid[r]?.[c];
   }
 
-  function getTouchPointForNeighbor(fromPt, toPt, targetType){
+  function getBoundaryTouchPoint(fromPt, toPt){
     if (!fromPt || !toPt) return null;
 
     const [fr, fc] = fromPt;
     const [tr, tc] = toPt;
-
-    const targetVal = getCellValue(tr, tc);
-    if (targetVal !== targetType) return null;
 
     const dx = tc - fc;
     const dy = tr - fr;
@@ -1914,26 +1915,16 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
 
     const fromCenter = center(fromPt);
 
-    if (dx === 1) {
-      return { x: fromCenter.x + cell / 2, y: fromCenter.y };
-    }
-    if (dx === -1) {
-      return { x: fromCenter.x - cell / 2, y: fromCenter.y };
-    }
-    if (dy === 1) {
-      return { x: fromCenter.x, y: fromCenter.y + cell / 2 };
-    }
-    if (dy === -1) {
-      return { x: fromCenter.x, y: fromCenter.y - cell / 2 };
-    }
+    if (dx === 1) return { x: fromCenter.x + cell / 2, y: fromCenter.y };
+    if (dx === -1) return { x: fromCenter.x - cell / 2, y: fromCenter.y };
+    if (dy === 1) return { x: fromCenter.x, y: fromCenter.y + cell / 2 };
+    if (dy === -1) return { x: fromCenter.x, y: fromCenter.y - cell / 2 };
 
     return null;
   }
 
-  function getEndpointPoint(){
-    if (path.length === 1) {
-      return center(path[0]);
-    }
+  function getBlueEndpointPoint(){
+    if (path.length === 1) return center(path[0]);
 
     const last = path[path.length - 1];
     const prev = path[path.length - 2];
@@ -1945,33 +1936,45 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
       [-1, 0]
     ];
 
-    if (isBlue) {
-      for (const [dr, dc] of dirs) {
-        const nr = last[0] + dr;
-        const nc = last[1] + dc;
-        if (prev && nr === prev[0] && nc === prev[1]) continue;
+    for (const [dr, dc] of dirs) {
+      const nr = last[0] + dr;
+      const nc = last[1] + dc;
 
-        const touch = getTouchPointForNeighbor(last, [nr, nc], "S");
-        if (touch) return touch;
-      }
+      if (prev && nr === prev[0] && nc === prev[1]) continue;
+      if (getCellValue(nr, nc) !== "S") continue;
+
+      const touch = getBoundaryTouchPoint(last, [nr, nc]);
+      if (touch) return touch;
     }
 
-    if (isRed) {
-      for (const [dr, dc] of dirs) {
-        const nr = last[0] + dr;
-        const nc = last[1] + dc;
-        if (prev && nr === prev[0] && nc === prev[1]) continue;
+    return center(last);
+  }
 
-        const touch = getTouchPointForNeighbor(last, [nr, nc], "X");
-        if (touch) return touch;
-      }
+  function getRedEndpointPoint(){
+    if (path.length === 1) return center(path[0]);
+
+    const last = path[path.length - 1];
+    const attackPoints = Array.isArray(solveState.attackPoints) ? solveState.attackPoints : [];
+
+    if (!attackPoints.length) return center(last);
+
+    const adjacentAttackPoints = attackPoints.filter(pt => manhattan(last, pt) === 1);
+
+    if (adjacentAttackPoints.length) {
+      const touch = getBoundaryTouchPoint(last, adjacentAttackPoints[0]);
+      if (touch) return touch;
     }
 
     return center(last);
   }
 
   const points = path.map(center);
-  const endpoint = getEndpointPoint();
+  const endpoint = isBlue
+    ? getBlueEndpointPoint()
+    : isRed
+      ? getRedEndpointPoint()
+      : center(path[path.length - 1]);
+
   const lastPoint = points[points.length - 1];
 
   ctx.lineCap = "round";
