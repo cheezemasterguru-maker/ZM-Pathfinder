@@ -18,7 +18,7 @@ const DIFFICULTY_MAX = 1299;
 
 const LEGACY_EVENT_ORDER = [
   "Love Story",
-  "Clover Valley",
+  "Clover Festival",
   "Easter Egg Hunt",
   "4th of July",
   "Mystery Reef",
@@ -34,6 +34,7 @@ const LEGACY_MINE_ORDER = [
   "Mine 3",
   "Mine 4",
   "Mine 5",
+  "Mine 6",
   "The Deep"
 ];
 
@@ -91,7 +92,7 @@ function getEventTranslationKey(name) {
     "Volcano Awakening": "volcanoAwakening",
     "Moon Odyssey": "moonOdyssey",
     "Love Story": "loveStory",
-    "Clover Valley": "cloverValley",
+    "Clover Festival": "cloverFestival",
     "Easter Egg Hunt": "easterEggHunt",
     "4th of July": "fourthOfJuly",
     "Mystery Reef": "mysteryReef",
@@ -110,6 +111,7 @@ function getMineTranslationKey(name) {
     "Mine 3": "mine3",
     "Mine 4": "mine4",
     "Mine 5": "mine5",
+    "Mine 6": "mine6",
     "The Deep": "theDeep"
   };
   return map[name] || null;
@@ -147,7 +149,8 @@ function getShaftTypeTranslationKey(name) {
     "Elendir": "elendir",
     "Lapis Lazuli": "lapisLazuli",
     "Aventurine": "aventurine",
-    "Obsidian": "obsidian"
+    "Obsidian": "obsidian",
+    "Peridot": "peridot"
   };
   return map[name] || null;
 }
