@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V4.8 loaded");
+  console.log("ZM Solver V4.8 FIXED loaded");
 
-  const SOLVER_VERSION = "V4.8";
+  const SOLVER_VERSION = "V4.8-FIXED";
 
   function numberCost(n) {
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -548,74 +548,6 @@
   }
 
   function buildLegacyEndRedCandidates(grid, starts, gateGoals, bubbles) {
-  const candidates = [];
-
-  for (const gateGoal of gateGoals) {
-    const direct = dijkstra({ grid, starts, goals: [gateGoal] });
-    if (direct) {
-      addCandidate(candidates, {
-        mode: "legacy end",
-        variant: "direct",
-        redBubble: null,
-        redBubbles: [],
-        path: uniquePath(direct.path),
-        redCost: direct.cost,
-        gateGoal
-      });
-    }
-  }
-
-  // 🔥 FORCE every bubble to be attempted FIRST
-  for (const bubble of bubbles) {
-    const toBubble = dijkstra({ grid, starts, goals: [bubble] });
-    if (!toBubble) continue;
-
-    for (const gateGoal of gateGoals) {
-      const toGate = dijkstra({ grid, starts: [bubble], goals: [gateGoal] });
-      if (!toGate) continue;
-
-      addCandidate(candidates, {
-        mode: "legacy end",
-        variant: "forced-bubble",
-        redBubble: bubble,
-        redBubbles: [bubble],
-        path: uniquePath(mergePaths(toBubble.path, toGate.path)),
-        redCost: toBubble.cost + toGate.cost,
-        gateGoal
-      });
-    }
-  }
-
-  // 🔥 ALSO allow chaining bubbles more aggressively
-  for (const bubble1 of bubbles) {
-    const a = dijkstra({ grid, starts, goals: [bubble1] });
-    if (!a) continue;
-
-    for (const bubble2 of bubbles) {
-      if (bubble1[0] === bubble2[0] && bubble1[1] === bubble2[1]) continue;
-
-      const b = dijkstra({ grid, starts: [bubble1], goals: [bubble2] });
-      if (!b) continue;
-
-      for (const gateGoal of gateGoals) {
-        const c = dijkstra({ grid, starts: [bubble2], goals: [gateGoal] });
-        if (!c) continue;
-
-        addCandidate(candidates, {
-          mode: "legacy end",
-          variant: "forced-2-bubble",
-          redBubble: bubble1,
-          redBubbles: [bubble1, bubble2],
-          path: uniquePath(mergePaths(mergePaths(a.path, b.path), c.path)),
-          redCost: a.cost + b.cost + c.cost,
-          gateGoal
-        });
-      }
-    }
-  }
-
-  return candidates;
-}
     const candidates = [];
 
     for (const gateGoal of gateGoals) {
@@ -633,30 +565,35 @@
       }
     }
 
+    for (const bubble of bubbles) {
+      const toBubble = dijkstra({ grid, starts, goals: [bubble] });
+      if (!toBubble) continue;
+
+      for (const gateGoal of gateGoals) {
+        const toGate = dijkstra({ grid, starts: [bubble], goals: [gateGoal] });
+        if (!toGate) continue;
+
+        addCandidate(candidates, {
+          mode: "legacy end",
+          variant: "forced-bubble",
+          redBubble: bubble,
+          redBubbles: [bubble],
+          path: uniquePath(mergePaths(toBubble.path, toGate.path)),
+          redCost: toBubble.cost + toGate.cost,
+          gateGoal
+        });
+      }
+    }
+
     for (const bubble1 of bubbles) {
       const a = dijkstra({ grid, starts, goals: [bubble1] });
       if (!a) continue;
 
-      for (const gateGoal of gateGoals) {
-        const b = dijkstra({ grid, starts: [bubble1], goals: [gateGoal] });
-        if (!b) continue;
-
-        addCandidate(candidates, {
-          mode: "legacy end",
-          variant: "via-1-bubble",
-          redBubble: bubble1,
-          redBubbles: [bubble1],
-          path: uniquePath(mergePaths(a.path, b.path)),
-          redCost: a.cost + b.cost,
-          gateGoal
-        });
-      }
-
       for (const bubble2 of bubbles) {
         if (bubble1[0] === bubble2[0] && bubble1[1] === bubble2[1]) continue;
 
-        const b12 = dijkstra({ grid, starts: [bubble1], goals: [bubble2] });
-        if (!b12) continue;
+        const b = dijkstra({ grid, starts: [bubble1], goals: [bubble2] });
+        if (!b) continue;
 
         for (const gateGoal of gateGoals) {
           const c = dijkstra({ grid, starts: [bubble2], goals: [gateGoal] });
@@ -664,11 +601,11 @@
 
           addCandidate(candidates, {
             mode: "legacy end",
-            variant: "via-2-bubbles",
+            variant: "forced-2-bubble",
             redBubble: bubble1,
             redBubbles: [bubble1, bubble2],
-            path: uniquePath(mergePaths(mergePaths(a.path, b12.path), c.path)),
-            redCost: a.cost + b12.cost + c.cost,
+            path: uniquePath(mergePaths(mergePaths(a.path, b.path), c.path)),
+            redCost: a.cost + b.cost + c.cost,
             gateGoal
           });
         }
@@ -1225,15 +1162,10 @@
         blueEval.overAssistPenalty;
 
       if (legacyEndMode) {
-  // HARD PRIORITY: bubbles override everything
-  effectiveTotal -= redBubbleCount * 1000;
-
-  // STRONG push for earlier bubbles
-  effectiveTotal -= firstRedBubbleBonus * 3;
-
-  // Reduce bias toward clean/cheap gate paths
-  effectiveTotal -= redCandidate.redCost * 0.15;
-}
+        effectiveTotal -= redBubbleCount * 1000;
+        effectiveTotal -= firstRedBubbleBonus * 3;
+        effectiveTotal -= redCandidate.redCost * 0.15;
+      }
 
       const candidate = {
         redMode: redCandidate.mode,
