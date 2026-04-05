@@ -95,6 +95,37 @@
     );
     const v = grid[r][c];
 
+    // Goal/start priorities must override normal tile typing
+    if (isGoalCell(r, c, options.goals)) {
+      let cost = priorities.gateFlat;
+
+      if (v === "B") return cost + priorities.bubbleFlat;
+      if (v === "") return cost + priorities.blankFlat;
+      if (typeof v === "number") {
+        cost += numberCost(v) * priorities.mineralMultiplier + priorities.mineralFlat;
+        if (v >= priorities.highMineralThreshold) {
+          cost += priorities.highMineralFlat;
+        }
+      }
+
+      return cost;
+    }
+
+    if (isStartCell(r, c, options.starts)) {
+      let cost = priorities.startFlat;
+
+      if (v === "B") return cost + priorities.bubbleFlat;
+      if (v === "") return cost + priorities.blankFlat;
+      if (typeof v === "number") {
+        cost += numberCost(v) * priorities.mineralMultiplier + priorities.mineralFlat;
+        if (v >= priorities.highMineralThreshold) {
+          cost += priorities.highMineralFlat;
+        }
+      }
+
+      return cost;
+    }
+
     if (v === "B") {
       return priorities.bubbleFlat;
     }
@@ -109,14 +140,6 @@
         cost += priorities.highMineralFlat;
       }
       return cost;
-    }
-
-    if (isGoalCell(r, c, options.goals)) {
-      return priorities.gateFlat;
-    }
-
-    if (isStartCell(r, c, options.starts)) {
-      return priorities.startFlat;
     }
 
     return 0;
@@ -242,9 +265,16 @@
 
     for (const [r, c] of starts) {
       if (!isWalkableCell(grid, r, c)) continue;
-      dist[r][c] = 0;
+
+      const startCost = cellWeight(grid, r, c, freeCells, {
+        objectPriorities,
+        goals,
+        starts,
+      });
+
+      dist[r][c] = startCost;
       steps[r][c] = 0;
-      open.push({ r, c, cost: 0, len: 0 });
+      open.push({ r, c, cost: startCost, len: 0 });
     }
 
     if (!open.length) return null;
@@ -716,7 +746,6 @@
       const baseNearEqual =
         scoreGap >= -6 &&
         bestBase.rawCost <= chosen.rawCost * 1.10;
-
       if (
         chosen.kind !== "base" &&
         (baseStronglyPreferredLowest || (baseNearEqual && baseClearlyCleaner))
