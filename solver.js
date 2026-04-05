@@ -669,7 +669,13 @@
     return Infinity;
   }
 
-  function firstBubbleTravelCost(path, grid, objectPriorities, objectPriorityMap = null, getCellObjectType = null) {
+  function firstBubbleTravelCost(
+    path,
+    grid,
+    objectPriorities,
+    objectPriorityMap = null,
+    getCellObjectType = null
+  ) {
     const idx = firstBubbleStep(path, grid);
     if (idx === Infinity) return Infinity;
 
@@ -896,7 +902,10 @@
       objectPriorityMap,
       getCellObjectType
     });
-    push(
+    push("base", base);
+
+    if (base) {
+      push(
         "path-penalized",
         dijkstra({
           grid,
@@ -960,152 +969,39 @@
           getCellObjectType,
         })
       );
-function makePathVariants(
-  grid,
-  starts,
-  goal,
-  objectPriorities,
-  objectPriorityMap = null,
-  getCellObjectType = null
-) {
-  const out = [];
+    }
 
-  function push(tag, route) {
-    if (!route || !route.path || !route.path.length) return;
-    const path = uniquePath(route.path);
-    if (hasPathLoop(path)) return;
-    out.push({
-      tag,
-      route: { ...route, path },
+    const detours = buildForkDetours(
+      grid,
+      starts,
+      goal,
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType
+    );
+    for (const detour of detours) {
+      push("fork-detour", detour);
+    }
+
+    const seen = new Set();
+    const deduped = out.filter((item) => {
+      const key = item.route.path.map(([r, c]) => `${r},${c}`).join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
-  }
-function makePathVariants(
-  grid,
-  starts,
-  goal,
-  objectPriorities,
-  objectPriorityMap = null,
-  getCellObjectType = null
-) {
-  const out = [];
 
-  function push(tag, route) {
-    if (!route || !route.path || !route.path.length) return;
-    const path = uniquePath(route.path);
-    if (hasPathLoop(path)) return;
-    out.push({
-      tag,
-      route: { ...route, path },
+    deduped.sort((a, b) => {
+      if (a.route.cost !== b.route.cost) return a.route.cost - b.route.cost;
+      const aRaw = pathRawNumberSum(a.route.path, grid);
+      const bRaw = pathRawNumberSum(b.route.path, grid);
+      if (aRaw !== bRaw) return aRaw - bRaw;
+      return a.route.len - b.route.len;
     });
+
+    return deduped.slice(0, 12);
   }
 
-  const base = dijkstra({
-    grid,
-    starts,
-    goals: [goal],
-    objectPriorities,
-    objectPriorityMap,
-    getCellObjectType
-  });
-  push("base", base);
-
-  if (base) {
-    push(
-      "path-penalized",
-      dijkstra({
-        grid,
-        starts,
-        goals: [goal],
-        penaltyCells: buildPenaltyCellsFromPath(base.path, 0.9),
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      })
-    );
-
-    push(
-      "weighted-path-penalized",
-      dijkstra({
-        grid,
-        starts,
-        goals: [goal],
-        penaltyCells: buildPenaltyCellsForWeightedPath(base.path, grid, 0.45),
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      })
-    );
-
-    push(
-      "high-mineral-penalized",
-      dijkstra({
-        grid,
-        starts,
-        goals: [goal],
-        penaltyCells: buildPenaltyCellsForHighMinerals(base.path, grid, 400000, 28),
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      })
-    );
-
-    push(
-      "edge-blocked",
-      dijkstra({
-        grid,
-        starts,
-        goals: [goal],
-        blockedEdges: buildBlockedEdgesFromPath(base.path),
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      })
-    );
-
-    push(
-      "early-edge-blocked",
-      dijkstra({
-        grid,
-        starts,
-        goals: [goal],
-        blockedEdges: buildEarlyBlockedEdgesFromPath(base.path, 3),
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      })
-    );
-  }
-
-  const detours = buildForkDetours(
-    grid,
-    starts,
-    goal,
-    objectPriorities,
-    objectPriorityMap,
-    getCellObjectType
-  );
-  for (const detour of detours) {
-    push("fork-detour", detour);
-  }
-
-  const seen = new Set();
-  const deduped = out.filter((item) => {
-    const key = item.route.path.map(([r, c]) => `${r},${c}`).join("|");
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  deduped.sort((a, b) => {
-    if (a.route.cost !== b.route.cost) return a.route.cost - b.route.cost;
-    const aRaw = pathRawNumberSum(a.route.path, grid);
-    const bRaw = pathRawNumberSum(b.route.path, grid);
-    if (aRaw !== bRaw) return aRaw - bRaw;
-    return a.route.len - b.route.len;
-  });
-
-  return deduped.slice(0, 12);
-}
   function buildRequiredPriorityRouteCandidates(
     grid,
     starts,
