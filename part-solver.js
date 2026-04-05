@@ -1709,3 +1709,53 @@
       bubbleBonus: roundCost(best.bubbleBonus),
       redLoopPenalty: roundCost(best.redLoopPenalty),
       overAssistPenalty: roundCost(best.overAssistPenalty),
+      shaftClusters: shaftClustersOrdered,
+      shaftEntryDots: best.shaftEntryDots,
+      attackPoints: best.attackPoints,
+      bubbles,
+      unresolvedTargets: best.unresolvedTargets,
+      redCandidateCount: redCandidates.length,
+      routeAnalysis,
+      message:
+        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
+        "solver_status: solved\n" +
+        `event_type: ${eventType || "unknown"}\n` +
+        `legacy_end_mode: ${legacyEndMode ? "yes" : "no"}\n` +
+        `object_priorities: ${JSON.stringify(normalizedObjectPriorities)}\n` +
+        `red_mode: ${best.redMode}\n` +
+        `red_variant: ${best.redVariant}\n` +
+        `red_bubble_count: ${best.redBubbleCount}\n` +
+        `first_red_bubble_at: ${
+          best.firstRedBubbleAt === Infinity ? "none" : best.firstRedBubbleAt
+        }\n` +
+        `first_bubble_travel_cost: ${
+          best.firstBubbleTravelCost === Infinity
+            ? "none"
+            : roundCost(best.firstBubbleTravelCost)
+        }\n` +
+        `red_cost: ${roundCost(best.redCost)}\n` +
+        `blue_cost: ${roundCost(best.blueCost)}\n` +
+        `dependency_cost: ${roundCost(best.dependencyCost)}\n` +
+        `assist_bonus: ${roundCost(best.assistBonus)}\n` +
+        `lower_shaft_bonus: ${roundCost(best.lowerShaftBonus)}\n` +
+        `bubble_bonus: ${roundCost(best.bubbleBonus)}\n` +
+        `red_loop_penalty: ${roundCost(best.redLoopPenalty)}\n` +
+        `over_assist_penalty: ${roundCost(best.overAssistPenalty)}\n` +
+        `bubble_count: ${bubbles.length}\n` +
+        `shaft_count: ${shaftClustersOrdered.length}\n` +
+        `red_candidate_count: ${redCandidates.length}\n` +
+        `unresolved_targets: ${best.unresolvedTargets}\n` +
+        `total_cost: ${roundCost(best.redCost + best.blueCost)}\n` +
+        `effective_total: ${roundCost(best.effectiveTotal)}`
+    };
+  }
+
+  window.ZMPathfinderSolver = {
+    solverVersion: SOLVER_VERSION,
+    numberCost,
+    solveGrid,
+    setObjectPriorities,
+    getObjectPriorities,
+    defaultObjectPriorities: { ...DEFAULT_OBJECT_PRIORITIES },
+  };
+})();
