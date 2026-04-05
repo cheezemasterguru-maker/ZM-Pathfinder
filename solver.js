@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V7.0 loaded");
+  console.log("ZM Solver V7.1 loaded");
 
-  const SOLVER_VERSION = "V7.0";
+  const SOLVER_VERSION = "V7.1";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -517,19 +517,14 @@
     const minC = Math.min(...cols);
     const maxC = Math.max(...cols);
 
-    const candidates = [];
+    const candidateCells = [];
 
-    for (let r = minR; r <= maxR; r++) {
-      candidates.push([r, minC - 1, r, minC]);
-      candidates.push([r, maxC + 1, r, maxC]);
-    }
+    for (let r = minR; r <= maxR; r++) candidateCells.push([r, minC - 1, r, minC]);
+    for (let r = minR; r <= maxR; r++) candidateCells.push([r, maxC + 1, r, maxC]);
+    for (let c = minC; c <= maxC; c++) candidateCells.push([minR - 1, c, minR, c]);
+    for (let c = minC; c <= maxC; c++) candidateCells.push([maxR + 1, c, maxR, c]);
 
-    for (let c = minC; c <= maxC; c++) {
-      candidates.push([minR - 1, c, minR, c]);
-      candidates.push([maxR + 1, c, maxR, c]);
-    }
-
-    for (const [ar, ac, sr, sc] of candidates) {
+    for (const [ar, ac, sr, sc] of candidateCells) {
       if (ar < 0 || ac < 0 || ar >= grid.length || ac >= grid[0].length) continue;
       if (!isWalkableCell(grid, ar, ac)) continue;
       if (!isAttackableTile(grid[ar][ac])) continue;
@@ -1184,6 +1179,19 @@
     const groups = [];
     const normalizedMap = objectPriorityMap || {};
 
+    if (normalizePrioritySetting(normalizedMap.gate) === "priority") {
+      const gateGoals = getGateGoals(grid, gateType);
+      if (gateGoals.length) {
+        groups.push({
+          id: "gate",
+          label: "Gate",
+          kind: "gate",
+          goals: gateGoals,
+          final: true,
+        });
+      }
+    }
+
     if (normalizePrioritySetting(normalizedMap.shaft) === "priority") {
       const shaftClusters = sortShaftClustersBottomToTop(getShaftClusters(grid));
       shaftClusters.forEach((cluster, index) => {
@@ -1242,19 +1250,6 @@
       }
     }
 
-    if (normalizePrioritySetting(normalizedMap.gate) === "priority") {
-      const gateGoals = getGateGoals(grid, gateType);
-      if (gateGoals.length) {
-        groups.push({
-          id: "gate",
-          label: "Gate",
-          kind: "gate",
-          goals: gateGoals,
-          final: true,
-        });
-      }
-    }
-
     const nonFinal = groups.filter((g) => !g.final);
     const finals = groups.filter((g) => g.final);
 
@@ -1265,6 +1260,85 @@
     });
 
     return [...nonFinal, ...finals];
+  }
+
+  function buildAttachmentStarts(baseStarts, redPath) {
+    return dedupeCells([...(baseStarts || []), ...(redPath || [])]);
+  }
+
+  function findBestAttachmentRoute({
+    grid,
+    baseStarts,
+    redPath,
+    goals,
+    freeCells,
+    objectPriorities,
+    objectPriorityMap,
+    getCellObjectType,
+  }) {
+    const attachmentStarts = buildAttachmentStarts(baseStarts, redPath);
+
+    let best = null;
+
+    for (const start of attachmentStarts) {
+      const route = dijkstra({
+        grid,
+        starts: [start],
+        goals,
+        freeCells,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+
+      if (!route) continue;
+
+      const finalPath = uniquePath(route.path);
+      const startOnExistingRed = redPath.some(([r, c]) => r === start[0] && c === start[1]);
+      const startOnOriginalStart = baseStarts.some(([r, c]) => r === start[0] && c === start[1]);
+      const firstStep = finalPath.length > 1 ? finalPath[1] : finalPath[0];
+
+      const candidate = {
+        ...route,
+        attachStart: start,
+        finalPath,
+        startOnExistingRed,
+        startOnOriginalStart,
+        firstStep,
+      };
+
+      if (!best) {
+        best = candidate;
+        continue;
+      }
+
+      if (candidate.cost < best.cost) {
+        best = candidate;
+        continue;
+      }
+
+      if (candidate.cost === best.cost) {
+        if (candidate.finalPath.length < best.finalPath.length) {
+          best = candidate;
+          continue;
+        }
+
+        const candStartIsRed = candidate.startOnExistingRed ? 1 : 0;
+        const bestStartIsRed = best.startOnExistingRed ? 1 : 0;
+        if (candStartIsRed > bestStartIsRed) {
+          best = candidate;
+          continue;
+        }
+
+        const candStartIsBase = candidate.startOnOriginalStart ? 1 : 0;
+        const bestStartIsBase = best.startOnOriginalStart ? 1 : 0;
+        if (candStartIsBase < bestStartIsBase) {
+          best = candidate;
+        }
+      }
+    }
+
+    return best;
   }
 
   function solveCustom({
@@ -1312,16 +1386,16 @@
 
     let redPath = [];
     let redCost = 0;
-    let currentStarts = [...starts];
     const reusable = new Set();
     const attackPoints = [];
     const shaftEntryDots = [];
     let unresolvedTargets = 0;
 
     for (const group of targetGroups) {
-      const route = dijkstra({
+      const route = findBestAttachmentRoute({
         grid,
-        starts: currentStarts,
+        baseStarts: starts,
+        redPath,
         goals: group.goals,
         freeCells: reusable,
         objectPriorities,
@@ -1334,7 +1408,8 @@
         continue;
       }
 
-      const finalPath = uniquePath(route.path);
+      const finalPath = uniquePath(route.finalPath);
+
       redPath = uniquePath(mergePaths(redPath, finalPath));
       redCost += route.cost;
 
@@ -1342,11 +1417,11 @@
         reusable.add(cellKey(r, c));
       }
 
-      currentStarts = getPathEndpoints(finalPath);
-
       if (group.kind === "gate") {
         attackPoints.push(route.goal);
-      } else if (group.kind === "shaft" && group.entryMap) {
+      }
+
+      if (group.kind === "shaft" && group.entryMap) {
         attackPoints.push(route.goal);
         const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
         if (entry) shaftEntryDots.push(entry);
@@ -1386,7 +1461,7 @@
 
     const candidate = {
       redMode: "custom",
-      redVariant: "ordered-chain",
+      redVariant: "best-attachment",
       redBubble: null,
       redBubbles: [],
       redBubbleCount,
