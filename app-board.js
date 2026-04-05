@@ -413,6 +413,8 @@ function setTool(nextTool) {
 
 function render() {
   const gridEl = document.getElementById("grid");
+  if (!gridEl) return;
+
   gridEl.style.gridTemplateColumns = `repeat(${COLS}, minmax(0, 1fr))`;
   gridEl.innerHTML = "";
 
@@ -633,6 +635,7 @@ function clearBoard(updateReport = true) {
       grid[r][c] = "";
     }
   }
+
   currentRowCount = MINED_ROWS;
   currentPreviewTitle = document.getElementById("titleInput")?.value || "Gate 1";
   currentMapContext = {
@@ -701,7 +704,6 @@ function getPriorityLegendItems() {
   if (typeof scanActiveObjectTypes !== "function") return items;
 
   const active = scanActiveObjectTypes() || [];
-
   const priorityOrder = ["priority", "normal", "avoid"];
 
   function labelForSetting(setting) {
@@ -831,6 +833,8 @@ function drawLegendBadge(ctx, item, x, y) {
 
 function renderPreview() {
   const canvas = document.getElementById("previewCanvas");
+  if (!canvas) return;
+
   const ctx = canvas.getContext("2d");
 
   const cell = 86;
@@ -857,7 +861,9 @@ function renderPreview() {
   const maxRow = Math.max(currentRowCount - 1, maxFilled);
   const visibleRows = maxRow - minRow + 1;
 
-  const legendHeight = customMode ? Math.max(120, 42 + Math.ceil(Math.max(1, legendItems.length) / 2) * 24) : 120;
+  const legendHeight = customMode
+    ? Math.max(120, 42 + Math.ceil(Math.max(1, legendItems.length) / 2) * 24)
+    : 120;
 
   canvas.width = pad * 2 + cell * COLS;
   canvas.height = topPad + visibleRows * cell + legendHeight;
@@ -903,7 +909,7 @@ function renderPreview() {
       ctx.strokeRect(titleBoxX, titleBoxY, titleBoxW, titleBoxH);
 
       const rawTitle = String(
-        currentPreviewTitle || document.getElementById("titleInput").value || "Gate"
+        currentPreviewTitle || document.getElementById("titleInput")?.value || "Gate"
       ).trim();
 
       const parts = rawTitle.split(" - ").map((s) => s.trim()).filter(Boolean);
@@ -1039,15 +1045,15 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow, legendHeight,
   const customColor = "#a855f7";
 
   if (customMode) {
-    for (const path of solveState.bluePaths) {
+    for (const path of solveState.bluePaths || []) {
       drawPath(ctx, path, customColor, 10, cell, pad, topPad, rowOffset);
     }
-    drawPath(ctx, solveState.redPath, customColor, 12, cell, pad, topPad, rowOffset);
+    drawPath(ctx, solveState.redPath || [], customColor, 12, cell, pad, topPad, rowOffset);
   } else {
-    for (const path of solveState.bluePaths) {
+    for (const path of solveState.bluePaths || []) {
       drawPath(ctx, path, "#2563eb", 10, cell, pad, topPad, rowOffset);
     }
-    drawPath(ctx, solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset);
+    drawPath(ctx, solveState.redPath || [], "#ef4444", 12, cell, pad, topPad, rowOffset);
   }
 
   const legendTop = ctx.canvas.height - legendHeight + 18;
@@ -1193,8 +1199,9 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
     ((solveState && solveState.solverMode) ||
       (typeof getSolverMode === "function" ? getSolverMode() : "standard")) === "custom";
 
-  const isRed = color === "#ef4444" || (customMode && color === "#a855f7");
-  const isBlue = color === "#2563eb";
+  const isCustomPurple = color === "#a855f7";
+  const isRed = color === "#ef4444" || (customMode && isCustomPurple && width >= 12);
+  const isBlue = color === "#2563eb" || (customMode && isCustomPurple && width < 12);
 
   function center(pt) {
     return {
@@ -1250,6 +1257,13 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
       [-1, 0]
     ];
 
+    const attackPoints = Array.isArray(solveState.attackPoints) ? solveState.attackPoints : [];
+    const adjacentAttack = attackPoints.find((pt) => manhattan(last, pt) === 1);
+    if (adjacentAttack) {
+      const touch = getBoundaryTouchPoint(last, adjacentAttack);
+      if (touch) return touch;
+    }
+
     for (const [dr, dc] of dirs) {
       const nr = last[0] + dr;
       const nc = last[1] + dc;
@@ -1303,7 +1317,6 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
 
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-
   ctx.beginPath();
 
   if (isRed) {
@@ -1320,7 +1333,9 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
 
   if (isBlue) {
     const endPoint = getBlueEndpointPoint();
-    ctx.lineTo(endPoint.x, endPoint.y);
+    if (endPoint.x !== points[points.length - 1].x || endPoint.y !== points[points.length - 1].y) {
+      ctx.lineTo(endPoint.x, endPoint.y);
+    }
   } else if (isRed) {
     const endPoint = getRedEndpointPoint();
     if (endPoint.x !== points[points.length - 1].x || endPoint.y !== points[points.length - 1].y) {
@@ -1369,6 +1384,8 @@ function getVisibleGridSlice() {
 function downloadPNG() {
   renderPreview();
   const canvas = document.getElementById("previewCanvas");
+  if (!canvas) return;
+
   const link = document.createElement("a");
   const safeTitle = String(
     currentPreviewTitle || document.getElementById("titleInput")?.value || "zm-pathfinder"
