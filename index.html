@@ -1,23 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ZM Pathfinder</title>
-  <link rel="stylesheet" href="styles.css?v=112" />
-  <script src="translations.js?v=2"></script>
-  <script src="help.js?v=112"></script>
-  <script src="map-library.js?v=223"></script>
-  <script src="map-data.js?v=445"></script>
-  <script src="map-validator.js?v=112"></script>
-  <script src="objects.js?v=112"></script>
-  <script src="tile-meta.js?v=1000"></script>
-  <script src="shaft-data.js?v=334"></script>
-  <script src="solver.js?v=5001"></script>
-  <script src="timing-tables.js?v=112"></script>
-  <script src="auth.js?v=223" defer></script>
-  <script src="app.js?v=2001" defer></script>
+  <link rel="stylesheet" href="styles.css?v=111" />
+  <script src="translations.js?v=1"></script>
+  <script src="help.js?v=111"></script>
+  <script src="map-library.js?v=222"></script>
+  <script src="map-data.js?v=444"></script>
+  <script src="map-validator.js?v=111"></script>
+  <script src="objects.js?v=111"></script>
+  <script src="tile-meta.js?v=999"></script>
+  <script src="shaft-data.js?v=333"></script>
+  <script src="solver.js?v=5401"></script>
+  <script src="auth.js?v=222" defer></script>
+  <script src="timing-tables.js?v=111"></script>
+  <script src="app.js?v=5401" defer></script>
 </head>
 <body>
   <div id="appShell" class="app-shell locked">
@@ -114,6 +113,7 @@
           <button id="pasteClipboardBtn" class="btn-action" onclick="pasteFromClipboard()">Paste From Clipboard</button>
           <button id="solverHelpBtn" class="btn-action" onclick="openSolverHelp()">Solver Help</button>
           <button id="routeReportBtn" class="btn-action" onclick="openRouteReportModal()">Route Report</button>
+          <button id="objectPrioritiesBtn" class="btn-action" onclick="openObjectPrioritiesModal()">Object Priorities</button>
         </div>
 
         <div id="report" class="report">Ready. Grid and solver are wired together.</div>
@@ -175,6 +175,21 @@
       <button class="modal-close" onclick="closeSolverHelp()">×</button>
       <h2 id="solverHelpModalTitle">Solver Help</h2>
       <div id="solverHelpBody" class="help-content"></div>
+    </div>
+  </div>
+
+  <div id="objectPrioritiesOverlay" class="overlay" onclick="closeObjectPrioritiesModal()">
+    <div class="modal modal-box" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeObjectPrioritiesModal()">×</button>
+      <h2>Object Priorities</h2>
+      <div id="objectPrioritiesIntro" class="help-content" style="margin-bottom: 12px;">
+        Optional object preferences for the current board.
+      </div>
+      <div id="objectPrioritiesBody" class="help-content"></div>
+      <div class="modal-actions">
+        <button id="objectPrioritiesResetBtn" class="btn-action" onclick="resetObjectPriorities()">Reset</button>
+        <button id="objectPrioritiesCloseBtn" class="btn-action" onclick="closeObjectPrioritiesModal()">Close</button>
+      </div>
     </div>
   </div>
 </body>
