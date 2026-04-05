@@ -1083,12 +1083,13 @@
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const drawEverything = (logoReady, logo) => {
-      const headerY = 12;
-      const headerH = 118;
+    const headerY = 12;
+    const headerH = 118;
 
-      const logoBoxX = 26;
-      const logoBoxW = 220;
-      const logoBoxH = headerH;
+    const logoBoxX = 26;
+    const logoBoxY = headerY;
+    const logoBoxW = 220;
+    const logoBoxH = headerH;
 
       const titleBoxX = logoBoxX + logoBoxW + 16;
       const titleBoxY = headerY;
