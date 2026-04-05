@@ -1113,24 +1113,3 @@ function init(){
   updateDifficultyMeter();
   renderRouteAudit([]);
 }
-
-window.changeLanguage = changeLanguage;
-window.openSolverHelp = openSolverHelp;
-window.closeSolverHelp = closeSolverHelp;
-window.openRouteReportModal = openRouteReportModal;
-window.closeRouteReportModal = closeRouteReportModal;
-window.handleEventTypeChange = handleEventTypeChange;
-window.handleEventNameChange = handleEventNameChange;
-window.handleEventMineChange = handleEventMineChange;
-window.handleEventChamberChange = handleEventChamberChange;
-window.loadSelectedMap = loadSelectedMap;
-window.handleTitleInputChange = handleTitleInputChange;
-window.setTool = setTool;
-window.clearBoard = clearBoard;
-window.solveBoard = solveBoard;
-window.downloadPNG = downloadPNG;
-window.loadSampleGrid = loadSampleGrid;
-window.pasteFromClipboard = pasteFromClipboard;
-window.renderPreview = renderPreview;
-
-window.addEventListener("load", init);
