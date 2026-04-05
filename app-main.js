@@ -82,7 +82,7 @@ function t(key) {
 
 function formatT(key, vars = {}) {
   let str = t(key);
-  Object.keys(vars).forEach(k => {
+  Object.keys(vars).forEach((k) => {
     str = str.replaceAll(`{${k}}`, String(vars[k]));
   });
   return str;
@@ -190,14 +190,19 @@ function translateShaftType(name) {
 function changeLanguage(lang) {
   currentLanguage = lang || "en";
   localStorage.setItem("zm_language", currentLanguage);
+
   applyLanguage();
   populateEventTypeSelect();
+
   if (document.getElementById("eventTypeSelect")?.value) {
     refreshTranslatedLoaderSelections();
   }
-  render();
-  renderPreview();
-  renderRouteAudit(solveState.routeAnalysis || []);
+
+  if (typeof render === "function") render();
+  if (typeof renderPreview === "function") renderPreview();
+  if (typeof renderRouteAudit === "function") {
+    renderRouteAudit(solveState.routeAnalysis || []);
+  }
 }
 
 function refreshTranslatedLoaderSelections() {
@@ -228,11 +233,13 @@ function refreshTranslatedLoaderSelections() {
 
   if (selectedType === "Legacy" && selectedEvent && selectedMine) {
     handleEventMineChange();
+    if (eventMine) eventMine.value = selectedMine;
   }
 
   if (eventChamber) eventChamber.value = selectedChamber;
   if (selectedType && selectedEvent && selectedChamber) {
     handleEventChamberChange();
+    if (eventChamber) eventChamber.value = selectedChamber;
   }
 }
 
@@ -311,6 +318,9 @@ function applyLanguage() {
   const routeReportBtn = document.getElementById("routeReportBtn");
   if (routeReportBtn) routeReportBtn.textContent = t("routeReport");
 
+  const objectPrioritiesBtn = document.getElementById("objectPrioritiesBtn");
+  if (objectPrioritiesBtn) objectPrioritiesBtn.textContent = t("objectPriorities");
+
   const editableBoardTitle = document.getElementById("editableBoardTitle");
   if (editableBoardTitle) editableBoardTitle.textContent = t("editableBoard");
 
@@ -347,10 +357,19 @@ function applyLanguage() {
   const solverHelpModalTitle = document.getElementById("solverHelpModalTitle");
   if (solverHelpModalTitle) solverHelpModalTitle.textContent = t("solverHelp");
 
+  const objectPrioritiesIntro = document.getElementById("objectPrioritiesIntro");
+  if (objectPrioritiesIntro) objectPrioritiesIntro.textContent = t("objectPrioritiesIntro");
+
+  const objectPrioritiesResetBtn = document.getElementById("objectPrioritiesResetBtn");
+  if (objectPrioritiesResetBtn) objectPrioritiesResetBtn.textContent = t("reset");
+
+  const objectPrioritiesCloseBtn = document.getElementById("objectPrioritiesCloseBtn");
+  if (objectPrioritiesCloseBtn) objectPrioritiesCloseBtn.textContent = t("close");
+
   loadHelpContent();
 }
 
-function setReport(msg){
+function setReport(msg) {
   const reportEl = document.getElementById("report");
   if (!reportEl) return;
   reportEl.textContent = msg;
@@ -377,7 +396,7 @@ function closeRouteReportModal() {
   overlay.classList.remove("show");
 }
 
-function resetSolve(){
+function resetSolve() {
   solveState = {
     redPath: [],
     bluePaths: [],
@@ -395,53 +414,56 @@ function resetSolve(){
     redCost: null,
     blueCost: null
   };
-  renderRouteAudit([]);
+
+  if (typeof renderRouteAudit === "function") {
+    renderRouteAudit([]);
+  }
 }
 
-function initGridData(){
+function initGridData() {
   grid = Array.from({ length: MAX_ROWS }, () => Array(COLS).fill(""));
 }
 
-function isGraveyardValue(value){
+function isGraveyardValue(value) {
   return String(value || "").trim().toLowerCase() === "graveyard";
 }
 
-function isMainDeepContext(){
+function isMainDeepContext() {
   const selectedEventType = document.getElementById("eventTypeSelect")?.value || "";
   return currentMapContext.eventType === "MainDeep" || selectedEventType === "MainDeep";
 }
 
-function getRowsForContextFromSelection(){
+function getRowsForContextFromSelection() {
   const chamber = document.getElementById("eventChamberSelect")?.value || "";
   return isGraveyardValue(chamber) ? MAX_ROWS : MINED_ROWS;
 }
 
-function getRowsForContextFromTitle(){
+function getRowsForContextFromTitle() {
   const title = document.getElementById("titleInput")?.value || "";
   return title.toLowerCase().includes("graveyard") ? MAX_ROWS : MINED_ROWS;
 }
 
-function setBoardRowCount(nextRows){
+function setBoardRowCount(nextRows) {
   currentRowCount = nextRows === MAX_ROWS ? MAX_ROWS : MINED_ROWS;
-  render();
-  renderPreview();
 
-  if (typeof scanActiveObjectTypes === "function") {
-    scanActiveObjectTypes();
-  }
+  if (typeof render === "function") render();
+  if (typeof renderPreview === "function") renderPreview();
+  if (typeof scanActiveObjectTypes === "function") scanActiveObjectTypes();
 }
 
-function ensureBoardRowCountFromCurrentContext(){
+function ensureBoardRowCountFromCurrentContext() {
   const rowsFromSelection = getRowsForContextFromSelection();
   const rowsFromTitle = getRowsForContextFromTitle();
-  setBoardRowCount(rowsFromSelection === MAX_ROWS || rowsFromTitle === MAX_ROWS ? MAX_ROWS : MINED_ROWS);
+  setBoardRowCount(
+    rowsFromSelection === MAX_ROWS || rowsFromTitle === MAX_ROWS ? MAX_ROWS : MINED_ROWS
+  );
 }
 
-function getVisibleGridSlice(){
-  return grid.slice(0, currentRowCount).map(row => [...row]);
+function getVisibleGridSlice() {
+  return grid.slice(0, currentRowCount).map((row) => [...row]);
 }
 
-function runLoadedGridIntegrityCheck(gridToCheck, titleText = "Loaded Grid"){
+function runLoadedGridIntegrityCheck(gridToCheck, titleText = "Loaded Grid") {
   if (!window.ZMMapValidator || typeof window.ZMMapValidator.validateSingleLoadedGrid !== "function") {
     return { ok: true, errors: [] };
   }
@@ -449,65 +471,70 @@ function runLoadedGridIntegrityCheck(gridToCheck, titleText = "Loaded Grid"){
   return window.ZMMapValidator.validateSingleLoadedGrid(gridToCheck, titleText);
 }
 
-function loadHelpContent(){
+function loadHelpContent() {
+  const shortHelp = document.getElementById("shortHelpText");
+  const solverHelpBody = document.getElementById("solverHelpBody");
+
+  if (!shortHelp || !solverHelpBody) return;
+
   if (window.ZM_HELP_TRANSLATED?.[currentLanguage]) {
-    document.getElementById("shortHelpText").innerHTML = window.ZM_HELP_TRANSLATED[currentLanguage].shortHelp || "";
-    document.getElementById("solverHelpBody").innerHTML = window.ZM_HELP_TRANSLATED[currentLanguage].modalHelp || "";
+    shortHelp.innerHTML = window.ZM_HELP_TRANSLATED[currentLanguage].shortHelp || "";
+    solverHelpBody.innerHTML = window.ZM_HELP_TRANSLATED[currentLanguage].modalHelp || "";
     return;
   }
 
   if (window.ZM_HELP) {
-    document.getElementById("shortHelpText").innerHTML = window.ZM_HELP.shortHelp || "";
-    document.getElementById("solverHelpBody").innerHTML = window.ZM_HELP.modalHelp || "";
+    shortHelp.innerHTML = window.ZM_HELP.shortHelp || "";
+    solverHelpBody.innerHTML = window.ZM_HELP.modalHelp || "";
   }
 }
 
-function openSolverHelp(){
-  document.getElementById("solverHelpOverlay").classList.add("show");
+function openSolverHelp() {
+  document.getElementById("solverHelpOverlay")?.classList.add("show");
 }
 
-function closeSolverHelp(){
-  document.getElementById("solverHelpOverlay").classList.remove("show");
+function closeSolverHelp() {
+  document.getElementById("solverHelpOverlay")?.classList.remove("show");
 }
 
-function hasUsableGridRecord(record){
+function hasUsableGridRecord(record) {
   if (!record || typeof record !== "object") return false;
   if (!Array.isArray(record.grid) || !record.grid.length) return false;
 
-  return record.grid.some(row =>
+  return record.grid.some((row) =>
     Array.isArray(row) &&
-    row.some(cell => cell !== "" && cell !== null && cell !== undefined)
+    row.some((cell) => cell !== "" && cell !== null && cell !== undefined)
   );
 }
 
-function hasAnyMainMapData(eventName){
+function hasAnyMainMapData(eventName) {
   const event = window.ZM_MAP_DATA?.Main?.[eventName];
   if (!event || typeof event !== "object") return false;
-  return Object.values(event).some(record => hasUsableGridRecord(record));
+  return Object.values(event).some((record) => hasUsableGridRecord(record));
 }
 
-function hasAnyMainDeepData(eventName){
+function hasAnyMainDeepData(eventName) {
   const event = window.ZM_MAP_DATA?.MainDeep?.[eventName];
   if (!event || typeof event !== "object") return false;
-  return Object.values(event).some(record => hasUsableGridRecord(record));
+  return Object.values(event).some((record) => hasUsableGridRecord(record));
 }
 
-function hasAnyLegacyMineData(eventName, mineName){
+function hasAnyLegacyMineData(eventName, mineName) {
   const mine = window.ZM_MAP_DATA?.Legacy?.[eventName]?.[mineName];
   if (!mine || typeof mine !== "object") return false;
-  return Object.values(mine).some(record => hasUsableGridRecord(record));
+  return Object.values(mine).some((record) => hasUsableGridRecord(record));
 }
 
-function hasAnyLegacyEventData(eventName){
+function hasAnyLegacyEventData(eventName) {
   const mines = window.ZM_MAP_DATA?.Legacy?.[eventName] || {};
-  return Object.keys(mines).some(mineName => hasAnyLegacyMineData(eventName, mineName));
+  return Object.keys(mines).some((mineName) => hasAnyLegacyMineData(eventName, mineName));
 }
 
 function mergeOrderedUnique(primary, secondary) {
   const out = [];
   const seen = new Set();
 
-  [...primary, ...secondary].forEach(value => {
+  [...primary, ...secondary].forEach((value) => {
     if (!value || seen.has(value)) return;
     seen.add(value);
     out.push(value);
@@ -520,8 +547,8 @@ function getOrderedMainDeepNames() {
   const libraryNames = Object.keys(window.ZM_MAP_LIBRARY?.MainDeep || {});
   const dataNames = Object.keys(window.ZM_MAP_DATA?.MainDeep || {});
   return mergeOrderedUnique(
-    libraryNames.filter(eventName => hasAnyMainDeepData(eventName)),
-    dataNames.filter(eventName => hasAnyMainDeepData(eventName))
+    libraryNames.filter((eventName) => hasAnyMainDeepData(eventName)),
+    dataNames.filter((eventName) => hasAnyMainDeepData(eventName))
   );
 }
 
@@ -529,8 +556,8 @@ function getOrderedMainNames() {
   const libraryNames = Object.keys(window.ZM_MAP_LIBRARY?.Main || {});
   const dataNames = Object.keys(window.ZM_MAP_DATA?.Main || {});
   return mergeOrderedUnique(
-    libraryNames.filter(eventName => hasAnyMainMapData(eventName)),
-    dataNames.filter(eventName => hasAnyMainMapData(eventName))
+    libraryNames.filter((eventName) => hasAnyMainMapData(eventName)),
+    dataNames.filter((eventName) => hasAnyMainMapData(eventName))
   );
 }
 
@@ -539,10 +566,10 @@ function getOrderedLegacyNames() {
   const dataNames = Object.keys(window.ZM_MAP_DATA?.Legacy || {});
 
   return mergeOrderedUnique(
-    LEGACY_EVENT_ORDER.filter(eventName => hasAnyLegacyEventData(eventName)),
+    LEGACY_EVENT_ORDER.filter((eventName) => hasAnyLegacyEventData(eventName)),
     mergeOrderedUnique(
-      libraryNames.filter(eventName => hasAnyLegacyEventData(eventName)),
-      dataNames.filter(eventName => hasAnyLegacyEventData(eventName))
+      libraryNames.filter((eventName) => hasAnyLegacyEventData(eventName)),
+      dataNames.filter((eventName) => hasAnyLegacyEventData(eventName))
     )
   );
 }
@@ -551,8 +578,12 @@ function getOrderedMainDeepChambers(eventName) {
   const libraryChambers = window.ZM_MAP_LIBRARY?.MainDeep?.[eventName] || [];
   const dataChambers = Object.keys(window.ZM_MAP_DATA?.MainDeep?.[eventName] || {});
   return mergeOrderedUnique(
-    libraryChambers.filter(chamber => hasUsableGridRecord(window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[chamber])),
-    dataChambers.filter(chamber => hasUsableGridRecord(window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[chamber]))
+    libraryChambers.filter((chamber) =>
+      hasUsableGridRecord(window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[chamber])
+    ),
+    dataChambers.filter((chamber) =>
+      hasUsableGridRecord(window.ZM_MAP_DATA?.MainDeep?.[eventName]?.[chamber])
+    )
   );
 }
 
@@ -560,8 +591,12 @@ function getOrderedMainChambers(eventName) {
   const libraryChambers = window.ZM_MAP_LIBRARY?.Main?.[eventName] || [];
   const dataChambers = Object.keys(window.ZM_MAP_DATA?.Main?.[eventName] || {});
   return mergeOrderedUnique(
-    libraryChambers.filter(chamber => hasUsableGridRecord(window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber])),
-    dataChambers.filter(chamber => hasUsableGridRecord(window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber]))
+    libraryChambers.filter((chamber) =>
+      hasUsableGridRecord(window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber])
+    ),
+    dataChambers.filter((chamber) =>
+      hasUsableGridRecord(window.ZM_MAP_DATA?.Main?.[eventName]?.[chamber])
+    )
   );
 }
 
@@ -570,10 +605,10 @@ function getOrderedLegacyMines(eventName) {
   const dataMines = Object.keys(window.ZM_MAP_DATA?.Legacy?.[eventName] || {});
 
   return mergeOrderedUnique(
-    LEGACY_MINE_ORDER.filter(mineName => hasAnyLegacyMineData(eventName, mineName)),
+    LEGACY_MINE_ORDER.filter((mineName) => hasAnyLegacyMineData(eventName, mineName)),
     mergeOrderedUnique(
-      libraryMines.filter(mineName => hasAnyLegacyMineData(eventName, mineName)),
-      dataMines.filter(mineName => hasAnyLegacyMineData(eventName, mineName))
+      libraryMines.filter((mineName) => hasAnyLegacyMineData(eventName, mineName)),
+      dataMines.filter((mineName) => hasAnyLegacyMineData(eventName, mineName))
     )
   );
 }
@@ -582,16 +617,27 @@ function getOrderedLegacyChambers(eventName, eventMine) {
   const libraryChambers = window.ZM_MAP_LIBRARY?.Legacy?.[eventName]?.[eventMine] || [];
   const dataChambers = Object.keys(window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine] || {});
   return mergeOrderedUnique(
-    libraryChambers.filter(chamber => hasUsableGridRecord(window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine]?.[chamber])),
-    dataChambers.filter(chamber => hasUsableGridRecord(window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine]?.[chamber]))
+    libraryChambers.filter((chamber) =>
+      hasUsableGridRecord(window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine]?.[chamber])
+    ),
+    dataChambers.filter((chamber) =>
+      hasUsableGridRecord(window.ZM_MAP_DATA?.Legacy?.[eventName]?.[eventMine]?.[chamber])
+    )
   );
 }
 
-function populateEventTypeSelect(){
+function populateEventTypeSelect() {
   const select = document.getElementById("eventTypeSelect");
+  const mapLoaderSection = document.getElementById("mapLoaderSection");
+
+  if (!select) return;
+
   select.innerHTML = `<option value="">${t("selectEventType")}</option>`;
 
-  if (!window.ZM_MAP_DATA) return;
+  if (!window.ZM_MAP_DATA) {
+    if (mapLoaderSection) mapLoaderSection.classList.add("hidden");
+    return;
+  }
 
   const mainDeepNames = getOrderedMainDeepNames();
   const mainNames = getOrderedMainNames();
@@ -617,9 +663,14 @@ function populateEventTypeSelect(){
     option.textContent = t("legacyEvents");
     select.appendChild(option);
   }
+
+  if (mapLoaderSection) {
+    const hasAny = !!(mainDeepNames.length || mainNames.length || legacyNames.length);
+    mapLoaderSection.classList.toggle("hidden", !hasAny);
+  }
 }
 
-function resetMapLoaderBelow(level){
+function resetMapLoaderBelow(level) {
   const eventNameField = document.getElementById("eventNameField");
   const eventMineField = document.getElementById("eventMineField");
   const eventChamberField = document.getElementById("eventChamberField");
@@ -630,31 +681,32 @@ function resetMapLoaderBelow(level){
   const loadMapBtn = document.getElementById("loadMapBtn");
 
   if (level <= 1) {
-    eventNameSelect.innerHTML = `<option value="">${t("selectEventName")}</option>`;
-    eventNameField.classList.add("hidden");
+    if (eventNameSelect) eventNameSelect.innerHTML = `<option value="">${t("selectEventName")}</option>`;
+    if (eventNameField) eventNameField.classList.add("hidden");
   }
 
   if (level <= 2) {
-    eventMineSelect.innerHTML = `<option value="">${t("selectEventMine")}</option>`;
-    eventMineField.classList.add("hidden");
+    if (eventMineSelect) eventMineSelect.innerHTML = `<option value="">${t("selectEventMine")}</option>`;
+    if (eventMineField) eventMineField.classList.add("hidden");
   }
 
   if (level <= 3) {
-    eventChamberSelect.innerHTML = `<option value="">${t("selectEventChamber")}</option>`;
-    eventChamberField.classList.add("hidden");
+    if (eventChamberSelect) eventChamberSelect.innerHTML = `<option value="">${t("selectEventChamber")}</option>`;
+    if (eventChamberField) eventChamberField.classList.add("hidden");
   }
 
   selectedMapPath = null;
-  loadMapBtn.classList.add("hidden");
+  if (loadMapBtn) loadMapBtn.classList.add("hidden");
   updateDifficultyMeter();
 }
 
-function handleEventTypeChange(){
-  const eventType = document.getElementById("eventTypeSelect").value;
+function handleEventTypeChange() {
+  const eventType = document.getElementById("eventTypeSelect")?.value || "";
   const eventNameField = document.getElementById("eventNameField");
   const eventNameSelect = document.getElementById("eventNameSelect");
 
   resetMapLoaderBelow(1);
+
   if (!eventType || !window.ZM_MAP_DATA || !window.ZM_MAP_DATA[eventType]) {
     ensureBoardRowCountFromCurrentContext();
     updateDifficultyMeter();
@@ -677,22 +729,24 @@ function handleEventTypeChange(){
     return;
   }
 
-  eventNameField.classList.remove("hidden");
+  if (eventNameField) eventNameField.classList.remove("hidden");
 
-  validNames.forEach(name => {
+  validNames.forEach((name) => {
     const option = document.createElement("option");
     option.value = name;
-    option.textContent = eventType === "MainDeep" ? translateDeepName(name) : translateEventName(name);
-    eventNameSelect.appendChild(option);
+    option.textContent = eventType === "MainDeep"
+      ? translateDeepName(name)
+      : translateEventName(name);
+    eventNameSelect?.appendChild(option);
   });
 
   ensureBoardRowCountFromCurrentContext();
   updateDifficultyMeter();
 }
 
-function handleEventNameChange(){
-  const eventType = document.getElementById("eventTypeSelect").value;
-  const eventName = document.getElementById("eventNameSelect").value;
+function handleEventNameChange() {
+  const eventType = document.getElementById("eventTypeSelect")?.value || "";
+  const eventName = document.getElementById("eventNameSelect")?.value || "";
 
   const eventMineField = document.getElementById("eventMineField");
   const eventMineSelect = document.getElementById("eventMineSelect");
@@ -700,6 +754,7 @@ function handleEventNameChange(){
   const eventChamberSelect = document.getElementById("eventChamberSelect");
 
   resetMapLoaderBelow(2);
+
   if (!eventType || !eventName) {
     ensureBoardRowCountFromCurrentContext();
     updateDifficultyMeter();
@@ -715,13 +770,13 @@ function handleEventNameChange(){
       return;
     }
 
-    eventChamberField.classList.remove("hidden");
+    if (eventChamberField) eventChamberField.classList.remove("hidden");
 
-    chambers.forEach(chamber => {
+    chambers.forEach((chamber) => {
       const option = document.createElement("option");
       option.value = chamber;
       option.textContent = translateChamberName(chamber);
-      eventChamberSelect.appendChild(option);
+      eventChamberSelect?.appendChild(option);
     });
   } else if (eventType === "Main") {
     const chambers = getOrderedMainChambers(eventName);
@@ -732,13 +787,13 @@ function handleEventNameChange(){
       return;
     }
 
-    eventChamberField.classList.remove("hidden");
+    if (eventChamberField) eventChamberField.classList.remove("hidden");
 
-    chambers.forEach(chamber => {
+    chambers.forEach((chamber) => {
       const option = document.createElement("option");
       option.value = chamber;
       option.textContent = translateChamberName(chamber);
-      eventChamberSelect.appendChild(option);
+      eventChamberSelect?.appendChild(option);
     });
   } else if (eventType === "Legacy") {
     const validMines = getOrderedLegacyMines(eventName);
@@ -749,13 +804,13 @@ function handleEventNameChange(){
       return;
     }
 
-    eventMineField.classList.remove("hidden");
+    if (eventMineField) eventMineField.classList.remove("hidden");
 
-    validMines.forEach(mineName => {
+    validMines.forEach((mineName) => {
       const option = document.createElement("option");
       option.value = mineName;
       option.textContent = translateMineName(mineName);
-      eventMineSelect.appendChild(option);
+      eventMineSelect?.appendChild(option);
     });
   }
 
@@ -763,13 +818,14 @@ function handleEventNameChange(){
   updateDifficultyMeter();
 }
 
-function handleEventMineChange(){
-  const eventName = document.getElementById("eventNameSelect").value;
-  const eventMine = document.getElementById("eventMineSelect").value;
+function handleEventMineChange() {
+  const eventName = document.getElementById("eventNameSelect")?.value || "";
+  const eventMine = document.getElementById("eventMineSelect")?.value || "";
   const eventChamberField = document.getElementById("eventChamberField");
   const eventChamberSelect = document.getElementById("eventChamberSelect");
 
   resetMapLoaderBelow(3);
+
   if (!eventName || !eventMine) {
     ensureBoardRowCountFromCurrentContext();
     updateDifficultyMeter();
@@ -784,28 +840,30 @@ function handleEventMineChange(){
     return;
   }
 
-  eventChamberField.classList.remove("hidden");
+  if (eventChamberField) eventChamberField.classList.remove("hidden");
 
-  chambers.forEach(chamber => {
+  chambers.forEach((chamber) => {
     const option = document.createElement("option");
     option.value = chamber;
     option.textContent = translateChamberName(chamber);
-    eventChamberSelect.appendChild(option);
+    eventChamberSelect?.appendChild(option);
   });
 
   ensureBoardRowCountFromCurrentContext();
   updateDifficultyMeter();
 }
 
-function buildAutoTitle(){
-  const eventType = document.getElementById("eventTypeSelect").value;
-  const eventName = document.getElementById("eventNameSelect").value;
-  const eventMine = document.getElementById("eventMineSelect").value;
-  const eventChamber = document.getElementById("eventChamberSelect").value;
+function buildAutoTitle() {
+  const eventType = document.getElementById("eventTypeSelect")?.value || "";
+  const eventName = document.getElementById("eventNameSelect")?.value || "";
+  const eventMine = document.getElementById("eventMineSelect")?.value || "";
+  const eventChamber = document.getElementById("eventChamberSelect")?.value || "";
 
   if (!eventType || !eventName || !eventChamber) return null;
 
-  const displayEvent = eventType === "MainDeep" ? translateDeepName(eventName) : translateEventName(eventName);
+  const displayEvent = eventType === "MainDeep"
+    ? translateDeepName(eventName)
+    : translateEventName(eventName);
   const displayMine = translateMineName(eventMine);
   const displayChamber = translateChamberName(eventChamber);
 
@@ -824,15 +882,15 @@ function buildAutoTitle(){
   return displayChamber;
 }
 
-function handleEventChamberChange(){
+function handleEventChamberChange() {
   const loadMapBtn = document.getElementById("loadMapBtn");
-  const eventType = document.getElementById("eventTypeSelect").value;
-  const eventName = document.getElementById("eventNameSelect").value;
-  const eventMine = document.getElementById("eventMineSelect").value;
-  const eventChamber = document.getElementById("eventChamberSelect").value;
+  const eventType = document.getElementById("eventTypeSelect")?.value || "";
+  const eventName = document.getElementById("eventNameSelect")?.value || "";
+  const eventMine = document.getElementById("eventMineSelect")?.value || "";
+  const eventChamber = document.getElementById("eventChamberSelect")?.value || "";
 
   selectedMapPath = null;
-  loadMapBtn.classList.add("hidden");
+  if (loadMapBtn) loadMapBtn.classList.add("hidden");
 
   if (!eventType || !eventName || !eventChamber) {
     ensureBoardRowCountFromCurrentContext();
@@ -842,22 +900,23 @@ function handleEventChamberChange(){
 
   if (eventType === "MainDeep") {
     selectedMapPath = { eventType, eventName, eventChamber };
-    loadMapBtn.classList.remove("hidden");
+    if (loadMapBtn) loadMapBtn.classList.remove("hidden");
   }
 
   if (eventType === "Main") {
     selectedMapPath = { eventType, eventName, eventChamber };
-    loadMapBtn.classList.remove("hidden");
+    if (loadMapBtn) loadMapBtn.classList.remove("hidden");
   }
 
   if (eventType === "Legacy" && eventMine) {
     selectedMapPath = { eventType, eventName, eventMine, eventChamber };
-    loadMapBtn.classList.remove("hidden");
+    if (loadMapBtn) loadMapBtn.classList.remove("hidden");
   }
 
   const autoTitle = buildAutoTitle();
   if (autoTitle) {
-    document.getElementById("titleInput").value = autoTitle;
+    const titleInput = document.getElementById("titleInput");
+    if (titleInput) titleInput.value = autoTitle;
     currentPreviewTitle = autoTitle;
   }
 
@@ -865,13 +924,13 @@ function handleEventChamberChange(){
   updateDifficultyMeter();
 }
 
-function handleTitleInputChange(){
-  currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
+function handleTitleInputChange() {
+  currentPreviewTitle = document.getElementById("titleInput")?.value || "Gate 1";
   ensureBoardRowCountFromCurrentContext();
   updateDifficultyMeter();
 }
 
-function getSelectedMapRecord(){
+function getSelectedMapRecord() {
   if (!selectedMapPath || !window.ZM_MAP_DATA) return null;
 
   if (selectedMapPath.eventType === "MainDeep") {
@@ -889,14 +948,16 @@ function getSelectedMapRecord(){
   return null;
 }
 
-function loadSelectedMap(){
+function loadSelectedMap() {
   const mapRecord = getSelectedMapRecord();
   if (!mapRecord) {
     setReport(t("selectedMapMissing"));
     return;
   }
 
-  clearBoard(false);
+  if (typeof clearBoard === "function") {
+    clearBoard(false);
+  }
 
   currentMapContext = {
     eventType: selectedMapPath.eventType,
@@ -907,15 +968,19 @@ function loadSelectedMap(){
 
   const autoTitle = buildAutoTitle();
   currentPreviewTitle = autoTitle || "Loaded Map";
-  document.getElementById("titleInput").value = currentPreviewTitle;
-  document.getElementById("gateType").value = mapRecord.gateType || "standard";
+
+  const titleInput = document.getElementById("titleInput");
+  if (titleInput) titleInput.value = currentPreviewTitle;
+
+  const gateType = document.getElementById("gateType");
+  if (gateType) gateType.value = mapRecord.gateType || "standard";
 
   const isGraveyard = isGraveyardValue(selectedMapPath?.eventChamber);
   setBoardRowCount(isGraveyard ? MAX_ROWS : MINED_ROWS);
 
   const sourceGrid = mapRecord.grid || [];
-
   const integrity = runLoadedGridIntegrityCheck(sourceGrid, currentPreviewTitle);
+
   if (!integrity.ok) {
     setReport(`${t("mapIntegrityFailed")} ${integrity.errors[0]}`);
     return;
@@ -932,19 +997,19 @@ function loadSelectedMap(){
   }
 
   resetSolve();
-  render();
-  renderPreview();
+  if (typeof render === "function") render();
+  if (typeof renderPreview === "function") renderPreview();
   setReport(`${t("loadedMap")} ${currentPreviewTitle}`);
   updateDifficultyMeter();
 }
 
-function clampRatio(value){
+function clampRatio(value) {
   if (DIFFICULTY_MAX === DIFFICULTY_MIN) return 0;
   const ratio = (value - DIFFICULTY_MIN) / (DIFFICULTY_MAX - DIFFICULTY_MIN);
   return Math.max(0, Math.min(1, ratio));
 }
 
-function getDifficultyLabel(ratio){
+function getDifficultyLabel(ratio) {
   if (ratio <= 0.125) return "VERY EASY";
   if (ratio <= 0.25) return "EASY";
   if (ratio <= 0.375) return "MILD";
@@ -955,7 +1020,7 @@ function getDifficultyLabel(ratio){
   return "BRUTAL";
 }
 
-function getCurrentEventName(){
+function getCurrentEventName() {
   if (isMainDeepContext()) return null;
 
   const selectedEventName = document.getElementById("eventNameSelect")?.value || "";
@@ -969,7 +1034,12 @@ function getCurrentEventName(){
   const names = Object.keys(EVENT_TOTALS).sort((a, b) => b.length - a.length);
   for (const name of names) {
     const translated = translateEventName(name);
-    if (title === name || title.startsWith(name + " -") || title === translated || title.startsWith(translated + " -")) {
+    if (
+      title === name ||
+      title.startsWith(name + " -") ||
+      title === translated ||
+      title.startsWith(translated + " -")
+    ) {
       return name;
     }
   }
@@ -977,13 +1047,12 @@ function getCurrentEventName(){
   return null;
 }
 
-function ensureDifficultyMeter(){
+function ensureDifficultyMeter() {
   let meter = document.getElementById("difficultyMeter");
   if (meter) return meter;
 
-  const btnGrid = document.querySelector(".btn-grid");
   const report = document.getElementById("report");
-  if (!btnGrid || !report || !report.parentNode) return null;
+  if (!report || !report.parentNode) return null;
 
   meter = document.createElement("div");
   meter.id = "difficultyMeter";
@@ -1050,7 +1119,11 @@ function ensureDifficultyMeter(){
   return meter;
 }
 
-function updateDifficultyMeter(){
+function updateDifficultyMeter() {
+  const meter = ensureDifficultyMeter();
+  const report = document.getElementById("report");
+  if (!meter || !report)
+    function updateDifficultyMeter() {
   const meter = ensureDifficultyMeter();
   const report = document.getElementById("report");
   if (!meter || !report) return;
@@ -1087,9 +1160,12 @@ function updateDifficultyMeter(){
   meter.style.display = "flex";
 }
 
-function init(){
+function init() {
   initGridData();
-  currentPreviewTitle = document.getElementById("titleInput").value || "Gate 1";
+
+  const titleInput = document.getElementById("titleInput");
+  currentPreviewTitle = titleInput?.value || "Gate 1";
+
   loadHelpContent();
   populateEventTypeSelect();
   applyLanguage();
@@ -1113,10 +1189,12 @@ function init(){
     }
   }
 
-  render();
-  renderPreview();
-  initAccessControl();
-  updateUserUI();
+  if (typeof render === "function") render();
+  if (typeof renderPreview === "function") renderPreview();
+
+  if (typeof initAccessControl === "function") initAccessControl();
+  if (typeof updateUserUI === "function") updateUserUI();
+
   ensureDifficultyMeter();
   updateDifficultyMeter();
 
@@ -1124,5 +1202,21 @@ function init(){
     scanActiveObjectTypes();
   }
 
-  renderRouteAudit([]);
+  if (typeof renderRouteAudit === "function") {
+    renderRouteAudit([]);
+  }
 }
+
+window.changeLanguage = changeLanguage;
+window.openSolverHelp = openSolverHelp;
+window.closeSolverHelp = closeSolverHelp;
+window.openRouteReportModal = openRouteReportModal;
+window.closeRouteReportModal = closeRouteReportModal;
+window.handleEventTypeChange = handleEventTypeChange;
+window.handleEventNameChange = handleEventNameChange;
+window.handleEventMineChange = handleEventMineChange;
+window.handleEventChamberChange = handleEventChamberChange;
+window.loadSelectedMap = loadSelectedMap;
+window.handleTitleInputChange = handleTitleInputChange;
+
+window.addEventListener("load", init);
