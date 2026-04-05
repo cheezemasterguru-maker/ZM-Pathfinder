@@ -1084,17 +1084,17 @@
 
     const drawEverything = (logoReady, logo) => {
     const headerY = 12;
-    const headerH = 118;
+const headerH = 118;
 
-    const logoBoxX = 26;
-    const logoBoxY = headerY;
-    const logoBoxW = 220;
-    const logoBoxH = headerH;
+const logoBoxX = 26;
+const logoBoxY = headerY;
+const logoBoxW = 220;
+const logoBoxH = headerH;
 
-      const titleBoxX = logoBoxX + logoBoxW + 16;
-      const titleBoxY = headerY;
-      const titleBoxW = canvas.width - titleBoxX - 26;
-      const titleBoxH = headerH;
+const titleBoxX = logoBoxX + logoBoxW + 16;
+const titleBoxY = headerY;
+const titleBoxW = canvas.width - titleBoxX - 26;
+const titleBoxH = headerH;
 
       if (logoReady && logo) {
         const logoMaxW = 180;
