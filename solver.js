@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V5.8 loaded");
+  console.log("ZM Solver V5.9 loaded");
 
-  const SOLVER_VERSION = "V5.8";
+  const SOLVER_VERSION = "V5.9";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -15,6 +15,15 @@
     priorityObjectBonus: -250000,
     avoidObjectPenalty: 250000,
   };
+
+  const MAX_PATH_VARIANTS = 6;
+  const MAX_REQUIRED_PRIORITY_CANDIDATES = 20;
+  const MAX_RED_CANDIDATES = 24;
+  const MAX_LEGACY_RED_CANDIDATES = 40;
+  const MAX_FIRST_LEG_PRIORITY_VARIANTS = 3;
+  const MAX_SECOND_LEG_GATE_VARIANTS = 3;
+  const MAX_SECOND_LEG_BUBBLE_VARIANTS = 2;
+  const MAX_THIRD_LEG_GATE_VARIANTS = 2;
 
   let GLOBAL_OBJECT_PRIORITIES = { ...DEFAULT_OBJECT_PRIORITIES };
 
@@ -44,9 +53,13 @@
       highMineralFlat:
         Number.isFinite(merged.highMineralFlat) ? merged.highMineralFlat : 0,
       priorityObjectBonus:
-        Number.isFinite(merged.priorityObjectBonus) ? merged.priorityObjectBonus : -250000,
+        Number.isFinite(merged.priorityObjectBonus)
+          ? merged.priorityObjectBonus
+          : -250000,
       avoidObjectPenalty:
-        Number.isFinite(merged.avoidObjectPenalty) ? merged.avoidObjectPenalty : 250000,
+        Number.isFinite(merged.avoidObjectPenalty)
+          ? merged.avoidObjectPenalty
+          : 250000,
     };
   }
 
@@ -999,7 +1012,7 @@
       return a.route.len - b.route.len;
     });
 
-    return deduped.slice(0, 12);
+    return deduped.slice(0, MAX_PATH_VARIANTS);
   }
 
   function buildRequiredPriorityRouteCandidates(
@@ -1040,7 +1053,7 @@
       );
       if (!toPriorityVariants.length) continue;
 
-      for (const firstLeg of toPriorityVariants) {
+      for (const firstLeg of toPriorityVariants.slice(0, MAX_FIRST_LEG_PRIORITY_VARIANTS)) {
         for (const gateGoal of gateGoals) {
           const toGateVariants = makePathVariants(
             grid,
@@ -1051,7 +1064,7 @@
             getCellObjectType
           );
 
-          for (const secondLeg of toGateVariants) {
+          for (const secondLeg of toGateVariants.slice(0, MAX_SECOND_LEG_GATE_VARIANTS)) {
             addRequiredCandidate(
               "required priority",
               `priority-then-gate-${firstLeg.tag}-${secondLeg.tag}`,
@@ -1075,7 +1088,7 @@
             getCellObjectType
           );
 
-          for (const secondLeg of toBubbleVariants) {
+          for (const secondLeg of toBubbleVariants.slice(0, MAX_SECOND_LEG_BUBBLE_VARIANTS)) {
             for (const gateGoal of gateGoals) {
               const toGateVariants = makePathVariants(
                 grid,
@@ -1086,7 +1099,7 @@
                 getCellObjectType
               );
 
-              for (const thirdLeg of toGateVariants) {
+              for (const thirdLeg of toGateVariants.slice(0, MAX_THIRD_LEG_GATE_VARIANTS)) {
                 addRequiredCandidate(
                   "required priority",
                   `priority-bubble-gate-${firstLeg.tag}-${secondLeg.tag}-${thirdLeg.tag}`,
@@ -1114,7 +1127,7 @@
     });
 
     deduped.sort((a, b) => a.redCost - b.redCost || a.path.length - b.path.length);
-    return deduped.slice(0, 120);
+    return deduped.slice(0, MAX_REQUIRED_PRIORITY_CANDIDATES);
   }
 
   function buildRedCandidates(
@@ -1333,7 +1346,7 @@
     });
 
     deduped.sort((a, b) => a.redCost - b.redCost || a.path.length - b.path.length);
-    return deduped.slice(0, 120);
+    return deduped.slice(0, MAX_RED_CANDIDATES);
   }
 
   function buildLegacyEndRedCandidates(
@@ -1517,7 +1530,7 @@
       return a.path.length - b.path.length;
     });
 
-    return deduped.slice(0, 400);
+    return deduped.slice(0, MAX_LEGACY_RED_CANDIDATES);
   }
 
   function getLowestShaftPreferenceBonus(route, entry, cluster, routeKind, isLowestShaft) {
