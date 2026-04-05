@@ -69,7 +69,7 @@ function initObjectPriorities() {
 
 initObjectPriorities();
 
-function getTileMeta(eventType, eventName, chamberName, r, c){
+function getTileMeta(eventType, eventName, chamberName, r, c) {
   const mineName = currentMapContext.eventMine;
 
   if (eventType === "Legacy") {
@@ -81,7 +81,7 @@ function getTileMeta(eventType, eventName, chamberName, r, c){
     || { object: "plain" };
 }
 
-function getObjectVisual(meta){
+function getObjectVisual(meta) {
   if (!meta || !meta.object || meta.object === "plain" || !window.ZM_OBJECT_TYPES) {
     return { code: "", fill: null };
   }
@@ -138,20 +138,23 @@ function getPriorityVisualMeta(objectType) {
   return OBJECT_PRIORITY_DEFINITIONS[normalized]?.visualMeta || { object: normalized };
 }
 
+function getCellObjectType(r, c) {
+  const meta = getTileMeta(
+    currentMapContext.eventType,
+    currentMapContext.eventName,
+    currentMapContext.chamberName,
+    r,
+    c
+  );
+  return getPriorityObjectTypeFromMeta(meta);
+}
+
 function scanActiveObjectTypes() {
   const found = new Set();
 
   for (let r = 0; r < currentRowCount; r++) {
     for (let c = 0; c < COLS; c++) {
-      const meta = getTileMeta(
-        currentMapContext.eventType,
-        currentMapContext.eventName,
-        currentMapContext.chamberName,
-        r,
-        c
-      );
-
-      const priorityType = getPriorityObjectTypeFromMeta(meta);
+      const priorityType = getCellObjectType(r, c);
       if (priorityType) {
         found.add(priorityType);
       }
@@ -180,28 +183,6 @@ function resetObjectPriorities() {
     objectPriorities[type] = "normal";
   });
   renderObjectPrioritiesModal();
-}
-
-function getObjectPriorityMultiplier(objectType) {
-  const priority = getObjectPriorityValue(objectType);
-  if (priority === "avoid") return 1.35;
-  if (priority === "priority") return 0.75;
-  return 1;
-}
-
-function getCellObjectPriorityMultiplier(r, c) {
-  const meta = getTileMeta(
-    currentMapContext.eventType,
-    currentMapContext.eventName,
-    currentMapContext.chamberName,
-    r,
-    c
-  );
-
-  const objectType = getPriorityObjectTypeFromMeta(meta);
-  if (!objectType) return 1;
-
-  return getObjectPriorityMultiplier(objectType);
 }
 
 function getObjectPriorityMapForSolver() {
@@ -343,8 +324,8 @@ function renderObjectPrioritiesModal() {
   });
 }
 
-function solveBoard(){
-  if(!window.ZMPathfinderSolver || typeof window.ZMPathfinderSolver.solveGrid !== "function"){
+function solveBoard() {
+  if (!window.ZMPathfinderSolver || typeof window.ZMPathfinderSolver.solveGrid !== "function") {
     setReport(t("solverMissing"));
     return;
   }
@@ -359,10 +340,10 @@ function solveBoard(){
     eventMine: currentMapContext.eventMine,
     chamberName: currentMapContext.chamberName,
     objectPriorityMap: getObjectPriorityMapForSolver(),
-    getCellObjectPriorityMultiplier
+    getCellObjectType
   });
 
-  if(!result || !result.ok){
+  if (!result || !result.ok) {
     resetSolve();
     setReport(result && result.message ? result.message : t("solverFailed"));
     renderPreview();
@@ -384,7 +365,10 @@ function solveBoard(){
     firstBubbleTravelCost: result.firstBubbleTravelCost ?? null,
     effectiveTotal: result.effectiveTotal ?? null,
     redCost: result.redCost ?? null,
-    blueCost: result.blueCost ?? null
+    blueCost: result.blueCost ?? null,
+    redObjectPriorityScore: result.redObjectPriorityScore ?? 0,
+    blueObjectPriorityScore: result.blueObjectPriorityScore ?? 0,
+    objectPriorityScore: result.objectPriorityScore ?? 0
   };
 
   setReport(result.message || t("solvedMessage"));
@@ -392,26 +376,9 @@ function solveBoard(){
   renderPreview();
 }
 
-window.changeLanguage = changeLanguage;
-window.openSolverHelp = openSolverHelp;
-window.closeSolverHelp = closeSolverHelp;
-window.openRouteReportModal = openRouteReportModal;
-window.closeRouteReportModal = closeRouteReportModal;
 window.openObjectPrioritiesModal = openObjectPrioritiesModal;
 window.closeObjectPrioritiesModal = closeObjectPrioritiesModal;
 window.resetObjectPriorities = resetObjectPriorities;
-window.handleEventTypeChange = handleEventTypeChange;
-window.handleEventNameChange = handleEventNameChange;
-window.handleEventMineChange = handleEventMineChange;
-window.handleEventChamberChange = handleEventChamberChange;
-window.loadSelectedMap = loadSelectedMap;
-window.handleTitleInputChange = handleTitleInputChange;
-window.setTool = setTool;
-window.clearBoard = clearBoard;
 window.solveBoard = solveBoard;
-window.downloadPNG = downloadPNG;
-window.loadSampleGrid = loadSampleGrid;
-window.pasteFromClipboard = pasteFromClipboard;
-window.renderPreview = renderPreview;
-
-window.addEventListener("load", init);
+window.scanActiveObjectTypes = scanActiveObjectTypes;
+window.getCellObjectType = getCellObjectType;
