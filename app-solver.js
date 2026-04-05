@@ -576,4 +576,3 @@ window.solveBoard = solveBoard;
 window.scanActiveObjectTypes = scanActiveObjectTypes;
 window.getCellObjectType = getCellObjectType;
 window.setSolverMode = setSolverMode;
-window.getSolverMode = getSolverMode;
