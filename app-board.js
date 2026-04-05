@@ -35,7 +35,6 @@ function renderRouteAudit(routeAnalysis) {
     `First bubble travel cost: <b>${solveState.firstBubbleTravelCost ?? "n/a"}</b><br>` +
     `Red cost: <b>${solveState.redCost ?? "n/a"}</b> | Blue cost: <b>${solveState.blueCost ?? "n/a"}</b><br>` +
     `Object priority score: <b>${solveState.objectPriorityScore ?? 0}</b><br>` +
-    `Missing priority count: <b>${solveState.missingPriorityCount ?? 0}</b><br>` +
     `Effective total: <b>${solveState.effectiveTotal ?? "n/a"}</b><br>` +
     `Red path cells: <b>${solveState.redPath.length}</b><br>` +
     `Blue route count: <b>${solveState.bluePaths.length}</b><br>` +
@@ -692,6 +691,144 @@ function loadSampleGrid() {
   updateDifficultyMeter();
 }
 
+function getPriorityLegendItems() {
+  const items = [];
+  const currentMode =
+    (solveState && solveState.solverMode) ||
+    (typeof getSolverMode === "function" ? getSolverMode() : "standard");
+
+  if (currentMode !== "custom") return items;
+  if (typeof scanActiveObjectTypes !== "function") return items;
+
+  const active = scanActiveObjectTypes() || [];
+
+  const priorityOrder = ["priority", "normal", "avoid"];
+
+  function labelForSetting(setting) {
+    if (setting === "priority") return "Priority";
+    if (setting === "avoid") return "Avoid";
+    return "Normal";
+  }
+
+  active
+    .filter((type) => typeof getObjectPriorityValue === "function")
+    .map((type) => ({
+      type,
+      setting: getObjectPriorityValue(type)
+    }))
+    .sort((a, b) => {
+      const pa = priorityOrder.indexOf(a.setting);
+      const pb = priorityOrder.indexOf(b.setting);
+      if (pa !== pb) return pa - pb;
+      const la = typeof formatObjectPriorityLabel === "function" ? formatObjectPriorityLabel(a.type) : a.type;
+      const lb = typeof formatObjectPriorityLabel === "function" ? formatObjectPriorityLabel(b.type) : b.type;
+      return la.localeCompare(lb);
+    })
+    .forEach((item) => {
+      items.push({
+        type: item.type,
+        label: typeof formatObjectPriorityLabel === "function"
+          ? formatObjectPriorityLabel(item.type)
+          : item.type,
+        setting: item.setting,
+        settingLabel: labelForSetting(item.setting)
+      });
+    });
+
+  return items;
+}
+
+function drawLegendBadge(ctx, item, x, y) {
+  const boxSize = 18;
+  const radius = 4;
+
+  ctx.save();
+
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + boxSize - radius, y);
+  ctx.quadraticCurveTo(x + boxSize, y, x + boxSize, y + radius);
+  ctx.lineTo(x + boxSize, y + boxSize - radius);
+  ctx.quadraticCurveTo(x + boxSize, y + boxSize, x + boxSize - radius, y + boxSize);
+  ctx.lineTo(x + radius, y + boxSize);
+  ctx.quadraticCurveTo(x, y + boxSize, x, y + boxSize - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+
+  if (item.type === "gate") {
+    ctx.fillStyle = "#f3d36a";
+    ctx.fill();
+    ctx.fillStyle = "#111";
+    ctx.font = "700 11px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("G", x + boxSize / 2, y + boxSize / 2 + 0.5);
+  } else if (item.type === "shaft") {
+    ctx.fillStyle = "#98f44d";
+    ctx.fill();
+    ctx.fillStyle = "#111";
+    ctx.font = "700 11px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("S", x + boxSize / 2, y + boxSize / 2 + 0.5);
+  } else if (item.type === "bubble") {
+    ctx.fillStyle = "#8fd3f7";
+    ctx.fill();
+    ctx.fillStyle = "#111";
+    ctx.font = "700 11px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("B", x + boxSize / 2, y + boxSize / 2 + 0.5);
+  } else {
+    const visualMeta = typeof getPriorityVisualMeta === "function"
+      ? getPriorityVisualMeta(item.type)
+      : null;
+    const visual = typeof getObjectVisual === "function"
+      ? getObjectVisual(visualMeta)
+      : { code: "", fill: "#2a3558" };
+
+    if (visual.fill) {
+      if (typeof visual.fill === "string") {
+        ctx.fillStyle = visual.fill;
+        ctx.fill();
+      } else if (
+        visual.fill.type === "dual" &&
+        Array.isArray(visual.fill.colors) &&
+        visual.fill.colors.length >= 2
+      ) {
+        const grad = ctx.createLinearGradient(x, y, x + boxSize, y + boxSize);
+        grad.addColorStop(0, visual.fill.colors[0]);
+        grad.addColorStop(0.499, visual.fill.colors[0]);
+        grad.addColorStop(0.5, visual.fill.colors[1]);
+        grad.addColorStop(1, visual.fill.colors[1]);
+        ctx.fillStyle = grad;
+        ctx.fill();
+      } else {
+        ctx.fillStyle = "#2a3558";
+        ctx.fill();
+      }
+    } else {
+      ctx.fillStyle = "#2a3558";
+      ctx.fill();
+    }
+
+    if (visual.code) {
+      ctx.fillStyle = "#111";
+      ctx.font = "700 9px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(visual.code, x + boxSize / 2, y + boxSize / 2 + 0.5);
+    }
+  }
+
+  ctx.strokeStyle = "#171b2e";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 function renderPreview() {
   const canvas = document.getElementById("previewCanvas");
   const ctx = canvas.getContext("2d");
@@ -699,6 +836,11 @@ function renderPreview() {
   const cell = 86;
   const pad = 22;
   const topPad = 145;
+
+  const legendItems = getPriorityLegendItems();
+  const customMode =
+    ((solveState && solveState.solverMode) ||
+      (typeof getSolverMode === "function" ? getSolverMode() : "standard")) === "custom";
 
   const usedRows = [];
   for (let r = 0; r < currentRowCount; r++) {
@@ -715,8 +857,10 @@ function renderPreview() {
   const maxRow = Math.max(currentRowCount - 1, maxFilled);
   const visibleRows = maxRow - minRow + 1;
 
+  const legendHeight = customMode ? Math.max(120, 42 + Math.ceil(Math.max(1, legendItems.length) / 2) * 24) : 120;
+
   canvas.width = pad * 2 + cell * COLS;
-  canvas.height = topPad + visibleRows * cell + 120;
+  canvas.height = topPad + visibleRows * cell + legendHeight;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#fff";
@@ -784,7 +928,7 @@ function renderPreview() {
         ctx.fillText(line2, titleBoxX + titleBoxW / 2, titleBoxY + 78);
       }
 
-      drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow);
+      drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow, legendHeight, legendItems, customMode);
     };
     logo.src = "file_00000000e35071fda5e92d9996ac3621.png";
   };
@@ -792,7 +936,7 @@ function renderPreview() {
   drawEverything();
 }
 
-function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow) {
+function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow, legendHeight, legendItems, customMode) {
   const rowOffset = minRow;
 
   for (let r = minRow; r <= maxRow; r++) {
@@ -892,50 +1036,115 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow) {
     drawCenteredMultilineText(ctx, getShaftDisplayLines(i, shaftData), x, y, w, h);
   }
 
-  for (const path of solveState.bluePaths) {
-    drawPath(ctx, path, "#2563eb", 10, cell, pad, topPad, rowOffset);
+  const customColor = "#a855f7";
+
+  if (customMode) {
+    for (const path of solveState.bluePaths) {
+      drawPath(ctx, path, customColor, 10, cell, pad, topPad, rowOffset);
+    }
+    drawPath(ctx, solveState.redPath, customColor, 12, cell, pad, topPad, rowOffset);
+  } else {
+    for (const path of solveState.bluePaths) {
+      drawPath(ctx, path, "#2563eb", 10, cell, pad, topPad, rowOffset);
+    }
+    drawPath(ctx, solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset);
   }
 
-  drawPath(ctx, solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset);
+  const legendTop = ctx.canvas.height - legendHeight + 18;
 
-  const ly = ctx.canvas.height - 35;
+  if (customMode) {
+    ctx.fillStyle = "#111";
+    ctx.font = "700 18px Arial";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText("Custom Priorities", 30, legendTop);
 
-  ctx.lineCap = "round";
-  ctx.lineWidth = 16;
-  ctx.strokeStyle = "#000";
-  ctx.beginPath();
-  ctx.moveTo(36, ly);
-  ctx.lineTo(112, ly);
-  ctx.stroke();
+    const lineY = legendTop + 10;
+    ctx.lineCap = "round";
+    ctx.lineWidth = 16;
+    ctx.strokeStyle = "#000";
+    ctx.beginPath();
+    ctx.moveTo(ctx.canvas.width - 170, lineY + 8);
+    ctx.lineTo(ctx.canvas.width - 90, lineY + 8);
+    ctx.stroke();
 
-  ctx.lineWidth = 10;
-  ctx.strokeStyle = "#ef4444";
-  ctx.beginPath();
-  ctx.moveTo(36, ly);
-  ctx.lineTo(112, ly);
-  ctx.stroke();
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = customColor;
+    ctx.beginPath();
+    ctx.moveTo(ctx.canvas.width - 170, lineY + 8);
+    ctx.lineTo(ctx.canvas.width - 90, lineY + 8);
+    ctx.stroke();
 
-  ctx.fillStyle = "#111";
-  ctx.font = "700 18px Arial";
-  ctx.textAlign = "left";
-  ctx.fillText(t("strongestRed"), 126, ly + 6);
+    ctx.fillStyle = "#111";
+    ctx.font = "700 13px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText("Custom Route", ctx.canvas.width - 82, lineY + 2);
 
-  ctx.lineWidth = 16;
-  ctx.strokeStyle = "#000";
-  ctx.beginPath();
-  ctx.moveTo(370, ly);
-  ctx.lineTo(446, ly);
-  ctx.stroke();
+    let x = 30;
+    let y = legendTop + 30;
+    const maxWidth = ctx.canvas.width - 30;
+    const rowHeight = 24;
 
-  ctx.lineWidth = 10;
-  ctx.strokeStyle = "#2563eb";
-  ctx.beginPath();
-  ctx.moveTo(370, ly);
-  ctx.lineTo(446, ly);
-  ctx.stroke();
+    ctx.font = "600 12px Arial";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
 
-  ctx.fillStyle = "#111";
-  ctx.fillText(t("strongestBlue"), 460, ly + 6);
+    for (const item of legendItems) {
+      const text = `${item.label}: ${item.settingLabel}`;
+      const textWidth = ctx.measureText(text).width;
+      const itemWidth = 18 + 8 + textWidth + 18;
+
+      if (x + itemWidth > maxWidth) {
+        x = 30;
+        y += rowHeight;
+      }
+
+      drawLegendBadge(ctx, item, x, y - 9);
+      ctx.fillStyle = "#111";
+      ctx.fillText(text, x + 26, y + 1);
+
+      x += itemWidth;
+    }
+  } else {
+    const ly = ctx.canvas.height - 35;
+
+    ctx.lineCap = "round";
+    ctx.lineWidth = 16;
+    ctx.strokeStyle = "#000";
+    ctx.beginPath();
+    ctx.moveTo(36, ly);
+    ctx.lineTo(112, ly);
+    ctx.stroke();
+
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = "#ef4444";
+    ctx.beginPath();
+    ctx.moveTo(36, ly);
+    ctx.lineTo(112, ly);
+    ctx.stroke();
+
+    ctx.fillStyle = "#111";
+    ctx.font = "700 18px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText(t("strongestRed"), 126, ly + 6);
+
+    ctx.lineWidth = 16;
+    ctx.strokeStyle = "#000";
+    ctx.beginPath();
+    ctx.moveTo(370, ly);
+    ctx.lineTo(446, ly);
+    ctx.stroke();
+
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = "#2563eb";
+    ctx.beginPath();
+    ctx.moveTo(370, ly);
+    ctx.lineTo(446, ly);
+    ctx.stroke();
+
+    ctx.fillStyle = "#111";
+    ctx.fillText(t("strongestBlue"), 460, ly + 6);
+  }
 }
 
 function getShaftClustersFromGrid() {
@@ -978,9 +1187,13 @@ function getShaftClustersFromGrid() {
 }
 
 function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
-  if (!path || !path.length) return;
+  if (!path || path.length < 1) return;
 
-  const isRed = color === "#ef4444";
+  const customMode =
+    ((solveState && solveState.solverMode) ||
+      (typeof getSolverMode === "function" ? getSolverMode() : "standard")) === "custom";
+
+  const isRed = color === "#ef4444" || (customMode && color === "#a855f7");
   const isBlue = color === "#2563eb";
 
   function center(pt) {
@@ -1024,52 +1237,11 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
     return null;
   }
 
-  function splitIntoContiguousSegments(fullPath) {
-    if (!fullPath || !fullPath.length) return [];
-    const segments = [];
-    let current = [fullPath[0]];
+  function getBlueEndpointPoint() {
+    if (path.length === 1) return center(path[0]);
 
-    for (let i = 1; i < fullPath.length; i++) {
-      const prev = fullPath[i - 1];
-      const next = fullPath[i];
-
-      if (manhattan(prev, next) === 1) {
-        current.push(next);
-      } else {
-        if (current.length) segments.push(current);
-        current = [next];
-      }
-    }
-
-    if (current.length) segments.push(current);
-    return segments;
-  }
-
-  function getAdjacentRedTouchForBlue(segment) {
-    if (!isBlue || !segment || !segment.length) return null;
-
-    const redPath = Array.isArray(solveState.redPath) ? solveState.redPath : [];
-    if (!redPath.length) return null;
-
-    const first = segment[0];
-    for (const redCell of redPath) {
-      if (manhattan(first, redCell) === 1) {
-        return getBoundaryTouchPoint(first, redCell);
-      }
-    }
-
-    return null;
-  }
-
-  function getAdjacentShaftTouch(segment, useFirstCell) {
-    if (!segment || !segment.length) return null;
-
-    const targetCell = useFirstCell ? segment[0] : segment[segment.length - 1];
-    const compareCell = useFirstCell && segment.length > 1
-      ? segment[1]
-      : !useFirstCell && segment.length > 1
-        ? segment[segment.length - 2]
-        : null;
+    const last = path[path.length - 1];
+    const prev = path[path.length - 2];
 
     const dirs = [
       [0, 1],
@@ -1079,177 +1251,148 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
     ];
 
     for (const [dr, dc] of dirs) {
-      const nr = targetCell[0] + dr;
-      const nc = targetCell[1] + dc;
+      const nr = last[0] + dr;
+      const nc = last[1] + dc;
 
-      if (compareCell && nr === compareCell[0] && nc === compareCell[1]) continue;
+      if (prev && nr === prev[0] && nc === prev[1]) continue;
       if (getCellValue(nr, nc) !== "S") continue;
 
-      return getBoundaryTouchPoint(targetCell, [nr, nc]);
+      const touch = getBoundaryTouchPoint(last, [nr, nc]);
+      if (touch) return touch;
     }
 
-    return null;
+    return center(last);
   }
 
-  function getAdjacentAttackTouch(segment, useFirstCell) {
-    if (!segment || !segment.length) return null;
+  function getRedEndpointPoint() {
+    if (path.length === 1) return center(path[0]);
+
+    const last = path[path.length - 1];
     const attackPoints = Array.isArray(solveState.attackPoints) ? solveState.attackPoints : [];
-    if (!attackPoints.length) return null;
 
-    const targetCell = useFirstCell ? segment[0] : segment[segment.length - 1];
+    if (!attackPoints.length) return center(last);
 
-    for (const pt of attackPoints) {
-      if (manhattan(targetCell, pt) === 1) {
-        return getBoundaryTouchPoint(targetCell, pt);
-      }
+    const adjacentAttack = attackPoints.find((pt) => manhattan(last, pt) === 1);
+    if (adjacentAttack) {
+      const touch = getBoundaryTouchPoint(last, adjacentAttack);
+      if (touch) return touch;
     }
 
-    return null;
+    return center(last);
   }
 
-  function getSegmentStartExtension(segment) {
-    if (!segment || !segment.length) return null;
+  function getStartStubPoint() {
+    const first = path[0];
+    const second = path.length > 1 ? path[1] : null;
 
-    if (isBlue) {
-      const redTouch = getAdjacentRedTouchForBlue(segment);
-      if (redTouch) return redTouch;
+    if (!first || !second) return center(first);
 
-      const shaftTouch = getAdjacentShaftTouch(segment, true);
-      if (shaftTouch) return shaftTouch;
-    }
+    const dx = second[1] - first[1];
+    const dy = second[0] - first[0];
+    const firstCenter = center(first);
 
-    if (isRed) {
-      const attackTouch = getAdjacentAttackTouch(segment, true);
-      if (attackTouch) return attackTouch;
-    }
+    if (dx === 1) return { x: firstCenter.x - cell / 2, y: firstCenter.y };
+    if (dx === -1) return { x: firstCenter.x + cell / 2, y: firstCenter.y };
+    if (dy === 1) return { x: firstCenter.x, y: firstCenter.y - cell / 2 };
+    if (dy === -1) return { x: firstCenter.x, y: firstCenter.y + cell / 2 };
 
-    return center(segment[0]);
+    return firstCenter;
   }
 
-  function getSegmentEndExtension(segment) {
-    if (!segment || !segment.length) return null;
+  const points = path.map(center);
 
-    if (isBlue) {
-      const shaftTouch = getAdjacentShaftTouch(segment, false);
-      if (shaftTouch) return shaftTouch;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
 
-      const redPath = Array.isArray(solveState.redPath) ? solveState.redPath : [];
-      const last = segment[segment.length - 1];
-      for (const redCell of redPath) {
-        if (manhattan(last, redCell) === 1) {
-          const touch = getBoundaryTouchPoint(last, redCell);
-          if (touch) return touch;
-        }
-      }
-    }
+  ctx.beginPath();
 
-    if (isRed) {
-      const attackTouch = getAdjacentAttackTouch(segment, false);
-      if (attackTouch) return attackTouch;
-    }
-
-    return center(segment[segment.length - 1]);
+  if (isRed) {
+    const startStub = getStartStubPoint();
+    ctx.moveTo(startStub.x, startStub.y);
+    ctx.lineTo(points[0].x, points[0].y);
+  } else {
+    ctx.moveTo(points[0].x, points[0].y);
   }
 
-  function strokeOneSegment(segment) {
-    if (!segment || !segment.length) return;
-
-    const points = segment.map(center);
-    const firstPoint = points[0];
-    const lastPoint = points[points.length - 1];
-
-    const startExtension = getSegmentStartExtension(segment);
-    const endExtension = getSegmentEndExtension(segment);
-
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    ctx.lineWidth = width + 5;
-    ctx.strokeStyle = "#000";
-    ctx.beginPath();
-
-    if (
-      startExtension &&
-      (startExtension.x !== firstPoint.x || startExtension.y !== firstPoint.y)
-    ) {
-      ctx.moveTo(startExtension.x, startExtension.y);
-      ctx.lineTo(firstPoint.x, firstPoint.y);
-    } else {
-      ctx.moveTo(firstPoint.x, firstPoint.y);
-    }
-
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i].x, points[i].y);
-    }
-
-    if (
-      endExtension &&
-      (endExtension.x !== lastPoint.x || endExtension.y !== lastPoint.y)
-    ) {
-      ctx.lineTo(endExtension.x, endExtension.y);
-    }
-
-    ctx.stroke();
-
-    ctx.lineWidth = width;
-    ctx.strokeStyle = color;
-    ctx.beginPath();
-
-    if (
-      startExtension &&
-      (startExtension.x !== firstPoint.x || startExtension.y !== firstPoint.y)
-    ) {
-      ctx.moveTo(startExtension.x, startExtension.y);
-      ctx.lineTo(firstPoint.x, firstPoint.y);
-    } else {
-      ctx.moveTo(firstPoint.x, firstPoint.y);
-    }
-
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i].x, points[i].y);
-    }
-
-    if (
-      endExtension &&
-      (endExtension.x !== lastPoint.x || endExtension.y !== lastPoint.y)
-    ) {
-      ctx.lineTo(endExtension.x, endExtension.y);
-    }
-
-    ctx.stroke();
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
   }
 
-  const segments = splitIntoContiguousSegments(path);
-  if (!segments.length) return;
-
-  for (const segment of segments) {
-    strokeOneSegment(segment);
+  if (isBlue) {
+    const endPoint = getBlueEndpointPoint();
+    ctx.lineTo(endPoint.x, endPoint.y);
+  } else if (isRed) {
+    const endPoint = getRedEndpointPoint();
+    if (endPoint.x !== points[points.length - 1].x || endPoint.y !== points[points.length - 1].y) {
+      ctx.lineTo(endPoint.x, endPoint.y);
+    }
   }
+
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = width + 6;
+  ctx.stroke();
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.stroke();
+}
+
+function resetSolve() {
+  solveState = {
+    redPath: [],
+    bluePaths: [],
+    shaftEntryDots: [],
+    shaftClusters: [],
+    attackPoints: [],
+    solved: false,
+    message: "",
+    routeAnalysis: [],
+    solverVersion: null,
+    solverMode: typeof getSolverMode === "function" ? getSolverMode() : "standard",
+    legacyEndMode: false,
+    redBubbleCount: 0,
+    firstBubbleTravelCost: null,
+    effectiveTotal: null,
+    redCost: null,
+    blueCost: null,
+    redObjectPriorityScore: 0,
+    blueObjectPriorityScore: 0,
+    objectPriorityScore: 0,
+    missingPriorityCount: 0
+  };
+}
+
+function getVisibleGridSlice() {
+  return grid.slice(0, currentRowCount).map((row) => row.slice(0, COLS));
 }
 
 function downloadPNG() {
   renderPreview();
-  setTimeout(() => {
-    const canvas = document.getElementById("previewCanvas");
-    const url = canvas.toDataURL("image/png");
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(currentPreviewTitle || document.getElementById("titleInput").value || "zm-pathfinder")
-      .replace(/\s+/g, "-")
-      .toLowerCase()}.png`;
-    a.click();
-  }, 160);
+  const canvas = document.getElementById("previewCanvas");
+  const link = document.createElement("a");
+  const safeTitle = String(
+    currentPreviewTitle || document.getElementById("titleInput")?.value || "zm-pathfinder"
+  )
+    .trim()
+    .replace(/[^\w\-]+/g, "_");
+
+  link.href = canvas.toDataURL("image/png");
+  link.download = `${safeTitle}.png`;
+  link.click();
 }
 
 window.setTool = setTool;
+window.render = render;
+window.renderPreview = renderPreview;
+window.clickCell = clickCell;
 window.clearBoard = clearBoard;
-window.downloadPNG = downloadPNG;
 window.loadSampleGrid = loadSampleGrid;
 window.pasteFromClipboard = pasteFromClipboard;
-window.renderPreview = renderPreview;
+window.applyText = applyText;
+window.downloadPNG = downloadPNG;
+window.resetSolve = resetSolve;
+window.getVisibleGridSlice = getVisibleGridSlice;
+window.openRouteReportModal = openRouteReportModal;
+window.closeRouteReportModal = closeRouteReportModal;
 window.renderRouteAudit = renderRouteAudit;
-window.getCurrentChamberShaftData = getCurrentChamberShaftData;
-window.getCurrentShaftDataPathLabel = getCurrentShaftDataPathLabel;
-window.getOrderedPhysicalShaftClusters = getOrderedPhysicalShaftClusters;
-window.getShaftDisplayLines = getShaftDisplayLines;
-window.getShaftClustersFromGrid = getShaftClustersFromGrid;
+})();
