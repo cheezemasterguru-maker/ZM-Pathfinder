@@ -1,5 +1,5 @@
 (function () {
-  console.log("ZM Solver V6.0 loaded");
+  console.log("ZM Solver V6.1 loaded");
 
   const SOLVER_VERSION = "V6.0";
 
