@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V6.0 loaded");
+  console.log("ZM Solver V7.0 loaded");
 
-  const SOLVER_VERSION = "V6.0";
+  const SOLVER_VERSION = "V7.0";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -502,7 +502,6 @@
   }
 
   function getShaftAttackInfo(grid, cluster) {
-    const clusterSet = new Set(cluster.map(([r, c]) => cellKey(r, c)));
     const attacks = [];
     const entryMap = new Map();
 
@@ -518,25 +517,19 @@
     const minC = Math.min(...cols);
     const maxC = Math.max(...cols);
 
-    const candidateCells = [];
+    const candidates = [];
 
     for (let r = minR; r <= maxR; r++) {
-      candidateCells.push([r, minC - 1, r, minC]);
-    }
-
-    for (let r = minR; r <= maxR; r++) {
-      candidateCells.push([r, maxC + 1, r, maxC]);
+      candidates.push([r, minC - 1, r, minC]);
+      candidates.push([r, maxC + 1, r, maxC]);
     }
 
     for (let c = minC; c <= maxC; c++) {
-      candidateCells.push([minR - 1, c, minR, c]);
+      candidates.push([minR - 1, c, minR, c]);
+      candidates.push([maxR + 1, c, maxR, c]);
     }
 
-    for (let c = minC; c <= maxC; c++) {
-      candidateCells.push([maxR + 1, c, maxR, c]);
-    }
-
-    for (const [ar, ac, sr, sc] of candidateCells) {
+    for (const [ar, ac, sr, sc] of candidates) {
       if (ar < 0 || ac < 0 || ar >= grid.length || ac >= grid[0].length) continue;
       if (!isWalkableCell(grid, ar, ac)) continue;
       if (!isAttackableTile(grid[ar][ac])) continue;
@@ -1191,19 +1184,6 @@
     const groups = [];
     const normalizedMap = objectPriorityMap || {};
 
-    if (normalizePrioritySetting(normalizedMap.gate) === "priority") {
-      const gateGoals = getGateGoals(grid, gateType);
-      if (gateGoals.length) {
-        groups.push({
-          id: "gate",
-          label: "Gate",
-          kind: "gate",
-          goals: gateGoals,
-          final: true,
-        });
-      }
-    }
-
     if (normalizePrioritySetting(normalizedMap.shaft) === "priority") {
       const shaftClusters = sortShaftClustersBottomToTop(getShaftClusters(grid));
       shaftClusters.forEach((cluster, index) => {
@@ -1259,6 +1239,19 @@
             final: false,
           });
         }
+      }
+    }
+
+    if (normalizePrioritySetting(normalizedMap.gate) === "priority") {
+      const gateGoals = getGateGoals(grid, gateType);
+      if (gateGoals.length) {
+        groups.push({
+          id: "gate",
+          label: "Gate",
+          kind: "gate",
+          goals: gateGoals,
+          final: true,
+        });
       }
     }
 
@@ -1349,13 +1342,11 @@
         reusable.add(cellKey(r, c));
       }
 
-      currentStarts = dedupeCells(currentStarts.concat(finalPath).concat(getPathEndpoints(finalPath)));
+      currentStarts = getPathEndpoints(finalPath);
 
       if (group.kind === "gate") {
         attackPoints.push(route.goal);
-      }
-
-      if (group.kind === "shaft" && group.entryMap) {
+      } else if (group.kind === "shaft" && group.entryMap) {
         attackPoints.push(route.goal);
         const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
         if (entry) shaftEntryDots.push(entry);
@@ -1395,7 +1386,7 @@
 
     const candidate = {
       redMode: "custom",
-      redVariant: "greedy-priority",
+      redVariant: "ordered-chain",
       redBubble: null,
       redBubbles: [],
       redBubbleCount,
