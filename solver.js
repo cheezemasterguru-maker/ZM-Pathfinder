@@ -1,7 +1,7 @@
 (function () {
   console.log("ZM Solver V6.1 loaded");
 
-  const SOLVER_VERSION = "V6.0";
+  const SOLVER_VERSION = "V6.1";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
