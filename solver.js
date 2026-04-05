@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V7.1 loaded");
+  console.log("ZM Solver V7.0 loaded");
 
-  const SOLVER_VERSION = "V7.1";
+  const SOLVER_VERSION = "V7.0";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -110,6 +110,16 @@
     const set = new Set();
     for (const [r, c] of path || []) {
       set.add(cellKey(r, c));
+    }
+    return set;
+  }
+
+  function pathsToSet(paths) {
+    const set = new Set();
+    for (const path of paths || []) {
+      for (const [r, c] of path || []) {
+        set.add(cellKey(r, c));
+      }
     }
     return set;
   }
@@ -519,10 +529,18 @@
 
     const candidateCells = [];
 
-    for (let r = minR; r <= maxR; r++) candidateCells.push([r, minC - 1, r, minC]);
-    for (let r = minR; r <= maxR; r++) candidateCells.push([r, maxC + 1, r, maxC]);
-    for (let c = minC; c <= maxC; c++) candidateCells.push([minR - 1, c, minR, c]);
-    for (let c = minC; c <= maxC; c++) candidateCells.push([maxR + 1, c, maxR, c]);
+    for (let r = minR; r <= maxR; r++) {
+      candidateCells.push([r, minC - 1, r, minC]);
+    }
+    for (let r = minR; r <= maxR; r++) {
+      candidateCells.push([r, maxC + 1, r, maxC]);
+    }
+    for (let c = minC; c <= maxC; c++) {
+      candidateCells.push([minR - 1, c, minR, c]);
+    }
+    for (let c = minC; c <= maxC; c++) {
+      candidateCells.push([maxR + 1, c, maxR, c]);
+    }
 
     for (const [ar, ac, sr, sc] of candidateCells) {
       if (ar < 0 || ac < 0 || ar >= grid.length || ac >= grid[0].length) continue;
@@ -574,14 +592,6 @@
       bonus += 4.0;
     }
     return bonus;
-  }
-
-  function pathTouchesAnyStart(path, starts) {
-    const startSet = new Set((starts || []).map(([r, c]) => cellKey(r, c)));
-    for (const [r, c] of path || []) {
-      if (startSet.has(cellKey(r, c))) return true;
-    }
-    return false;
   }
 
   function getEntryBottomDepth(entry, cluster) {
@@ -834,7 +844,7 @@
     objectPriorities,
     objectPriorityMap,
     getCellObjectType,
-  }) {
+    }) {
     const bluePaths = [];
     const shaftEntryDots = [];
     const attackPoints = [];
@@ -1262,83 +1272,154 @@
     return [...nonFinal, ...finals];
   }
 
-  function buildAttachmentStarts(baseStarts, redPath) {
-    return dedupeCells([...(baseStarts || []), ...(redPath || [])]);
-  }
-
-  function findBestAttachmentRoute({
+  function buildCustomPaths({
     grid,
-    baseStarts,
-    redPath,
-    goals,
-    freeCells,
+    starts,
+    targetGroups,
     objectPriorities,
     objectPriorityMap,
     getCellObjectType,
   }) {
-    const attachmentStarts = buildAttachmentStarts(baseStarts, redPath);
+    const trunkPath = [];
+    const branchPaths = [];
+    const attackPoints = [];
+    const shaftEntryDots = [];
+    const visitedTargets = [];
+    const reusable = new Set();
+    let currentStarts = [...starts];
+    let totalCost = 0;
+    let unresolvedTargets = 0;
 
-    let best = null;
-
-    for (const start of attachmentStarts) {
+    for (const group of targetGroups) {
       const route = dijkstra({
         grid,
-        starts: [start],
-        goals,
-        freeCells,
+        starts: currentStarts,
+        goals: group.goals,
+        freeCells: reusable,
         objectPriorities,
         objectPriorityMap,
         getCellObjectType,
       });
 
-      if (!route) continue;
+      if (!route) {
+        unresolvedTargets++;
+        continue;
+      }
 
       const finalPath = uniquePath(route.path);
-      const startOnExistingRed = redPath.some(([r, c]) => r === start[0] && c === start[1]);
-      const startOnOriginalStart = baseStarts.some(([r, c]) => r === start[0] && c === start[1]);
-      const firstStep = finalPath.length > 1 ? finalPath[1] : finalPath[0];
+      branchPaths.push(finalPath);
+      visitedTargets.push(group.id);
+      totalCost += route.cost;
 
-      const candidate = {
-        ...route,
-        attachStart: start,
-        finalPath,
-        startOnExistingRed,
-        startOnOriginalStart,
-        firstStep,
-      };
-
-      if (!best) {
-        best = candidate;
-        continue;
+      for (const [r, c] of finalPath) {
+        reusable.add(cellKey(r, c));
       }
 
-      if (candidate.cost < best.cost) {
-        best = candidate;
-        continue;
+      currentStarts = dedupeCells(
+        currentStarts.concat(finalPath).concat(getPathEndpoints(finalPath))
+      );
+
+      if (group.kind === "gate") {
+        attackPoints.push(route.goal);
+      } else if (group.kind === "shaft" && group.entryMap) {
+        attackPoints.push(route.goal);
+        const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
+        if (entry) shaftEntryDots.push(entry);
+      } else if (group.kind === "bubble") {
+        attackPoints.push(route.goal);
+      } else if (group.kind === "object") {
+        attackPoints.push(route.goal);
       }
+    }
 
-      if (candidate.cost === best.cost) {
-        if (candidate.finalPath.length < best.finalPath.length) {
-          best = candidate;
-          continue;
+    const parent = new Map();
+    const depth = new Map();
+    const used = new Set();
+
+    function addTreePath(path) {
+      if (!path || !path.length) return;
+      for (let i = 0; i < path.length; i++) {
+        const key = cellKey(path[i][0], path[i][1]);
+        if (!depth.has(key) || i < depth.get(key)) {
+          depth.set(key, i);
         }
-
-        const candStartIsRed = candidate.startOnExistingRed ? 1 : 0;
-        const bestStartIsRed = best.startOnExistingRed ? 1 : 0;
-        if (candStartIsRed > bestStartIsRed) {
-          best = candidate;
-          continue;
+        if (i > 0) {
+          const prevKey = cellKey(path[i - 1][0], path[i - 1][1]);
+          if (!parent.has(key) || depth.get(prevKey) < depth.get(parent.get(key)) || Infinity) {
+            parent.set(key, prevKey);
+          }
         }
+        used.add(key);
+      }
+    }
 
-        const candStartIsBase = candidate.startOnOriginalStart ? 1 : 0;
-        const bestStartIsBase = best.startOnOriginalStart ? 1 : 0;
-        if (candStartIsBase < bestStartIsBase) {
-          best = candidate;
+    for (const path of branchPaths) {
+      addTreePath(path);
+    }
+
+    const branchRoots = dedupeCells(
+      branchPaths
+        .filter((p) => p && p.length)
+        .map((p) => p[0])
+    );
+
+    const startSet = new Set((starts || []).map(([r, c]) => cellKey(r, c)));
+    const trunkCandidates = [];
+
+    for (const path of branchPaths) {
+      if (!path || !path.length) continue;
+      for (let i = 0; i < path.length; i++) {
+        const [r, c] = path[i];
+        if (startSet.has(cellKey(r, c))) {
+          trunkCandidates.push(path.slice(0, i + 1));
+          break;
         }
       }
     }
 
-    return best;
+    let bestTrunk = [];
+    trunkCandidates.sort((a, b) => b.length - a.length);
+    if (trunkCandidates.length) {
+      bestTrunk = uniquePath(trunkCandidates[0]);
+    } else if (branchPaths.length) {
+      bestTrunk = uniquePath(branchPaths[0]);
+    }
+
+    const trunkSet = pathSet(bestTrunk);
+    const finalBranches = [];
+
+    for (const path of branchPaths) {
+      if (!path || !path.length) continue;
+
+      let joinIndex = -1;
+      for (let i = 0; i < path.length; i++) {
+        if (trunkSet.has(cellKey(path[i][0], path[i][1]))) {
+          joinIndex = i;
+          break;
+        }
+      }
+
+      if (joinIndex <= 0) continue;
+
+      const branch = uniquePath(path.slice(joinIndex));
+      if (branch.length > 1) {
+        finalBranches.push(branch);
+      }
+    }
+
+    return {
+      trunkPath: bestTrunk,
+      branchPaths: finalBranches,
+      redPath: bestTrunk,
+      bluePaths: finalBranches,
+      redCost: totalCost,
+      blueCost: 0,
+      totalCost,
+      unresolvedTargets,
+      attackPoints,
+      shaftEntryDots,
+      visitedTargets,
+    };
   }
 
   function solveCustom({
@@ -1384,50 +1465,17 @@
       };
     }
 
-    let redPath = [];
-    let redCost = 0;
-    const reusable = new Set();
-    const attackPoints = [];
-    const shaftEntryDots = [];
-    let unresolvedTargets = 0;
+    const customPaths = buildCustomPaths({
+      grid,
+      starts,
+      targetGroups,
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType,
+    });
 
-    for (const group of targetGroups) {
-      const route = findBestAttachmentRoute({
-        grid,
-        baseStarts: starts,
-        redPath,
-        goals: group.goals,
-        freeCells: reusable,
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
-
-      if (!route) {
-        unresolvedTargets++;
-        continue;
-      }
-
-      const finalPath = uniquePath(route.finalPath);
-
-      redPath = uniquePath(mergePaths(redPath, finalPath));
-      redCost += route.cost;
-
-      for (const [r, c] of finalPath) {
-        reusable.add(cellKey(r, c));
-      }
-
-      if (group.kind === "gate") {
-        attackPoints.push(route.goal);
-      }
-
-      if (group.kind === "shaft" && group.entryMap) {
-        attackPoints.push(route.goal);
-        const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
-        if (entry) shaftEntryDots.push(entry);
-      }
-    }
-
+    const redPath = customPaths.redPath || [];
+    const bluePaths = customPaths.bluePaths || [];
     const redBubbleCount = countRedBubbles(redPath, grid);
     const firstRedBubbleAt = firstBubbleStep(redPath, grid);
     const firstBubbleCost = firstBubbleTravelCost(
@@ -1445,36 +1493,48 @@
       objectPriorities
     );
 
-    const missingPriorityCount = countMissingPriorityCells(requiredPriorityCells, [redPath]);
+    let blueObjectPriorityScore = 0;
+    for (const bluePath of bluePaths) {
+      blueObjectPriorityScore += getPathObjectPriorityScore(
+        bluePath,
+        objectPriorityMap,
+        getCellObjectType,
+        objectPriorities
+      );
+    }
+
+    const missingPriorityCount = countMissingPriorityCells(
+      requiredPriorityCells,
+      [redPath, ...bluePaths]
+    );
     const redLoopPenalty = redBacktrackPenalty(redPath);
-    const bluePaths = [];
-    const blueCost = 0;
-    const blueObjectPriorityScore = 0;
-    const totalObjectPriorityScore = redObjectPriorityScore;
+    const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
 
     const effectiveTotal =
-      redCost +
+      customPaths.totalCost +
       totalObjectPriorityScore +
       redLoopPenalty +
       missingPriorityCount * 1000000000 +
-      unresolvedTargets * 1000000000;
+      customPaths.unresolvedTargets * 1000000000;
 
     const candidate = {
       redMode: "custom",
-      redVariant: "best-attachment",
+      redVariant: "trunk-and-branches",
       redBubble: null,
       redBubbles: [],
       redBubbleCount,
       firstRedBubbleAt,
       firstBubbleTravelCost: firstBubbleCost,
       redPath,
-      redCost,
-      gateGoal: attackPoints.length ? attackPoints[attackPoints.length - 1] : null,
+      redCost: customPaths.redCost,
+      gateGoal: customPaths.attackPoints.length
+        ? customPaths.attackPoints[customPaths.attackPoints.length - 1]
+        : null,
       bluePaths,
-      blueCost,
-      shaftEntryDots,
-      attackPoints,
-      unresolvedTargets,
+      blueCost: customPaths.blueCost,
+      shaftEntryDots: customPaths.shaftEntryDots,
+      attackPoints: customPaths.attackPoints,
+      unresolvedTargets: customPaths.unresolvedTargets,
       dependencyCost: 0,
       assistBonus: 0,
       lowerShaftBonus: 0,
@@ -1513,12 +1573,12 @@
       firstBubbleTravelCost:
         firstBubbleCost === Infinity ? null : roundCost(firstBubbleCost),
       redPath,
-      redCost: roundCost(redCost),
+      redCost: roundCost(candidate.redCost),
       bluePaths,
-      blueCost: 0,
-      totalCost: roundCost(redCost),
+      blueCost: roundCost(candidate.blueCost),
+      totalCost: roundCost(candidate.redCost + candidate.blueCost),
       redObjectPriorityScore: roundCost(redObjectPriorityScore),
-      blueObjectPriorityScore: 0,
+      blueObjectPriorityScore: roundCost(blueObjectPriorityScore),
       objectPriorityScore: roundCost(totalObjectPriorityScore),
       missingPriorityCount,
       effectiveTotal: roundCost(effectiveTotal),
@@ -1529,10 +1589,10 @@
       redLoopPenalty: roundCost(redLoopPenalty),
       overAssistPenalty: 0,
       shaftClusters: shaftClustersOrdered,
-      shaftEntryDots,
-      attackPoints,
+      shaftEntryDots: customPaths.shaftEntryDots,
+      attackPoints: customPaths.attackPoints,
       bubbles,
-      unresolvedTargets,
+      unresolvedTargets: customPaths.unresolvedTargets,
       redCandidateCount: 1,
       routeAnalysis,
       message:
@@ -1540,8 +1600,9 @@
         `solver_mode: custom\n` +
         `solver_status: solved\n` +
         `missing_priority_count: ${missingPriorityCount}\n` +
-        `unresolved_targets: ${unresolvedTargets}\n` +
-        `red_cost: ${roundCost(redCost)}\n` +
+        `unresolved_targets: ${customPaths.unresolvedTargets}\n` +
+        `red_cost: ${roundCost(candidate.redCost)}\n` +
+        `blue_cost: ${roundCost(candidate.blueCost)}\n` +
         `effective_total: ${roundCost(effectiveTotal)}`
     };
   }
