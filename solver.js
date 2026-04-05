@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V6.1 loaded");
+  console.log("ZM Solver V6.0 loaded");
 
-  const SOLVER_VERSION = "V6.1";
+  const SOLVER_VERSION = "V6.0";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -44,9 +44,13 @@
       highMineralFlat:
         Number.isFinite(merged.highMineralFlat) ? merged.highMineralFlat : 0,
       priorityObjectBonus:
-        Number.isFinite(merged.priorityObjectBonus) ? merged.priorityObjectBonus : -250000,
+        Number.isFinite(merged.priorityObjectBonus)
+          ? merged.priorityObjectBonus
+          : -250000,
       avoidObjectPenalty:
-        Number.isFinite(merged.avoidObjectPenalty) ? merged.avoidObjectPenalty : 250000,
+        Number.isFinite(merged.avoidObjectPenalty)
+          ? merged.avoidObjectPenalty
+          : 250000,
     };
   }
 
@@ -80,16 +84,6 @@
   function roundCost(n) {
     if (!Number.isFinite(n)) return n;
     return Math.round(n * 100) / 100;
-  }
-
-  function isWalkableCell(grid, r, c) {
-    if (!grid || r < 0 || c < 0 || r >= grid.length || c >= grid[0].length) return false;
-    const v = grid[r][c];
-    return v !== "X" && v !== "S";
-  }
-
-  function isAttackableTile(v) {
-    return typeof v === "number" || v === "B" || v === "";
   }
 
   function cellKey(r, c) {
@@ -178,6 +172,16 @@
       if (grid[r]?.[c] === "B") return i;
     }
     return Infinity;
+  }
+
+  function isWalkableCell(grid, r, c) {
+    if (!grid || r < 0 || c < 0 || r >= grid.length || c >= grid[0].length) return false;
+    const v = grid[r][c];
+    return v !== "X" && v !== "S";
+  }
+
+  function isAttackableTile(v) {
+    return typeof v === "number" || v === "B" || v === "";
   }
 
   function getCellPrioritySetting(r, c, objectPriorityMap, getCellObjectType) {
@@ -273,6 +277,7 @@
 
     for (const [r, c] of starts) {
       if (!isWalkableCell(grid, r, c)) continue;
+
       const startCost = cellWeight(grid, r, c, freeCells, {
         objectPriorities,
         goals,
@@ -280,6 +285,7 @@
         objectPriorityMap,
         getCellObjectType,
       });
+
       dist[r][c] = startCost;
       steps[r][c] = 0;
       open.push({ r, c, cost: startCost, len: 0 });
@@ -500,26 +506,46 @@
     const attacks = [];
     const entryMap = new Map();
 
-    for (const [r, c] of cluster) {
-      const neighbors = [
-        [r + 1, c],
-        [r - 1, c],
-        [r, c + 1],
-        [r, c - 1],
-      ];
+    if (!cluster || !cluster.length) {
+      return { attacks, entryMap };
+    }
 
-      for (const [rr, cc] of neighbors) {
-        if (rr < 0 || cc < 0 || rr >= grid.length || cc >= grid[0].length) continue;
-        if (clusterSet.has(cellKey(rr, cc))) continue;
+    const rows = cluster.map(([r]) => r);
+    const cols = cluster.map(([, c]) => c);
 
-        if (isAttackableTile(grid[rr][cc])) {
-          const key = cellKey(rr, cc);
-          if (!entryMap.has(key)) {
-            attacks.push([rr, cc]);
-            entryMap.set(key, [r, c]);
-          }
-        }
-      }
+    const minR = Math.min(...rows);
+    const maxR = Math.max(...rows);
+    const minC = Math.min(...cols);
+    const maxC = Math.max(...cols);
+
+    const candidateCells = [];
+
+    for (let r = minR; r <= maxR; r++) {
+      candidateCells.push([r, minC - 1, r, minC]);
+    }
+
+    for (let r = minR; r <= maxR; r++) {
+      candidateCells.push([r, maxC + 1, r, maxC]);
+    }
+
+    for (let c = minC; c <= maxC; c++) {
+      candidateCells.push([minR - 1, c, minR, c]);
+    }
+
+    for (let c = minC; c <= maxC; c++) {
+      candidateCells.push([maxR + 1, c, maxR, c]);
+    }
+
+    for (const [ar, ac, sr, sc] of candidateCells) {
+      if (ar < 0 || ac < 0 || ar >= grid.length || ac >= grid[0].length) continue;
+      if (!isWalkableCell(grid, ar, ac)) continue;
+      if (!isAttackableTile(grid[ar][ac])) continue;
+
+      const key = cellKey(ar, ac);
+      if (entryMap.has(key)) continue;
+
+      attacks.push([ar, ac]);
+      entryMap.set(key, [sr, sc]);
     }
 
     return { attacks, entryMap };
@@ -656,7 +682,13 @@
     return missing;
   }
 
-  function firstBubbleTravelCost(path, grid, objectPriorities, objectPriorityMap = null, getCellObjectType = null) {
+  function firstBubbleTravelCost(
+    path,
+    grid,
+    objectPriorities,
+    objectPriorityMap = null,
+    getCellObjectType = null
+  ) {
     const idx = firstBubbleStep(path, grid);
     if (idx === Infinity) return Infinity;
 
@@ -666,7 +698,7 @@
       total += cellWeight(grid, r, c, new Set(), {
         objectPriorities,
         objectPriorityMap,
-        getCellObjectType
+        getCellObjectType,
       });
     }
 
@@ -853,11 +885,12 @@
       }
 
       const finalPath = uniquePath(route.path);
-      const entry = info.entryMap.get(cellKey(route.goal[0], route.goal[0], route.goal[1]));
-      if (entry) shaftEntryDots.push(entry);
+      const entry = info.entryMap.get(cellKey(route.goal[0], route.goal[1]));
 
       bluePaths.push(finalPath);
       attackPoints.push(route.goal);
+      if (entry) shaftEntryDots.push(entry);
+
       blueCost += route.cost;
       assistBonus += Math.min(1.25, countAdjacentSharedOpens(redCandidate.path, finalPath) * 0.03);
       lowerShaftBonus += getLowestShaftPreferenceBonus(route, entry, cluster, "base", i === 0);
@@ -1202,7 +1235,7 @@
     }
 
     if (typeof getCellObjectType === "function") {
-      const seenTypes = new Set();
+      const seen = new Set();
 
       for (let r = 0; r < grid.length; r++) {
         for (let c = 0; c < grid[0].length; c++) {
@@ -1214,8 +1247,8 @@
           if (normalizePrioritySetting(normalizedMap[type]) !== "priority") continue;
 
           const groupId = `${type}-${cellKey(r, c)}`;
-          if (seenTypes.has(groupId)) continue;
-          seenTypes.add(groupId);
+          if (seen.has(groupId)) continue;
+          seen.add(groupId);
 
           groups.push({
             id: groupId,
@@ -1288,7 +1321,6 @@
     let redCost = 0;
     let currentStarts = [...starts];
     const reusable = new Set();
-    const visitedTargetIds = new Set();
     const attackPoints = [];
     const shaftEntryDots = [];
     let unresolvedTargets = 0;
@@ -1312,7 +1344,6 @@
       const finalPath = uniquePath(route.path);
       redPath = uniquePath(mergePaths(redPath, finalPath));
       redCost += route.cost;
-      visitedTargetIds.add(group.id);
 
       for (const [r, c] of finalPath) {
         reusable.add(cellKey(r, c));
