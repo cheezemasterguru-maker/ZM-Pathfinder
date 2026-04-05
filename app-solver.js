@@ -178,6 +178,36 @@ function getPriorityVisualMeta(objectType) {
 }
 
 function getCellObjectType(r, c) {
+  const gateType = document.getElementById("gateType")?.value || "standard";
+  const gateCols = gateType === "end" ? [2, 3, 4] : [1, 2, 3, 4, 5];
+
+  if (r === 0 && gateCols.includes(c)) {
+    return "gate";
+  }
+
+  if (grid[r]?.[c] === "S") {
+    return "shaft";
+  }
+
+  if (grid[r]?.[c] === "B") {
+    return "bubble";
+  }
+
+  const neighbors = [
+    [r + 1, c],
+    [r - 1, c],
+    [r, c + 1],
+    [r, c - 1]
+  ];
+
+  for (const [rr, cc] of neighbors) {
+    if (rr >= 0 && cc >= 0 && rr < currentRowCount && cc < COLS) {
+      if (grid[rr]?.[cc] === "S") {
+        return "shaft";
+      }
+    }
+  }
+
   const meta = getTileMeta(
     currentMapContext.eventType,
     currentMapContext.eventName,
@@ -185,6 +215,7 @@ function getCellObjectType(r, c) {
     r,
     c
   );
+
   return getPriorityObjectTypeFromMeta(meta);
 }
 
@@ -207,7 +238,13 @@ function gridHasShaft() {
 }
 
 function gridHasGateOpportunity() {
-  return currentRowCount > 0;
+  const gateType = document.getElementById("gateType")?.value || "standard";
+  const gateCols = gateType === "end" ? [2, 3, 4] : [1, 2, 3, 4, 5];
+
+  for (const c of gateCols) {
+    if (c >= 0 && c < COLS) return true;
+  }
+  return false;
 }
 
 function scanActiveObjectTypes() {
@@ -576,3 +613,4 @@ window.solveBoard = solveBoard;
 window.scanActiveObjectTypes = scanActiveObjectTypes;
 window.getCellObjectType = getCellObjectType;
 window.setSolverMode = setSolverMode;
+window.getSolverMode = getSolverMode;
