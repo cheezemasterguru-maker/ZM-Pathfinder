@@ -635,7 +635,6 @@ function clearBoard(updateReport = true) {
       grid[r][c] = "";
     }
   }
-
   currentRowCount = MINED_ROWS;
   currentPreviewTitle = document.getElementById("titleInput")?.value || "Gate 1";
   currentMapContext = {
@@ -836,6 +835,7 @@ function renderPreview() {
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d");
+  if (!ctx) return;
 
   const cell = 86;
   const pad = 22;
@@ -872,27 +872,26 @@ function renderPreview() {
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const drawEverything = () => {
-    const logo = new Image();
-    logo.onload = () => {
+  const drawEverything = (logoReady, logo) => {
+    const headerY = 12;
+    const headerH = 118;
+
+    const logoBoxX = 26;
+    const logoBoxY = headerY;
+    const logoBoxW = 220;
+    const logoBoxH = headerH;
+
+    const titleBoxX = logoBoxX + logoBoxW + 16;
+    const titleBoxY = headerY;
+    const titleBoxW = canvas.width - titleBoxX - 26;
+    const titleBoxH = headerH;
+
+    if (logoReady && logo) {
       const logoMaxW = 180;
       const logoMaxH = 110;
       const logoRatio = Math.min(logoMaxW / logo.width, logoMaxH / logo.height, 1);
       const logoW = logo.width * logoRatio;
       const logoH = logo.height * logoRatio;
-
-      const headerY = 12;
-      const headerH = 118;
-
-      const logoBoxX = 26;
-      const logoBoxY = headerY;
-      const logoBoxW = 220;
-      const logoBoxH = headerH;
-
-      const titleBoxX = logoBoxX + logoBoxW + 16;
-      const titleBoxY = headerY;
-      const titleBoxW = canvas.width - titleBoxX - 26;
-      const titleBoxH = headerH;
 
       ctx.drawImage(
         logo,
@@ -901,45 +900,58 @@ function renderPreview() {
         logoW,
         logoH
       );
-
+    } else {
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(titleBoxX, titleBoxY, titleBoxW, titleBoxH);
+      ctx.fillRect(logoBoxX, logoBoxY, logoBoxW, logoBoxH);
       ctx.strokeStyle = "#171b2e";
       ctx.lineWidth = 2;
-      ctx.strokeRect(titleBoxX, titleBoxY, titleBoxW, titleBoxH);
-
-      const rawTitle = String(
-        currentPreviewTitle || document.getElementById("titleInput")?.value || "Gate"
-      ).trim();
-
-      const parts = rawTitle.split(" - ").map((s) => s.trim()).filter(Boolean);
-
-      let line1 = rawTitle.toUpperCase();
-      let line2 = "";
-
-      if (parts.length >= 2) {
-        line1 = parts.slice(0, -1).join(" - ").toUpperCase();
-        line2 = parts[parts.length - 1].toUpperCase();
-      }
-
+      ctx.strokeRect(logoBoxX, logoBoxY, logoBoxW, logoBoxH);
       ctx.fillStyle = "#111";
+      ctx.font = "700 26px Arial";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
+      ctx.fillText("ZM", logoBoxX + logoBoxW / 2, logoBoxY + logoBoxH / 2);
+    }
 
-      ctx.font = "700 22px Arial";
-      ctx.fillText(line1, titleBoxX + titleBoxW / 2, titleBoxY + 42);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(titleBoxX, titleBoxY, titleBoxW, titleBoxH);
+    ctx.strokeStyle = "#171b2e";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(titleBoxX, titleBoxY, titleBoxW, titleBoxH);
 
-      if (line2) {
-        ctx.font = "700 20px Arial";
-        ctx.fillText(line2, titleBoxX + titleBoxW / 2, titleBoxY + 78);
-      }
+    const rawTitle = String(
+      currentPreviewTitle || document.getElementById("titleInput")?.value || "Gate"
+    ).trim();
 
-      drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow, legendHeight, legendItems, customMode);
-    };
-    logo.src = "file_00000000e35071fda5e92d9996ac3621.png";
+    const parts = rawTitle.split(" - ").map((s) => s.trim()).filter(Boolean);
+
+    let line1 = rawTitle.toUpperCase();
+    let line2 = "";
+
+    if (parts.length >= 2) {
+      line1 = parts.slice(0, -1).join(" - ").toUpperCase();
+      line2 = parts[parts.length - 1].toUpperCase();
+    }
+
+    ctx.fillStyle = "#111";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.font = "700 22px Arial";
+    ctx.fillText(line1, titleBoxX + titleBoxW / 2, titleBoxY + 42);
+
+    if (line2) {
+      ctx.font = "700 20px Arial";
+      ctx.fillText(line2, titleBoxX + titleBoxW / 2, titleBoxY + 78);
+    }
+
+    drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow, legendHeight, legendItems, customMode);
   };
 
-  drawEverything();
+  const logo = new Image();
+  logo.onload = () => drawEverything(true, logo);
+  logo.onerror = () => drawEverything(false, null);
+  logo.src = "file_00000000e35071fda5e92d9996ac3621.png";
 }
 
 function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow, legendHeight, legendItems, customMode) {
@@ -1045,15 +1057,15 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow, legendHeight,
   const customColor = "#a855f7";
 
   if (customMode) {
-    for (const path of solveState.bluePaths || []) {
+    for (const path of solveState.bluePaths) {
       drawPath(ctx, path, customColor, 10, cell, pad, topPad, rowOffset);
     }
-    drawPath(ctx, solveState.redPath || [], customColor, 12, cell, pad, topPad, rowOffset);
+    drawPath(ctx, solveState.redPath, customColor, 12, cell, pad, topPad, rowOffset);
   } else {
-    for (const path of solveState.bluePaths || []) {
+    for (const path of solveState.bluePaths) {
       drawPath(ctx, path, "#2563eb", 10, cell, pad, topPad, rowOffset);
     }
-    drawPath(ctx, solveState.redPath || [], "#ef4444", 12, cell, pad, topPad, rowOffset);
+    drawPath(ctx, solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset);
   }
 
   const legendTop = ctx.canvas.height - legendHeight + 18;
@@ -1199,9 +1211,8 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
     ((solveState && solveState.solverMode) ||
       (typeof getSolverMode === "function" ? getSolverMode() : "standard")) === "custom";
 
-  const isCustomPurple = color === "#a855f7";
-  const isRed = color === "#ef4444" || (customMode && isCustomPurple && width >= 12);
-  const isBlue = color === "#2563eb" || (customMode && isCustomPurple && width < 12);
+  const isRed = color === "#ef4444" || (customMode && color === "#a855f7");
+  const isBlue = color === "#2563eb";
 
   function center(pt) {
     return {
@@ -1257,13 +1268,6 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
       [-1, 0]
     ];
 
-    const attackPoints = Array.isArray(solveState.attackPoints) ? solveState.attackPoints : [];
-    const adjacentAttack = attackPoints.find((pt) => manhattan(last, pt) === 1);
-    if (adjacentAttack) {
-      const touch = getBoundaryTouchPoint(last, adjacentAttack);
-      if (touch) return touch;
-    }
-
     for (const [dr, dc] of dirs) {
       const nr = last[0] + dr;
       const nc = last[1] + dc;
@@ -1317,6 +1321,7 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
 
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+
   ctx.beginPath();
 
   if (isRed) {
@@ -1333,9 +1338,7 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
 
   if (isBlue) {
     const endPoint = getBlueEndpointPoint();
-    if (endPoint.x !== points[points.length - 1].x || endPoint.y !== points[points.length - 1].y) {
-      ctx.lineTo(endPoint.x, endPoint.y);
-    }
+    ctx.lineTo(endPoint.x, endPoint.y);
   } else if (isRed) {
     const endPoint = getRedEndpointPoint();
     if (endPoint.x !== points[points.length - 1].x || endPoint.y !== points[points.length - 1].y) {
@@ -1412,4 +1415,23 @@ window.getVisibleGridSlice = getVisibleGridSlice;
 window.openRouteReportModal = openRouteReportModal;
 window.closeRouteReportModal = closeRouteReportModal;
 window.renderRouteAudit = renderRouteAudit;
+
+function safeInitialRender() {
+  try {
+    if (!Array.isArray(grid)) return;
+    if (!Number.isFinite(currentRowCount) || currentRowCount <= 0) {
+      currentRowCount = MINED_ROWS;
+    }
+    render();
+    renderPreview();
+  } catch (err) {
+    console.error("Initial render failed:", err);
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", safeInitialRender);
+} else {
+  safeInitialRender();
+}
 })();
