@@ -1,4 +1,16 @@
 const OBJECT_PRIORITY_DEFINITIONS = {
+  gate: {
+    label: "Gate",
+    visualMeta: null
+  },
+  shaft: {
+    label: "Shaft",
+    visualMeta: null
+  },
+  bubble: {
+    label: "Bubble",
+    visualMeta: null
+  },
   wood: {
     label: "Wood",
     visualMeta: { object: "chest", subtype: "wood" }
@@ -49,6 +61,7 @@ const OBJECT_PRIORITY_REGISTRY = Object.keys(OBJECT_PRIORITY_DEFINITIONS);
 
 let objectPriorities = {};
 let activeObjectTypes = [];
+let solverMode = "standard";
 
 function solverSafeT(key, fallback) {
   if (typeof t !== "function") return fallback;
@@ -58,6 +71,22 @@ function solverSafeT(key, fallback) {
 
 function normalizeObjectTypeName(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function normalizeSolverModeValue(value) {
+  return String(value || "standard").trim().toLowerCase() === "custom"
+    ? "custom"
+    : "standard";
+}
+
+function setSolverMode(mode) {
+  solverMode = normalizeSolverModeValue(mode);
+  renderObjectPrioritiesModal();
+  rerunSolveAfterPriorityChange();
+}
+
+function getSolverMode() {
+  return solverMode;
 }
 
 function formatObjectPriorityLabel(objectType) {
@@ -159,8 +188,34 @@ function getCellObjectType(r, c) {
   return getPriorityObjectTypeFromMeta(meta);
 }
 
+function gridHasBubble() {
+  for (let r = 0; r < currentRowCount; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r]?.[c] === "B") return true;
+    }
+  }
+  return false;
+}
+
+function gridHasShaft() {
+  for (let r = 0; r < currentRowCount; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r]?.[c] === "S") return true;
+    }
+  }
+  return false;
+}
+
+function gridHasGateOpportunity() {
+  return currentRowCount > 0;
+}
+
 function scanActiveObjectTypes() {
   const found = new Set();
+
+  if (gridHasGateOpportunity()) found.add("gate");
+  if (gridHasShaft()) found.add("shaft");
+  if (gridHasBubble()) found.add("bubble");
 
   for (let r = 0; r < currentRowCount; r++) {
     for (let c = 0; c < COLS; c++) {
@@ -205,6 +260,7 @@ function rerunSolveAfterPriorityChange() {
 }
 
 function applyObjectPriorityChange(objectType, value) {
+  if (solverMode !== "custom") return;
   setObjectPriorityValue(objectType, value);
   renderObjectPrioritiesModal();
   rerunSolveAfterPriorityChange();
@@ -231,21 +287,35 @@ function closeObjectPrioritiesModal() {
   if (overlay) overlay.classList.remove("show");
 }
 
-function buildObjectPriorityButton(label, active, onClick) {
+function buildObjectPriorityButton(label, active, disabled, onClick) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "btn-action";
   button.textContent = label;
   button.style.minWidth = "88px";
-  button.style.opacity = active ? "1" : "0.7";
-  button.style.outline = active ? "2px solid rgba(255,255,255,0.85)" : "none";
-  button.style.fontWeight = active ? "700" : "600";
+  button.style.opacity = disabled ? "0.45" : active ? "1" : "0.7";
+  button.style.outline = active && !disabled ? "2px solid rgba(255,255,255,0.85)" : "none";
+  button.style.fontWeight = active && !disabled ? "700" : "600";
   button.style.whiteSpace = "nowrap";
-  button.onclick = onClick;
+  button.disabled = !!disabled;
+  button.onclick = disabled ? null : onClick;
+  return button;
+}
+
+function buildModeButton(label, modeValue) {
+  const active = solverMode === modeValue;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = active ? "btn-solve" : "btn-action";
+  button.textContent = label;
+  button.style.minWidth = "140px";
+  button.style.fontWeight = active ? "700" : "600";
+  button.onclick = () => setSolverMode(modeValue);
   return button;
 }
 
 function renderObjectPrioritiesModal() {
+  const intro = document.getElementById("objectPrioritiesIntro");
   const body = document.getElementById("objectPrioritiesBody");
   if (!body) return;
 
@@ -255,6 +325,31 @@ function renderObjectPrioritiesModal() {
   body.style.wordBreak = "break-word";
   body.style.boxSizing = "border-box";
   body.style.maxWidth = "100%";
+
+  if (intro) {
+    intro.innerHTML = "";
+
+    const modeWrap = document.createElement("div");
+    modeWrap.style.display = "flex";
+    modeWrap.style.flexWrap = "wrap";
+    modeWrap.style.gap = "10px";
+    modeWrap.style.marginBottom = "12px";
+
+    modeWrap.appendChild(buildModeButton("Standard Solver", "standard"));
+    modeWrap.appendChild(buildModeButton("Custom Solver", "custom"));
+
+    const note = document.createElement("div");
+    note.style.marginTop = "10px";
+    note.style.opacity = "0.85";
+    note.style.lineHeight = "1.35";
+    note.textContent =
+      solverMode === "standard"
+        ? "Standard rules are active. Custom objective toggles are disabled."
+        : "Custom rules are active. Gate, Shaft, Bubble, and objects now use the same priority toggles.";
+
+    intro.appendChild(modeWrap);
+    intro.appendChild(note);
+  }
 
   if (!activeObjectTypes.length) {
     const empty = document.createElement("div");
@@ -269,6 +364,8 @@ function renderObjectPrioritiesModal() {
     return;
   }
 
+  const disabled = solverMode !== "custom";
+
   activeObjectTypes.forEach((objectType) => {
     const row = document.createElement("div");
     row.style.display = "flex";
@@ -280,6 +377,7 @@ function renderObjectPrioritiesModal() {
     row.style.boxSizing = "border-box";
     row.style.maxWidth = "100%";
     row.style.flexWrap = "wrap";
+    row.style.opacity = disabled ? "0.55" : "1";
 
     const left = document.createElement("div");
     left.style.display = "flex";
@@ -295,22 +393,41 @@ function renderObjectPrioritiesModal() {
     preview.style.borderRadius = "8px";
     preview.style.border = "2px solid rgba(255,255,255,0.12)";
     preview.style.flex = "0 0 auto";
+    preview.style.display = "flex";
+    preview.style.alignItems = "center";
+    preview.style.justifyContent = "center";
+    preview.style.fontWeight = "700";
+    preview.style.color = "#111";
 
-    const visualMeta = getPriorityVisualMeta(objectType);
-    const visual = getObjectVisual(visualMeta);
-
-    if (visual.fill) {
-      if (typeof visual.fill === "string") {
-        preview.style.background = visual.fill;
-      } else if (
-        visual.fill.type === "dual" &&
-        Array.isArray(visual.fill.colors) &&
-        visual.fill.colors.length >= 2
-      ) {
-        preview.style.background = `linear-gradient(135deg, ${visual.fill.colors[0]} 50%, ${visual.fill.colors[1]} 50%)`;
-      }
+    if (objectType === "gate") {
+      preview.style.background = "#f3d36a";
+      preview.textContent = "G";
+    } else if (objectType === "shaft") {
+      preview.style.background = "#98f44d";
+      preview.textContent = "S";
+    } else if (objectType === "bubble") {
+      preview.style.background = "#8fd3f7";
+      preview.textContent = "B";
     } else {
-      preview.style.background = "#2a3558";
+      const visualMeta = getPriorityVisualMeta(objectType);
+      const visual = getObjectVisual(visualMeta);
+
+      if (visual.fill) {
+        if (typeof visual.fill === "string") {
+          preview.style.background = visual.fill;
+        } else if (
+          visual.fill.type === "dual" &&
+          Array.isArray(visual.fill.colors) &&
+          visual.fill.colors.length >= 2
+        ) {
+          preview.style.background = `linear-gradient(135deg, ${visual.fill.colors[0]} 50%, ${visual.fill.colors[1]} 50%)`;
+        }
+      } else {
+        preview.style.background = "#2a3558";
+        preview.style.color = "#fff";
+      }
+
+      preview.textContent = visual.code || "";
     }
 
     const labelWrap = document.createElement("div");
@@ -326,7 +443,11 @@ function renderObjectPrioritiesModal() {
     title.style.wordBreak = "break-word";
 
     const subtitle = document.createElement("div");
-    subtitle.textContent = visual.code || objectType;
+    subtitle.textContent =
+      objectType === "gate" ? "Gate objective" :
+      objectType === "shaft" ? "Shaft objective" :
+      objectType === "bubble" ? "Bubble objective" :
+      (getObjectVisual(getPriorityVisualMeta(objectType)).code || objectType);
     subtitle.style.fontSize = "12px";
     subtitle.style.opacity = "0.75";
     subtitle.style.lineHeight = "1.2";
@@ -354,6 +475,7 @@ function renderObjectPrioritiesModal() {
       buildObjectPriorityButton(
         solverSafeT("avoid", "Avoid"),
         current === "avoid",
+        disabled,
         () => applyObjectPriorityChange(objectType, "avoid")
       )
     );
@@ -362,6 +484,7 @@ function renderObjectPrioritiesModal() {
       buildObjectPriorityButton(
         solverSafeT("normal", "Normal"),
         current === "normal",
+        disabled,
         () => applyObjectPriorityChange(objectType, "normal")
       )
     );
@@ -370,6 +493,7 @@ function renderObjectPrioritiesModal() {
       buildObjectPriorityButton(
         solverSafeT("priority", "Priority"),
         current === "priority",
+        disabled,
         () => applyObjectPriorityChange(objectType, "priority")
       )
     );
@@ -395,13 +519,18 @@ function solveBoard() {
     eventName: currentMapContext.eventName,
     eventMine: currentMapContext.eventMine,
     chamberName: currentMapContext.chamberName,
+    solverMode,
     objectPriorityMap: getObjectPriorityMapForSolver(),
     getCellObjectType
   });
 
   if (!result || !result.ok) {
     resetSolve();
-    setReport(result && result.message ? result.message : (typeof t === "function" ? t("solverFailed") : "Solver failed"));
+    setReport(
+      result && result.message
+        ? result.message
+        : (typeof t === "function" ? t("solverFailed") : "Solver failed")
+    );
     if (typeof renderPreview === "function") renderPreview();
     return;
   }
@@ -416,6 +545,7 @@ function solveBoard() {
     message: result.message || (typeof t === "function" ? t("solvedMessage") : "Solved"),
     routeAnalysis: result.routeAnalysis || [],
     solverVersion: result.solverVersion || null,
+    solverMode: result.solverMode || solverMode,
     legacyEndMode: !!result.legacyEndMode,
     redBubbleCount: result.redBubbleCount ?? 0,
     firstBubbleTravelCost: result.firstBubbleTravelCost ?? null,
@@ -424,13 +554,16 @@ function solveBoard() {
     blueCost: result.blueCost ?? null,
     redObjectPriorityScore: result.redObjectPriorityScore ?? 0,
     blueObjectPriorityScore: result.blueObjectPriorityScore ?? 0,
-    objectPriorityScore: result.objectPriorityScore ?? 0
+    objectPriorityScore: result.objectPriorityScore ?? 0,
+    missingPriorityCount: result.missingPriorityCount ?? 0
   };
 
   setReport(result.message || (typeof t === "function" ? t("solvedMessage") : "Solved"));
+
   if (typeof renderRouteAudit === "function") {
     renderRouteAudit(result.routeAnalysis || []);
   }
+
   if (typeof renderPreview === "function") {
     renderPreview();
   }
@@ -442,3 +575,5 @@ window.resetObjectPriorities = resetObjectPriorities;
 window.solveBoard = solveBoard;
 window.scanActiveObjectTypes = scanActiveObjectTypes;
 window.getCellObjectType = getCellObjectType;
+window.setSolverMode = setSolverMode;
+window.getSolverMode = getSolverMode;
