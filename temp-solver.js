@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V5.6 loaded");
+  console.log("ZM Solver V5.7 loaded");
 
-  const SOLVER_VERSION = "V5.6";
+  const SOLVER_VERSION = "V5.7";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -99,25 +99,6 @@
     return "normal";
   }
 
-  function getPerObjectPriorityAdjustment(r, c, options = {}) {
-    const objectPriorityMap = options.objectPriorityMap || null;
-    const getCellObjectType = options.getCellObjectType || null;
-    const priorities = normalizeObjectPriorities(
-      options.objectPriorities || GLOBAL_OBJECT_PRIORITIES
-    );
-
-    if (!objectPriorityMap || typeof getCellObjectType !== "function") return 0;
-
-    const objectType = String(getCellObjectType(r, c) || "").trim().toLowerCase();
-    if (!objectType) return 0;
-
-    const setting = normalizePrioritySetting(objectPriorityMap[objectType]);
-
-    if (setting === "priority") return priorities.priorityObjectBonus;
-    if (setting === "avoid") return priorities.avoidObjectPenalty;
-    return 0;
-  }
-
   function cellWeight(grid, r, c, freeCells, options = {}) {
     if (freeCells && freeCells.has(`${r},${c}`)) return 0;
 
@@ -147,9 +128,31 @@
       }
     }
 
-    baseCost += getPerObjectPriorityAdjustment(r, c, options);
-
     return baseCost;
+  }
+
+  function getPathObjectPriorityScore(path, objectPriorityMap, getCellObjectType, priorities) {
+    if (!path || !path.length || !objectPriorityMap || typeof getCellObjectType !== "function") {
+      return 0;
+    }
+
+    const normalized = normalizeObjectPriorities(priorities);
+    let score = 0;
+
+    for (const [r, c] of path) {
+      const objectType = String(getCellObjectType(r, c) || "").trim().toLowerCase();
+      if (!objectType) continue;
+
+      const setting = normalizePrioritySetting(objectPriorityMap[objectType]);
+
+      if (setting === "priority") {
+        score += normalized.priorityObjectBonus;
+      } else if (setting === "avoid") {
+        score += normalized.avoidObjectPenalty;
+      }
+    }
+
+    return score;
   }
 
   function getLowestUsedRow(grid) {
@@ -259,8 +262,6 @@
     blockedEdges = new Set(),
     penaltyCells = new Map(),
     objectPriorities = null,
-    objectPriorityMap = null,
-    getCellObjectType = null,
   }) {
     if (!starts.length || !goals.length) return null;
 
@@ -279,8 +280,6 @@
         objectPriorities,
         goals,
         starts,
-        objectPriorityMap,
-        getCellObjectType,
       });
 
       dist[r][c] = startCost;
@@ -332,8 +331,6 @@
             objectPriorities,
             goals,
             starts,
-            objectPriorityMap,
-            getCellObjectType,
           }) +
           penalty;
         const nextLen = cur.len + 1;
@@ -510,14 +507,12 @@
     return s;
   }
 
-  function buildForkDetours(grid, starts, goal, objectPriorities, objectPriorityMap, getCellObjectType) {
+  function buildForkDetours(grid, starts, goal, objectPriorities) {
     const base = dijkstra({
       grid,
       starts,
       goals: [goal],
-      objectPriorities,
-      objectPriorityMap,
-      getCellObjectType
+      objectPriorities
     });
     if (!base || !base.path || base.path.length < 4) return [];
 
@@ -561,9 +556,7 @@
           starts,
           goals: [goal],
           blockedEdges: block,
-          objectPriorities,
-          objectPriorityMap,
-          getCellObjectType
+          objectPriorities
         });
 
         if (alt && alt.path && alt.path.length) {
@@ -598,7 +591,7 @@
     return Infinity;
   }
 
-  function firstBubbleTravelCost(path, grid, objectPriorities, objectPriorityMap, getCellObjectType) {
+  function firstBubbleTravelCost(path, grid, objectPriorities) {
     const idx = firstBubbleStep(path, grid);
     if (idx === Infinity) return Infinity;
 
@@ -606,9 +599,7 @@
     for (let i = 1; i <= idx; i++) {
       const [r, c] = path[i];
       total += cellWeight(grid, r, c, new Set(), {
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType
+        objectPriorities
       });
     }
     return total;
@@ -671,8 +662,6 @@
     routeKind,
     isLowestShaft,
     objectPriorities,
-    objectPriorityMap,
-    getCellObjectType,
   }) {
     const route = dijkstra({
       grid,
@@ -680,8 +669,6 @@
       goals,
       freeCells: reusable,
       objectPriorities,
-      objectPriorityMap,
-      getCellObjectType
     });
     if (!route) return null;
 
@@ -797,7 +784,7 @@
     return chosen;
   }
 
-  function makePathVariants(grid, starts, goal, objectPriorities, objectPriorityMap, getCellObjectType) {
+  function makePathVariants(grid, starts, goal, objectPriorities) {
     const out = [];
 
     function push(tag, route) {
@@ -810,7 +797,7 @@
       });
     }
 
-    const base = dijkstra({ grid, starts, goals: [goal], objectPriorities, objectPriorityMap, getCellObjectType });
+    const base = dijkstra({ grid, starts, goals: [goal], objectPriorities });
     push("base", base);
 
     if (base) {
@@ -822,8 +809,6 @@
           goals: [goal],
           penaltyCells: buildPenaltyCellsFromPath(base.path, 0.9),
           objectPriorities,
-          objectPriorityMap,
-          getCellObjectType
         })
       );
 
@@ -835,8 +820,6 @@
           goals: [goal],
           penaltyCells: buildPenaltyCellsForWeightedPath(base.path, grid, 0.45),
           objectPriorities,
-          objectPriorityMap,
-          getCellObjectType
         })
       );
 
@@ -848,8 +831,6 @@
           goals: [goal],
           penaltyCells: buildPenaltyCellsForHighMinerals(base.path, grid, 400000, 28),
           objectPriorities,
-          objectPriorityMap,
-          getCellObjectType
         })
       );
 
@@ -861,8 +842,6 @@
           goals: [goal],
           blockedEdges: buildBlockedEdgesFromPath(base.path),
           objectPriorities,
-          objectPriorityMap,
-          getCellObjectType
         })
       );
 
@@ -874,13 +853,11 @@
           goals: [goal],
           blockedEdges: buildEarlyBlockedEdgesFromPath(base.path, 3),
           objectPriorities,
-          objectPriorityMap,
-          getCellObjectType
         })
       );
     }
 
-    const detours = buildForkDetours(grid, starts, goal, objectPriorities, objectPriorityMap, getCellObjectType);
+    const detours = buildForkDetours(grid, starts, goal, objectPriorities);
     for (const detour of detours) {
       push("fork-detour", detour);
     }
@@ -904,11 +881,11 @@
     return deduped.slice(0, 12);
   }
 
-  function buildRedCandidates(grid, starts, gateGoals, bubbles, objectPriorities, objectPriorityMap, getCellObjectType) {
+  function buildRedCandidates(grid, starts, gateGoals, bubbles, objectPriorities) {
     const candidates = [];
 
     for (const gateGoal of gateGoals) {
-      const direct = dijkstra({ grid, starts, goals: [gateGoal], objectPriorities, objectPriorityMap, getCellObjectType });
+      const direct = dijkstra({ grid, starts, goals: [gateGoal], objectPriorities });
       if (direct) {
         addCandidate(candidates, {
           mode: "direct",
@@ -926,8 +903,6 @@
           goals: [gateGoal],
           penaltyCells: buildPenaltyCellsFromPath(direct.path, 0.35),
           objectPriorities,
-          objectPriorityMap,
-          getCellObjectType
         });
         if (penalized) {
           addCandidate(candidates, {
@@ -947,8 +922,6 @@
           goals: [gateGoal],
           blockedEdges: buildBlockedEdgesFromPath(direct.path),
           objectPriorities,
-          objectPriorityMap,
-          getCellObjectType
         });
         if (blocked) {
           addCandidate(candidates, {
@@ -962,7 +935,7 @@
           });
         }
 
-        const forkDetours = buildForkDetours(grid, starts, gateGoal, objectPriorities, objectPriorityMap, getCellObjectType);
+        const forkDetours = buildForkDetours(grid, starts, gateGoal, objectPriorities);
         for (const fork of forkDetours) {
           addCandidate(candidates, {
             mode: "direct",
@@ -978,7 +951,7 @@
     }
 
     for (const bubble of bubbles) {
-      const a = dijkstra({ grid, starts, goals: [bubble], objectPriorities, objectPriorityMap, getCellObjectType });
+      const a = dijkstra({ grid, starts, goals: [bubble], objectPriorities });
       if (!a) continue;
 
       for (const gateGoal of gateGoals) {
@@ -986,9 +959,7 @@
           grid,
           starts: [bubble],
           goals: [gateGoal],
-          objectPriorities,
-          objectPriorityMap,
-          getCellObjectType
+          objectPriorities
         });
         if (b) {
           addCandidate(candidates, {
@@ -1007,9 +978,7 @@
           starts: [bubble],
           goals: [gateGoal],
           penaltyCells: b ? buildPenaltyCellsFromPath(b.path, 0.35) : new Map(),
-          objectPriorities,
-          objectPriorityMap,
-          getCellObjectType
+          objectPriorities
         });
         if (bPenalized) {
           addCandidate(candidates, {
@@ -1028,9 +997,7 @@
           starts: [bubble],
           goals: [gateGoal],
           blockedEdges: b ? buildBlockedEdgesFromPath(b.path) : new Set(),
-          objectPriorities,
-          objectPriorityMap,
-          getCellObjectType
+          objectPriorities
         });
         if (bBlocked) {
           addCandidate(candidates, {
@@ -1044,7 +1011,7 @@
           });
         }
 
-        const forkDetours = buildForkDetours(grid, [bubble], gateGoal, objectPriorities, objectPriorityMap, getCellObjectType);
+        const forkDetours = buildForkDetours(grid, [bubble], gateGoal, objectPriorities);
         for (const fork of forkDetours) {
           addCandidate(candidates, {
             mode: "via bubble",
@@ -1076,9 +1043,7 @@
     starts,
     gateGoals,
     bubbles,
-    objectPriorities,
-    objectPriorityMap,
-    getCellObjectType
+    objectPriorities
   ) {
     const candidates = [];
 
@@ -1095,7 +1060,7 @@
     }
 
     for (const gateGoal of gateGoals) {
-      const directVariants = makePathVariants(grid, starts, gateGoal, objectPriorities, objectPriorityMap, getCellObjectType);
+      const directVariants = makePathVariants(grid, starts, gateGoal, objectPriorities);
       for (const direct of directVariants) {
         addLegacyCandidate(
           "legacy end",
@@ -1109,7 +1074,7 @@
     }
 
     for (const bubble1 of bubbles) {
-      const toBubbleVariants = makePathVariants(grid, starts, bubble1, objectPriorities, objectPriorityMap, getCellObjectType);
+      const toBubbleVariants = makePathVariants(grid, starts, bubble1, objectPriorities);
       if (!toBubbleVariants.length) continue;
 
       for (const leg1 of toBubbleVariants) {
@@ -1118,9 +1083,7 @@
             grid,
             [bubble1],
             gateGoal,
-            objectPriorities,
-            objectPriorityMap,
-            getCellObjectType
+            objectPriorities
           );
           for (const legGate of toGateVariants) {
             addLegacyCandidate(
@@ -1141,9 +1104,7 @@
             grid,
             [bubble1],
             bubble2,
-            objectPriorities,
-            objectPriorityMap,
-            getCellObjectType
+            objectPriorities
           );
           if (!toBubble2Variants.length) continue;
 
@@ -1153,9 +1114,7 @@
                 grid,
                 [bubble2],
                 gateGoal,
-                objectPriorities,
-                objectPriorityMap,
-                getCellObjectType
+                objectPriorities
               );
 
               for (const legGate of toGate2Variants) {
@@ -1187,8 +1146,8 @@
       const bBubbleCount = countRedBubbles(b.path, grid);
       if (aBubbleCount !== bBubbleCount) return bBubbleCount - aBubbleCount;
 
-      const aTravel = firstBubbleTravelCost(a.path, grid, objectPriorities, objectPriorityMap, getCellObjectType);
-      const bTravel = firstBubbleTravelCost(b.path, grid, objectPriorities, objectPriorityMap, getCellObjectType);
+      const aTravel = firstBubbleTravelCost(a.path, grid, objectPriorities);
+      const bTravel = firstBubbleTravelCost(b.path, grid, objectPriorities);
       if (aTravel !== bTravel) return aTravel - bTravel;
 
       if (a.redCost !== b.redCost) return a.redCost - b.redCost;
@@ -1260,7 +1219,7 @@
     return Math.max(0, penalty);
   }
 
-  function redLoopAssistPenalty(redPath, bluePaths, shaftAttackInfos, grid, starts, objectPriorities, objectPriorityMap, getCellObjectType) {
+  function redLoopAssistPenalty(redPath, bluePaths, shaftAttackInfos, grid, starts, objectPriorities) {
     if (!redPath || !redPath.length || !bluePaths || !bluePaths.length) return 0;
 
     let penalty = 0;
@@ -1278,9 +1237,7 @@
         starts,
         goals: info.attacks,
         freeCells: new Set(),
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType
+        objectPriorities
       });
 
       if (!blueStandalone) continue;
@@ -1302,9 +1259,7 @@
     redCandidate,
     shaftClustersOrdered,
     bubbles,
-    objectPriorities,
-    objectPriorityMap,
-    getCellObjectType
+    objectPriorities
   ) {
     const bluePaths = [];
     const shaftEntryDots = [];
@@ -1344,8 +1299,6 @@
         routeKind: "cumulative",
         isLowestShaft,
         objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
       });
 
       if (cumulativeOption) {
@@ -1355,8 +1308,6 @@
           goals: info.attacks,
           freeCells: new Set(),
           objectPriorities,
-          objectPriorityMap,
-          getCellObjectType
         });
 
         let dep = 0;
@@ -1382,8 +1333,6 @@
         routeKind: "base",
         isLowestShaft,
         objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
       });
 
       if (baseOption) {
@@ -1433,8 +1382,6 @@
         goals: [bubble],
         freeCells: reusable,
         objectPriorities,
-        objectPriorityMap,
-        getCellObjectType
       });
 
       if (bubbleRoute) {
@@ -1461,9 +1408,7 @@
       shaftAttackInfos,
       grid,
       starts,
-      objectPriorities,
-      objectPriorityMap,
-      getCellObjectType
+      objectPriorities
     );
 
     return {
@@ -1514,6 +1459,9 @@
       if (a.redCost !== b.redCost) {
         return a.redCost - b.redCost;
       }
+      if (a.objectPriorityScore !== b.objectPriorityScore) {
+        return a.objectPriorityScore - b.objectPriorityScore;
+      }
       const aRaw = pathRawNumberSum(a.redPath, grid);
       const bRaw = pathRawNumberSum(b.redPath, grid);
       if (aRaw !== bRaw) {
@@ -1542,6 +1490,10 @@
           )}`;
         } else if (candidate.redCost > best.redCost) {
           reason = `Higher red cost by ${roundCost(candidate.redCost - best.redCost)}`;
+        } else if (candidate.objectPriorityScore > best.objectPriorityScore) {
+          reason = `Worse object priority score by ${roundCost(
+            candidate.objectPriorityScore - best.objectPriorityScore
+          )}`;
         } else {
           const bestRaw = pathRawNumberSum(best.redPath, grid);
           const candRaw = pathRawNumberSum(candidate.redPath, grid);
@@ -1566,6 +1518,7 @@
         unresolvedTargets: candidate.unresolvedTargets,
         redBubbleCount: candidate.redBubbleCount,
         firstBubbleTravelCost: roundCost(candidate.firstBubbleTravelCost),
+        objectPriorityScore: roundCost(candidate.objectPriorityScore),
         redPathValues: getPathValueLabel(grid, candidate.redPath),
         redPathCoords: getPathCoordLabel(candidate.redPath),
         redCost: roundCost(candidate.redCost),
@@ -1623,18 +1576,14 @@
           starts,
           gateGoals,
           bubbles,
-          normalizedObjectPriorities,
-          objectPriorityMap,
-          getCellObjectType
+          normalizedObjectPriorities
         )
       : buildRedCandidates(
           grid,
           starts,
           gateGoals,
           bubbles,
-          normalizedObjectPriorities,
-          objectPriorityMap,
-          getCellObjectType
+          normalizedObjectPriorities
         );
 
     if (!redCandidates.length) {
@@ -1657,9 +1606,7 @@
         redCandidate,
         shaftClustersOrdered,
         bubbles,
-        normalizedObjectPriorities,
-        objectPriorityMap,
-        getCellObjectType
+        normalizedObjectPriorities
       );
 
       const redBubbleCount = countRedBubbles(redCandidate.path, grid);
@@ -1667,11 +1614,27 @@
       const firstBubbleCost = firstBubbleTravelCost(
         redCandidate.path,
         grid,
-        normalizedObjectPriorities,
-        objectPriorityMap,
-        getCellObjectType
+        normalizedObjectPriorities
       );
       const redRaw = pathRawNumberSum(redCandidate.path, grid);
+      const redObjectPriorityScore = getPathObjectPriorityScore(
+        redCandidate.path,
+        objectPriorityMap,
+        getCellObjectType,
+        normalizedObjectPriorities
+      );
+
+      let blueObjectPriorityScore = 0;
+      for (const bluePath of blueEval.bluePaths) {
+        blueObjectPriorityScore += getPathObjectPriorityScore(
+          bluePath,
+          objectPriorityMap,
+          getCellObjectType,
+          normalizedObjectPriorities
+        );
+      }
+
+      const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
 
       let effectiveTotal =
         redCandidate.redCost +
@@ -1681,7 +1644,8 @@
         blueEval.lowerShaftBonus -
         blueEval.bubbleBonus +
         blueEval.redLoopPenalty +
-        blueEval.overAssistPenalty;
+        blueEval.overAssistPenalty +
+        totalObjectPriorityScore;
 
       if (legacyEndMode) {
         effectiveTotal += firstBubbleCost === Infinity ? 999999999999 : firstBubbleCost * 25;
@@ -1711,6 +1675,9 @@
         bubbleBonus: blueEval.bubbleBonus,
         redLoopPenalty: blueEval.redLoopPenalty,
         overAssistPenalty: blueEval.overAssistPenalty,
+        redObjectPriorityScore,
+        blueObjectPriorityScore,
+        objectPriorityScore: totalObjectPriorityScore,
         effectiveTotal,
       };
 
@@ -1745,6 +1712,13 @@
                 continue;
               }
 
+              if (candidate.redCost === best.redCost) {
+                if (candidate.objectPriorityScore < best.objectPriorityScore) {
+                  best = candidate;
+                  continue;
+                }
+              }
+
               const candidateRaw = pathRawNumberSum(candidate.redPath, grid);
               const bestRaw = pathRawNumberSum(best.redPath, grid);
 
@@ -1772,6 +1746,15 @@
 
         if (
           candidate.effectiveTotal === best.effectiveTotal &&
+          candidate.objectPriorityScore < best.objectPriorityScore
+        ) {
+          best = candidate;
+          continue;
+        }
+
+        if (
+          candidate.effectiveTotal === best.effectiveTotal &&
+          candidate.objectPriorityScore === best.objectPriorityScore &&
           candidate.redCost < best.redCost
         ) {
           best = candidate;
@@ -1815,6 +1798,9 @@
       bluePaths: best.bluePaths,
       blueCost: roundCost(best.blueCost),
       totalCost: roundCost(best.redCost + best.blueCost),
+      redObjectPriorityScore: roundCost(best.redObjectPriorityScore),
+      blueObjectPriorityScore: roundCost(best.blueObjectPriorityScore),
+      objectPriorityScore: roundCost(best.objectPriorityScore),
       effectiveTotal: roundCost(best.effectiveTotal),
       dependencyCost: roundCost(best.dependencyCost),
       assistBonus: roundCost(best.assistBonus),
@@ -1849,6 +1835,9 @@
         }\n` +
         `red_cost: ${roundCost(best.redCost)}\n` +
         `blue_cost: ${roundCost(best.blueCost)}\n` +
+        `red_object_priority_score: ${roundCost(best.redObjectPriorityScore)}\n` +
+        `blue_object_priority_score: ${roundCost(best.blueObjectPriorityScore)}\n` +
+        `object_priority_score: ${roundCost(best.objectPriorityScore)}\n` +
         `dependency_cost: ${roundCost(best.dependencyCost)}\n` +
         `assist_bonus: ${roundCost(best.assistBonus)}\n` +
         `lower_shaft_bonus: ${roundCost(best.lowerShaftBonus)}\n` +
