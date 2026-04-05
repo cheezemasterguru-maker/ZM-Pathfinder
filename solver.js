@@ -979,6 +979,25 @@ function makePathVariants(
       route: { ...route, path },
     });
   }
+function makePathVariants(
+  grid,
+  starts,
+  goal,
+  objectPriorities,
+  objectPriorityMap = null,
+  getCellObjectType = null
+) {
+  const out = [];
+
+  function push(tag, route) {
+    if (!route || !route.path || !route.path.length) return;
+    const path = uniquePath(route.path);
+    if (hasPathLoop(path)) return;
+    out.push({
+      tag,
+      route: { ...route, path },
+    });
+  }
 
   const base = dijkstra({
     grid,
@@ -1087,7 +1106,6 @@ function makePathVariants(
 
   return deduped.slice(0, 12);
 }
-
   function buildRequiredPriorityRouteCandidates(
     grid,
     starts,
