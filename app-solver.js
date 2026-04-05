@@ -1,14 +1,51 @@
-const OBJECT_PRIORITY_REGISTRY = [
-  "wood",
-  "iron",
-  "steel",
-  "silver",
-  "gold",
-  "key",
-  "emblem",
-  "essence",
-  "badge"
-];
+const OBJECT_PRIORITY_DEFINITIONS = {
+  wood: {
+    label: "Wood",
+    visualMeta: { object: "chest", subtype: "wood" }
+  },
+  iron: {
+    label: "Iron",
+    visualMeta: { object: "chest", subtype: "iron" }
+  },
+  steel: {
+    label: "Steel",
+    visualMeta: { object: "chest", subtype: "steel" }
+  },
+  silver: {
+    label: "Silver",
+    visualMeta: { object: "chest", subtype: "silver" }
+  },
+  gold: {
+    label: "Gold",
+    visualMeta: { object: "chest", subtype: "gold" }
+  },
+  key: {
+    label: "Key",
+    visualMeta: { object: "keys" }
+  },
+  emblem: {
+    label: "Emblem",
+    visualMeta: { object: "emblems" }
+  },
+  essence: {
+    label: "Essence",
+    visualMeta: { object: "essence" }
+  },
+  badge: {
+    label: "Badge",
+    visualMeta: { object: "badges" }
+  },
+  gems: {
+    label: "Gems",
+    visualMeta: { object: "gems" }
+  },
+  sticker: {
+    label: "Sticker",
+    visualMeta: { object: "stickers" }
+  }
+};
+
+const OBJECT_PRIORITY_REGISTRY = Object.keys(OBJECT_PRIORITY_DEFINITIONS);
 
 let objectPriorities = {};
 let activeObjectTypes = [];
@@ -20,11 +57,7 @@ function normalizeObjectTypeName(value) {
 function formatObjectPriorityLabel(objectType) {
   const normalized = normalizeObjectTypeName(objectType);
   if (!normalized) return "";
-  return normalized
-    .split(/[\s_-]+/)
-    .filter(Boolean)
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+  return OBJECT_PRIORITY_DEFINITIONS[normalized]?.label || normalized;
 }
 
 function initObjectPriorities() {
@@ -74,13 +107,35 @@ function getObjectVisual(meta){
 function isPriorityEligibleObject(objectType) {
   const normalized = normalizeObjectTypeName(objectType);
   if (!normalized) return false;
-
-  if (normalized === "plain") return false;
-  if (normalized === "bubble") return false;
-  if (normalized === "shaft") return false;
-  if (normalized === "gate") return false;
-
   return OBJECT_PRIORITY_REGISTRY.includes(normalized);
+}
+
+function getPriorityObjectTypeFromMeta(meta) {
+  if (!meta) return "";
+
+  const objectType = normalizeObjectTypeName(meta.object);
+  const subtype = normalizeObjectTypeName(meta.subtype);
+
+  if (objectType === "chest" && isPriorityEligibleObject(subtype)) {
+    return subtype;
+  }
+
+  if (objectType === "keys") return "key";
+  if (objectType === "emblems") return "emblem";
+  if (objectType === "badges") return "badge";
+  if (objectType === "stickers") return "sticker";
+  if (objectType === "gems") return "gems";
+  if (objectType === "essence") return "essence";
+
+  if (isPriorityEligibleObject(objectType)) return objectType;
+  if (isPriorityEligibleObject(subtype)) return subtype;
+
+  return "";
+}
+
+function getPriorityVisualMeta(objectType) {
+  const normalized = normalizeObjectTypeName(objectType);
+  return OBJECT_PRIORITY_DEFINITIONS[normalized]?.visualMeta || { object: normalized };
 }
 
 function scanActiveObjectTypes() {
@@ -96,9 +151,9 @@ function scanActiveObjectTypes() {
         c
       );
 
-      const objectType = normalizeObjectTypeName(meta?.object);
-      if (isPriorityEligibleObject(objectType)) {
-        found.add(objectType);
+      const priorityType = getPriorityObjectTypeFromMeta(meta);
+      if (priorityType) {
+        found.add(priorityType);
       }
     }
   }
@@ -143,8 +198,9 @@ function getCellObjectPriorityMultiplier(r, c) {
     c
   );
 
-  const objectType = normalizeObjectTypeName(meta?.object);
-  if (!isPriorityEligibleObject(objectType)) return 1;
+  const objectType = getPriorityObjectTypeFromMeta(meta);
+  if (!objectType) return 1;
+
   return getObjectPriorityMultiplier(objectType);
 }
 
@@ -218,7 +274,9 @@ function renderObjectPrioritiesModal() {
     preview.style.border = "2px solid rgba(255,255,255,0.12)";
     preview.style.flex = "0 0 auto";
 
-    const visual = getObjectVisual({ object: objectType });
+    const visualMeta = getPriorityVisualMeta(objectType);
+    const visual = getObjectVisual(visualMeta);
+
     if (visual.fill) {
       if (typeof visual.fill === "string") {
         preview.style.background = visual.fill;
@@ -238,7 +296,7 @@ function renderObjectPrioritiesModal() {
     title.style.lineHeight = "1.2";
 
     const subtitle = document.createElement("div");
-    subtitle.textContent = getObjectVisual({ object: objectType }).code || objectType;
+    subtitle.textContent = visual.code || objectType;
     subtitle.style.fontSize = "12px";
     subtitle.style.opacity = "0.75";
     subtitle.style.lineHeight = "1.2";
