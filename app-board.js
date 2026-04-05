@@ -1,4 +1,3 @@
-
 function renderRouteAudit(routeAnalysis){
   const body = getRouteReportBody();
   if (!body) return;
@@ -462,6 +461,10 @@ function clickCell(r, c){
     }
   }
 
+  if (typeof scanActiveObjectTypes === "function") {
+    scanActiveObjectTypes();
+  }
+
   resetSolve();
   render();
   renderPreview();
@@ -490,6 +493,11 @@ function activateInlineNumberEditor(r, c){
     } else if(!isNaN(raw) && Number(raw) > 0){
       grid[r][c] = Number(raw);
     }
+
+    if (typeof scanActiveObjectTypes === "function") {
+      scanActiveObjectTypes();
+    }
+
     resetSolve();
     render();
     renderPreview();
@@ -556,6 +564,10 @@ function applyText(text){
     }
   }
 
+  if (typeof scanActiveObjectTypes === "function") {
+    scanActiveObjectTypes();
+  }
+
   resetSolve();
   render();
   renderPreview();
@@ -576,6 +588,11 @@ function clearBoard(updateReport = true){
     chamberName: null,
     eventMine: null
   };
+
+  if (typeof scanActiveObjectTypes === "function") {
+    scanActiveObjectTypes();
+  }
+
   resetSolve();
   render();
   renderPreview();
@@ -608,6 +625,10 @@ function loadSampleGrid(){
     for(let c = 0; c < COLS; c++){
       grid[r][c] = sample[r][c] === undefined ? "" : sample[r][c];
     }
+  }
+
+  if (typeof scanActiveObjectTypes === "function") {
+    scanActiveObjectTypes();
   }
 
   resetSolve();
