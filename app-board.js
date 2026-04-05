@@ -1135,4 +1135,4 @@ window.getCurrentChamberShaftData = getCurrentChamberShaftData;
 window.getCurrentShaftDataPathLabel = getCurrentShaftDataPathLabel;
 window.getOrderedPhysicalShaftClusters = getOrderedPhysicalShaftClusters;
 window.getShaftDisplayLines = getShaftDisplayLines;
-window.getShaftClustersFromGrid = getShaftClustersFromGrid;x
+window.getShaftClustersFromGrid = getShaftClustersFromGrid;
