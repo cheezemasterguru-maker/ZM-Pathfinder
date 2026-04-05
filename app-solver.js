@@ -50,6 +50,12 @@ const OBJECT_PRIORITY_REGISTRY = Object.keys(OBJECT_PRIORITY_DEFINITIONS);
 let objectPriorities = {};
 let activeObjectTypes = [];
 
+function solverSafeT(key, fallback) {
+  if (typeof t !== "function") return fallback;
+  const value = t(key);
+  return value === key ? fallback : value;
+}
+
 function normalizeObjectTypeName(value) {
   return String(value || "").trim().toLowerCase();
 }
@@ -62,7 +68,7 @@ function formatObjectPriorityLabel(objectType) {
 
 function initObjectPriorities() {
   objectPriorities = {};
-  OBJECT_PRIORITY_REGISTRY.forEach(type => {
+  OBJECT_PRIORITY_REGISTRY.forEach((type) => {
     objectPriorities[type] = "normal";
   });
 }
@@ -73,12 +79,16 @@ function getTileMeta(eventType, eventName, chamberName, r, c) {
   const mineName = currentMapContext.eventMine;
 
   if (eventType === "Legacy") {
-    return window.ZM_TILE_META?.Legacy?.[eventName]?.[mineName]?.[chamberName]?.tiles?.[`${r},${c}`]
-      || { object: "plain" };
+    return (
+      window.ZM_TILE_META?.Legacy?.[eventName]?.[mineName]?.[chamberName]?.tiles?.[`${r},${c}`] ||
+      { object: "plain" }
+    );
   }
 
-  return window.ZM_TILE_META?.[eventType]?.[eventName]?.[chamberName]?.tiles?.[`${r},${c}`]
-    || { object: "plain" };
+  return (
+    window.ZM_TILE_META?.[eventType]?.[eventName]?.[chamberName]?.tiles?.[`${r},${c}`] ||
+    { object: "plain" }
+  );
 }
 
 function getObjectVisual(meta) {
@@ -177,20 +187,36 @@ function setObjectPriorityValue(objectType, value) {
   objectPriorities[normalized] = value;
 }
 
-function resetObjectPriorities() {
-  scanActiveObjectTypes();
-  activeObjectTypes.forEach(type => {
-    objectPriorities[type] = "normal";
-  });
-  renderObjectPrioritiesModal();
-}
-
 function getObjectPriorityMapForSolver() {
   const map = {};
-  activeObjectTypes.forEach(type => {
+  activeObjectTypes.forEach((type) => {
     map[type] = getObjectPriorityValue(type);
   });
   return map;
+}
+
+function rerunSolveAfterPriorityChange() {
+  if (solveState?.solved) {
+    solveBoard();
+  } else {
+    if (typeof render === "function") render();
+    if (typeof renderPreview === "function") renderPreview();
+  }
+}
+
+function applyObjectPriorityChange(objectType, value) {
+  setObjectPriorityValue(objectType, value);
+  renderObjectPrioritiesModal();
+  rerunSolveAfterPriorityChange();
+}
+
+function resetObjectPriorities() {
+  scanActiveObjectTypes();
+  activeObjectTypes.forEach((type) => {
+    objectPriorities[type] = "normal";
+  });
+  renderObjectPrioritiesModal();
+  rerunSolveAfterPriorityChange();
 }
 
 function openObjectPrioritiesModal() {
@@ -214,6 +240,7 @@ function buildObjectPriorityButton(label, active, onClick) {
   button.style.opacity = active ? "1" : "0.7";
   button.style.outline = active ? "2px solid rgba(255,255,255,0.85)" : "none";
   button.style.fontWeight = active ? "700" : "600";
+  button.style.whiteSpace = "nowrap";
   button.onclick = onClick;
   return button;
 }
@@ -224,16 +251,25 @@ function renderObjectPrioritiesModal() {
 
   scanActiveObjectTypes();
   body.innerHTML = "";
+  body.style.overflowWrap = "anywhere";
+  body.style.wordBreak = "break-word";
+  body.style.boxSizing = "border-box";
+  body.style.maxWidth = "100%";
 
   if (!activeObjectTypes.length) {
     const empty = document.createElement("div");
     empty.className = "help-section";
-    empty.innerHTML = "No optional objects found on the current board.";
+    empty.style.overflowWrap = "anywhere";
+    empty.style.wordBreak = "break-word";
+    empty.textContent = solverSafeT(
+      "noOptionalObjectsFound",
+      "No optional objects found on the current board."
+    );
     body.appendChild(empty);
     return;
   }
 
-  activeObjectTypes.forEach(objectType => {
+  activeObjectTypes.forEach((objectType) => {
     const row = document.createElement("div");
     row.style.display = "flex";
     row.style.alignItems = "center";
@@ -241,12 +277,17 @@ function renderObjectPrioritiesModal() {
     row.style.gap = "12px";
     row.style.padding = "10px 0";
     row.style.borderBottom = "1px solid rgba(255,255,255,0.08)";
+    row.style.boxSizing = "border-box";
+    row.style.maxWidth = "100%";
+    row.style.flexWrap = "wrap";
 
     const left = document.createElement("div");
     left.style.display = "flex";
     left.style.alignItems = "center";
     left.style.gap = "10px";
     left.style.minWidth = "0";
+    left.style.flex = "1 1 220px";
+    left.style.overflow = "hidden";
 
     const preview = document.createElement("div");
     preview.style.width = "34px";
@@ -261,7 +302,11 @@ function renderObjectPrioritiesModal() {
     if (visual.fill) {
       if (typeof visual.fill === "string") {
         preview.style.background = visual.fill;
-      } else if (visual.fill.type === "dual" && Array.isArray(visual.fill.colors) && visual.fill.colors.length >= 2) {
+      } else if (
+        visual.fill.type === "dual" &&
+        Array.isArray(visual.fill.colors) &&
+        visual.fill.colors.length >= 2
+      ) {
         preview.style.background = `linear-gradient(135deg, ${visual.fill.colors[0]} 50%, ${visual.fill.colors[1]} 50%)`;
       }
     } else {
@@ -270,11 +315,15 @@ function renderObjectPrioritiesModal() {
 
     const labelWrap = document.createElement("div");
     labelWrap.style.minWidth = "0";
+    labelWrap.style.overflow = "hidden";
+    labelWrap.style.flex = "1 1 auto";
 
     const title = document.createElement("div");
     title.textContent = formatObjectPriorityLabel(objectType);
     title.style.fontWeight = "700";
     title.style.lineHeight = "1.2";
+    title.style.overflowWrap = "anywhere";
+    title.style.wordBreak = "break-word";
 
     const subtitle = document.createElement("div");
     subtitle.textContent = visual.code || objectType;
@@ -282,6 +331,8 @@ function renderObjectPrioritiesModal() {
     subtitle.style.opacity = "0.75";
     subtitle.style.lineHeight = "1.2";
     subtitle.style.marginTop = "2px";
+    subtitle.style.overflowWrap = "anywhere";
+    subtitle.style.wordBreak = "break-word";
 
     labelWrap.appendChild(title);
     labelWrap.appendChild(subtitle);
@@ -294,28 +345,33 @@ function renderObjectPrioritiesModal() {
     right.style.flexWrap = "wrap";
     right.style.justifyContent = "flex-end";
     right.style.gap = "8px";
+    right.style.flex = "0 1 auto";
+    right.style.maxWidth = "100%";
 
     const current = getObjectPriorityValue(objectType);
 
     right.appendChild(
-      buildObjectPriorityButton("Avoid", current === "avoid", () => {
-        setObjectPriorityValue(objectType, "avoid");
-        renderObjectPrioritiesModal();
-      })
+      buildObjectPriorityButton(
+        solverSafeT("avoid", "Avoid"),
+        current === "avoid",
+        () => applyObjectPriorityChange(objectType, "avoid")
+      )
     );
 
     right.appendChild(
-      buildObjectPriorityButton("Normal", current === "normal", () => {
-        setObjectPriorityValue(objectType, "normal");
-        renderObjectPrioritiesModal();
-      })
+      buildObjectPriorityButton(
+        solverSafeT("normal", "Normal"),
+        current === "normal",
+        () => applyObjectPriorityChange(objectType, "normal")
+      )
     );
 
     right.appendChild(
-      buildObjectPriorityButton("Priority", current === "priority", () => {
-        setObjectPriorityValue(objectType, "priority");
-        renderObjectPrioritiesModal();
-      })
+      buildObjectPriorityButton(
+        solverSafeT("priority", "Priority"),
+        current === "priority",
+        () => applyObjectPriorityChange(objectType, "priority")
+      )
     );
 
     row.appendChild(left);
@@ -326,7 +382,7 @@ function renderObjectPrioritiesModal() {
 
 function solveBoard() {
   if (!window.ZMPathfinderSolver || typeof window.ZMPathfinderSolver.solveGrid !== "function") {
-    setReport(t("solverMissing"));
+    setReport(typeof t === "function" ? t("solverMissing") : "Solver missing");
     return;
   }
 
@@ -345,8 +401,8 @@ function solveBoard() {
 
   if (!result || !result.ok) {
     resetSolve();
-    setReport(result && result.message ? result.message : t("solverFailed"));
-    renderPreview();
+    setReport(result && result.message ? result.message : (typeof t === "function" ? t("solverFailed") : "Solver failed"));
+    if (typeof renderPreview === "function") renderPreview();
     return;
   }
 
@@ -357,7 +413,7 @@ function solveBoard() {
     shaftClusters: result.shaftClusters || [],
     attackPoints: result.attackPoints || [],
     solved: true,
-    message: result.message || t("solvedMessage"),
+    message: result.message || (typeof t === "function" ? t("solvedMessage") : "Solved"),
     routeAnalysis: result.routeAnalysis || [],
     solverVersion: result.solverVersion || null,
     legacyEndMode: !!result.legacyEndMode,
@@ -371,9 +427,13 @@ function solveBoard() {
     objectPriorityScore: result.objectPriorityScore ?? 0
   };
 
-  setReport(result.message || t("solvedMessage"));
-  renderRouteAudit(result.routeAnalysis || []);
-  renderPreview();
+  setReport(result.message || (typeof t === "function" ? t("solvedMessage") : "Solved"));
+  if (typeof renderRouteAudit === "function") {
+    renderRouteAudit(result.routeAnalysis || []);
+  }
+  if (typeof renderPreview === "function") {
+    renderPreview();
+  }
 }
 
 window.openObjectPrioritiesModal = openObjectPrioritiesModal;
