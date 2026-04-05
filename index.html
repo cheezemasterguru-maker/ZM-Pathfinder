@@ -18,7 +18,6 @@
   <script src="auth.js?v=222" defer></script>
   <script src="timing-tables.js?v=111"></script>
 
-  <!-- Split app files -->
   <script src="app-main.js?v=5402" defer></script>
   <script src="app-board.js?v=5402" defer></script>
   <script src="app-solver.js?v=5402" defer></script>
@@ -187,10 +186,35 @@
     <div class="modal modal-box" onclick="event.stopPropagation()">
       <button class="modal-close" onclick="closeObjectPrioritiesModal()">×</button>
       <h2>Object Priorities</h2>
+
       <div id="objectPrioritiesIntro" class="help-content" style="margin-bottom: 12px;">
-        Optional object preferences for the current board.
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+          <button
+            id="standardSolverModeBtn"
+            class="btn-solve"
+            type="button"
+            onclick="setSolverMode('standard');"
+          >
+            Standard Solver
+          </button>
+
+          <button
+            id="customSolverModeBtn"
+            class="btn-action"
+            type="button"
+            onclick="setSolverMode('custom');"
+          >
+            Custom Solver
+          </button>
+        </div>
+
+        <div id="objectPrioritiesModeNote">
+          Standard rules are active. Custom objective toggles are disabled.
+        </div>
       </div>
+
       <div id="objectPrioritiesBody" class="help-content"></div>
+
       <div class="modal-actions">
         <button id="objectPrioritiesResetBtn" class="btn-action" onclick="resetObjectPriorities()">Reset</button>
         <button id="objectPrioritiesCloseBtn" class="btn-action" onclick="closeObjectPrioritiesModal()">Close</button>
