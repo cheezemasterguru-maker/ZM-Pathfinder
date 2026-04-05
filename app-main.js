@@ -1122,10 +1122,6 @@ function ensureDifficultyMeter() {
 function updateDifficultyMeter() {
   const meter = ensureDifficultyMeter();
   const report = document.getElementById("report");
-  if (!meter || !report)
-    function updateDifficultyMeter() {
-  const meter = ensureDifficultyMeter();
-  const report = document.getElementById("report");
   if (!meter || !report) return;
 
   if (isMainDeepContext()) {
