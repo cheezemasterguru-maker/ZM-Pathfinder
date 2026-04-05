@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V5.7 loaded");
+  console.log("ZM Solver V5.8 loaded");
 
-  const SOLVER_VERSION = "V5.7";
+  const SOLVER_VERSION = "V5.8";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -12,8 +12,8 @@
     startFlat: 0,
     highMineralThreshold: 28,
     highMineralFlat: 0,
-    priorityObjectBonus: -250,
-    avoidObjectPenalty: 250,
+    priorityObjectBonus: -250000,
+    avoidObjectPenalty: 250000,
   };
 
   let GLOBAL_OBJECT_PRIORITIES = { ...DEFAULT_OBJECT_PRIORITIES };
@@ -44,9 +44,9 @@
       highMineralFlat:
         Number.isFinite(merged.highMineralFlat) ? merged.highMineralFlat : 0,
       priorityObjectBonus:
-        Number.isFinite(merged.priorityObjectBonus) ? merged.priorityObjectBonus : -250,
+        Number.isFinite(merged.priorityObjectBonus) ? merged.priorityObjectBonus : -250000,
       avoidObjectPenalty:
-        Number.isFinite(merged.avoidObjectPenalty) ? merged.avoidObjectPenalty : 250,
+        Number.isFinite(merged.avoidObjectPenalty) ? merged.avoidObjectPenalty : 250000,
     };
   }
 
@@ -99,6 +99,29 @@
     return "normal";
   }
 
+  function getCellPrioritySetting(r, c, objectPriorityMap, getCellObjectType) {
+    if (!objectPriorityMap || typeof getCellObjectType !== "function") return "normal";
+    const objectType = String(getCellObjectType(r, c) || "").trim().toLowerCase();
+    if (!objectType) return "normal";
+    return normalizePrioritySetting(objectPriorityMap[objectType]);
+  }
+
+  function getPerObjectPriorityAdjustment(r, c, options = {}) {
+    const priorities = normalizeObjectPriorities(
+      options.objectPriorities || GLOBAL_OBJECT_PRIORITIES
+    );
+    const setting = getCellPrioritySetting(
+      r,
+      c,
+      options.objectPriorityMap,
+      options.getCellObjectType
+    );
+
+    if (setting === "priority") return priorities.priorityObjectBonus;
+    if (setting === "avoid") return priorities.avoidObjectPenalty;
+    return 0;
+  }
+
   function cellWeight(grid, r, c, freeCells, options = {}) {
     if (freeCells && freeCells.has(`${r},${c}`)) return 0;
 
@@ -128,6 +151,8 @@
       }
     }
 
+    baseCost += getPerObjectPriorityAdjustment(r, c, options);
+
     return baseCost;
   }
 
@@ -153,6 +178,42 @@
     }
 
     return score;
+  }
+
+  function getPriorityCells(grid, objectPriorityMap, getCellObjectType) {
+    const out = [];
+    if (!objectPriorityMap || typeof getCellObjectType !== "function") return out;
+
+    for (let r = 0; r < grid.length; r++) {
+      for (let c = 0; c < grid[0].length; c++) {
+        if (!isWalkableCell(grid, r, c)) continue;
+        if (getCellPrioritySetting(r, c, objectPriorityMap, getCellObjectType) === "priority") {
+          out.push([r, c]);
+        }
+      }
+    }
+
+    return out;
+  }
+
+  function getAvoidCells(grid, objectPriorityMap, getCellObjectType) {
+    const out = [];
+    if (!objectPriorityMap || typeof getCellObjectType !== "function") return out;
+
+    for (let r = 0; r < grid.length; r++) {
+      for (let c = 0; c < grid[0].length; c++) {
+        if (!isWalkableCell(grid, r, c)) continue;
+        if (getCellPrioritySetting(r, c, objectPriorityMap, getCellObjectType) === "avoid") {
+          out.push([r, c]);
+        }
+      }
+    }
+
+    return out;
+  }
+
+  function cellKey(r, c) {
+    return `${r},${c}`;
   }
 
   function getLowestUsedRow(grid) {
@@ -262,6 +323,8 @@
     blockedEdges = new Set(),
     penaltyCells = new Map(),
     objectPriorities = null,
+    objectPriorityMap = null,
+    getCellObjectType = null,
   }) {
     if (!starts.length || !goals.length) return null;
 
@@ -280,6 +343,8 @@
         objectPriorities,
         goals,
         starts,
+        objectPriorityMap,
+        getCellObjectType,
       });
 
       dist[r][c] = startCost;
@@ -331,6 +396,8 @@
             objectPriorities,
             goals,
             starts,
+            objectPriorityMap,
+            getCellObjectType,
           }) +
           penalty;
         const nextLen = cur.len + 1;
@@ -507,12 +574,21 @@
     return s;
   }
 
-  function buildForkDetours(grid, starts, goal, objectPriorities) {
+  function buildForkDetours(
+    grid,
+    starts,
+    goal,
+    objectPriorities,
+    objectPriorityMap = null,
+    getCellObjectType = null
+  ) {
     const base = dijkstra({
       grid,
       starts,
       goals: [goal],
-      objectPriorities
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType
     });
     if (!base || !base.path || base.path.length < 4) return [];
 
@@ -556,7 +632,9 @@
           starts,
           goals: [goal],
           blockedEdges: block,
-          objectPriorities
+          objectPriorities,
+          objectPriorityMap,
+          getCellObjectType
         });
 
         if (alt && alt.path && alt.path.length) {
@@ -591,7 +669,7 @@
     return Infinity;
   }
 
-  function firstBubbleTravelCost(path, grid, objectPriorities) {
+  function firstBubbleTravelCost(path, grid, objectPriorities, objectPriorityMap = null, getCellObjectType = null) {
     const idx = firstBubbleStep(path, grid);
     if (idx === Infinity) return Infinity;
 
@@ -599,7 +677,9 @@
     for (let i = 1; i <= idx; i++) {
       const [r, c] = path[i];
       total += cellWeight(grid, r, c, new Set(), {
-        objectPriorities
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType
       });
     }
     return total;
@@ -662,6 +742,8 @@
     routeKind,
     isLowestShaft,
     objectPriorities,
+    objectPriorityMap = null,
+    getCellObjectType = null,
   }) {
     const route = dijkstra({
       grid,
@@ -669,6 +751,8 @@
       goals,
       freeCells: reusable,
       objectPriorities,
+      objectPriorityMap,
+      getCellObjectType,
     });
     if (!route) return null;
 
@@ -784,7 +868,14 @@
     return chosen;
   }
 
-  function makePathVariants(grid, starts, goal, objectPriorities) {
+  function makePathVariants(
+    grid,
+    starts,
+    goal,
+    objectPriorities,
+    objectPriorityMap = null,
+    getCellObjectType = null
+  ) {
     const out = [];
 
     function push(tag, route) {
@@ -797,11 +888,15 @@
       });
     }
 
-    const base = dijkstra({ grid, starts, goals: [goal], objectPriorities });
-    push("base", base);
-
-    if (base) {
-      push(
+    const base = dijkstra({
+      grid,
+      starts,
+      goals: [goal],
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType
+    });
+    push(
         "path-penalized",
         dijkstra({
           grid,
@@ -809,6 +904,8 @@
           goals: [goal],
           penaltyCells: buildPenaltyCellsFromPath(base.path, 0.9),
           objectPriorities,
+          objectPriorityMap,
+          getCellObjectType,
         })
       );
 
@@ -820,6 +917,8 @@
           goals: [goal],
           penaltyCells: buildPenaltyCellsForWeightedPath(base.path, grid, 0.45),
           objectPriorities,
+          objectPriorityMap,
+          getCellObjectType,
         })
       );
 
@@ -831,6 +930,8 @@
           goals: [goal],
           penaltyCells: buildPenaltyCellsForHighMinerals(base.path, grid, 400000, 28),
           objectPriorities,
+          objectPriorityMap,
+          getCellObjectType,
         })
       );
 
@@ -842,6 +943,8 @@
           goals: [goal],
           blockedEdges: buildBlockedEdgesFromPath(base.path),
           objectPriorities,
+          objectPriorityMap,
+          getCellObjectType,
         })
       );
 
@@ -853,11 +956,20 @@
           goals: [goal],
           blockedEdges: buildEarlyBlockedEdgesFromPath(base.path, 3),
           objectPriorities,
+          objectPriorityMap,
+          getCellObjectType,
         })
       );
     }
 
-    const detours = buildForkDetours(grid, starts, goal, objectPriorities);
+    const detours = buildForkDetours(
+      grid,
+      starts,
+      goal,
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType
+    );
     for (const detour of detours) {
       push("fork-detour", detour);
     }
@@ -881,11 +993,141 @@
     return deduped.slice(0, 12);
   }
 
-  function buildRedCandidates(grid, starts, gateGoals, bubbles, objectPriorities) {
+  function buildRequiredPriorityRouteCandidates(
+    grid,
+    starts,
+    gateGoals,
+    bubbles,
+    priorityCells,
+    objectPriorities,
+    objectPriorityMap,
+    getCellObjectType
+  ) {
+    const candidates = [];
+    const uniqueGoals = dedupeCells(priorityCells || []);
+
+    function addRequiredCandidate(mode, variant, redBubbles, path, redCost, gateGoal) {
+      addCandidate(candidates, {
+        mode,
+        variant,
+        redBubble: redBubbles && redBubbles.length ? redBubbles[0] : null,
+        redBubbles: redBubbles || [],
+        path: uniquePath(path),
+        redCost,
+        gateGoal,
+      });
+    }
+
+    if (!uniqueGoals.length) return [];
+
+    for (const priorityCell of uniqueGoals) {
+      const toPriorityVariants = makePathVariants(
+        grid,
+        starts,
+        priorityCell,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType
+      );
+      if (!toPriorityVariants.length) continue;
+
+      for (const firstLeg of toPriorityVariants) {
+        for (const gateGoal of gateGoals) {
+          const toGateVariants = makePathVariants(
+            grid,
+            [priorityCell],
+            gateGoal,
+            objectPriorities,
+            objectPriorityMap,
+            getCellObjectType
+          );
+
+          for (const secondLeg of toGateVariants) {
+            addRequiredCandidate(
+              "required priority",
+              `priority-then-gate-${firstLeg.tag}-${secondLeg.tag}`,
+              [],
+              mergePaths(firstLeg.route.path, secondLeg.route.path),
+              firstLeg.route.cost + secondLeg.route.cost,
+              gateGoal
+            );
+          }
+        }
+
+        for (const bubble of bubbles) {
+          if (bubble[0] === priorityCell[0] && bubble[1] === priorityCell[1]) continue;
+
+          const toBubbleVariants = makePathVariants(
+            grid,
+            [priorityCell],
+            bubble,
+            objectPriorities,
+            objectPriorityMap,
+            getCellObjectType
+          );
+
+          for (const secondLeg of toBubbleVariants) {
+            for (const gateGoal of gateGoals) {
+              const toGateVariants = makePathVariants(
+                grid,
+                [bubble],
+                gateGoal,
+                objectPriorities,
+                objectPriorityMap,
+                getCellObjectType
+              );
+
+              for (const thirdLeg of toGateVariants) {
+                addRequiredCandidate(
+                  "required priority",
+                  `priority-bubble-gate-${firstLeg.tag}-${secondLeg.tag}-${thirdLeg.tag}`,
+                  [bubble],
+                  mergePaths(
+                    mergePaths(firstLeg.route.path, secondLeg.route.path),
+                    thirdLeg.route.path
+                  ),
+                  firstLeg.route.cost + secondLeg.route.cost + thirdLeg.route.cost,
+                  gateGoal
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const seen = new Set();
+    const deduped = candidates.filter((cand) => {
+      const key = cand.path.map(([r, c]) => `${r},${c}`).join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    deduped.sort((a, b) => a.redCost - b.redCost || a.path.length - b.path.length);
+    return deduped.slice(0, 120);
+  }
+
+  function buildRedCandidates(
+    grid,
+    starts,
+    gateGoals,
+    bubbles,
+    objectPriorities,
+    objectPriorityMap = null,
+    getCellObjectType = null
+  ) {
     const candidates = [];
 
     for (const gateGoal of gateGoals) {
-      const direct = dijkstra({ grid, starts, goals: [gateGoal], objectPriorities });
+      const direct = dijkstra({
+        grid,
+        starts,
+        goals: [gateGoal],
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType
+      });
       if (direct) {
         addCandidate(candidates, {
           mode: "direct",
@@ -903,6 +1145,8 @@
           goals: [gateGoal],
           penaltyCells: buildPenaltyCellsFromPath(direct.path, 0.35),
           objectPriorities,
+          objectPriorityMap,
+          getCellObjectType,
         });
         if (penalized) {
           addCandidate(candidates, {
@@ -922,6 +1166,8 @@
           goals: [gateGoal],
           blockedEdges: buildBlockedEdgesFromPath(direct.path),
           objectPriorities,
+          objectPriorityMap,
+          getCellObjectType,
         });
         if (blocked) {
           addCandidate(candidates, {
@@ -935,7 +1181,14 @@
           });
         }
 
-        const forkDetours = buildForkDetours(grid, starts, gateGoal, objectPriorities);
+        const forkDetours = buildForkDetours(
+          grid,
+          starts,
+          gateGoal,
+          objectPriorities,
+          objectPriorityMap,
+          getCellObjectType
+        );
         for (const fork of forkDetours) {
           addCandidate(candidates, {
             mode: "direct",
@@ -951,7 +1204,14 @@
     }
 
     for (const bubble of bubbles) {
-      const a = dijkstra({ grid, starts, goals: [bubble], objectPriorities });
+      const a = dijkstra({
+        grid,
+        starts,
+        goals: [bubble],
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType
+      });
       if (!a) continue;
 
       for (const gateGoal of gateGoals) {
@@ -959,7 +1219,9 @@
           grid,
           starts: [bubble],
           goals: [gateGoal],
-          objectPriorities
+          objectPriorities,
+          objectPriorityMap,
+          getCellObjectType
         });
         if (b) {
           addCandidate(candidates, {
@@ -978,7 +1240,9 @@
           starts: [bubble],
           goals: [gateGoal],
           penaltyCells: b ? buildPenaltyCellsFromPath(b.path, 0.35) : new Map(),
-          objectPriorities
+          objectPriorities,
+          objectPriorityMap,
+          getCellObjectType
         });
         if (bPenalized) {
           addCandidate(candidates, {
@@ -997,7 +1261,9 @@
           starts: [bubble],
           goals: [gateGoal],
           blockedEdges: b ? buildBlockedEdgesFromPath(b.path) : new Set(),
-          objectPriorities
+          objectPriorities,
+          objectPriorityMap,
+          getCellObjectType
         });
         if (bBlocked) {
           addCandidate(candidates, {
@@ -1011,7 +1277,14 @@
           });
         }
 
-        const forkDetours = buildForkDetours(grid, [bubble], gateGoal, objectPriorities);
+        const forkDetours = buildForkDetours(
+          grid,
+          [bubble],
+          gateGoal,
+          objectPriorities,
+          objectPriorityMap,
+          getCellObjectType
+        );
         for (const fork of forkDetours) {
           addCandidate(candidates, {
             mode: "via bubble",
@@ -1026,6 +1299,22 @@
       }
     }
 
+    const priorityCells = getPriorityCells(grid, objectPriorityMap, getCellObjectType);
+    const requiredPriorityCandidates = buildRequiredPriorityRouteCandidates(
+      grid,
+      starts,
+      gateGoals,
+      bubbles,
+      priorityCells,
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType
+    );
+
+    for (const candidate of requiredPriorityCandidates) {
+      addCandidate(candidates, candidate);
+    }
+
     const seen = new Set();
     const deduped = candidates.filter((cand) => {
       const key = cand.path.map(([r, c]) => `${r},${c}`).join("|");
@@ -1035,7 +1324,7 @@
     });
 
     deduped.sort((a, b) => a.redCost - b.redCost || a.path.length - b.path.length);
-    return deduped.slice(0, 36);
+    return deduped.slice(0, 120);
   }
 
   function buildLegacyEndRedCandidates(
@@ -1043,7 +1332,9 @@
     starts,
     gateGoals,
     bubbles,
-    objectPriorities
+    objectPriorities,
+    objectPriorityMap = null,
+    getCellObjectType = null
   ) {
     const candidates = [];
 
@@ -1060,7 +1351,14 @@
     }
 
     for (const gateGoal of gateGoals) {
-      const directVariants = makePathVariants(grid, starts, gateGoal, objectPriorities);
+      const directVariants = makePathVariants(
+        grid,
+        starts,
+        gateGoal,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType
+      );
       for (const direct of directVariants) {
         addLegacyCandidate(
           "legacy end",
@@ -1074,7 +1372,14 @@
     }
 
     for (const bubble1 of bubbles) {
-      const toBubbleVariants = makePathVariants(grid, starts, bubble1, objectPriorities);
+      const toBubbleVariants = makePathVariants(
+        grid,
+        starts,
+        bubble1,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType
+      );
       if (!toBubbleVariants.length) continue;
 
       for (const leg1 of toBubbleVariants) {
@@ -1083,7 +1388,9 @@
             grid,
             [bubble1],
             gateGoal,
-            objectPriorities
+            objectPriorities,
+            objectPriorityMap,
+            getCellObjectType
           );
           for (const legGate of toGateVariants) {
             addLegacyCandidate(
@@ -1104,7 +1411,9 @@
             grid,
             [bubble1],
             bubble2,
-            objectPriorities
+            objectPriorities,
+            objectPriorityMap,
+            getCellObjectType
           );
           if (!toBubble2Variants.length) continue;
 
@@ -1114,7 +1423,9 @@
                 grid,
                 [bubble2],
                 gateGoal,
-                objectPriorities
+                objectPriorities,
+                objectPriorityMap,
+                getCellObjectType
               );
 
               for (const legGate of toGate2Variants) {
@@ -1133,6 +1444,22 @@
       }
     }
 
+    const priorityCells = getPriorityCells(grid, objectPriorityMap, getCellObjectType);
+    const requiredPriorityCandidates = buildRequiredPriorityRouteCandidates(
+      grid,
+      starts,
+      gateGoals,
+      bubbles,
+      priorityCells,
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType
+    );
+
+    for (const candidate of requiredPriorityCandidates) {
+      addCandidate(candidates, candidate);
+    }
+
     const seen = new Set();
     const deduped = candidates.filter((cand) => {
       const key = cand.path.map(([r, c]) => `${r},${c}`).join("|");
@@ -1146,8 +1473,20 @@
       const bBubbleCount = countRedBubbles(b.path, grid);
       if (aBubbleCount !== bBubbleCount) return bBubbleCount - aBubbleCount;
 
-      const aTravel = firstBubbleTravelCost(a.path, grid, objectPriorities);
-      const bTravel = firstBubbleTravelCost(b.path, grid, objectPriorities);
+      const aTravel = firstBubbleTravelCost(
+        a.path,
+        grid,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType
+      );
+      const bTravel = firstBubbleTravelCost(
+        b.path,
+        grid,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType
+      );
       if (aTravel !== bTravel) return aTravel - bTravel;
 
       if (a.redCost !== b.redCost) return a.redCost - b.redCost;
@@ -1169,7 +1508,7 @@
       return a.path.length - b.path.length;
     });
 
-    return deduped.slice(0, 320);
+    return deduped.slice(0, 400);
   }
 
   function getLowestShaftPreferenceBonus(route, entry, cluster, routeKind, isLowestShaft) {
@@ -1219,7 +1558,16 @@
     return Math.max(0, penalty);
   }
 
-  function redLoopAssistPenalty(redPath, bluePaths, shaftAttackInfos, grid, starts, objectPriorities) {
+  function redLoopAssistPenalty(
+    redPath,
+    bluePaths,
+    shaftAttackInfos,
+    grid,
+    starts,
+    objectPriorities,
+    objectPriorityMap = null,
+    getCellObjectType = null
+  ) {
     if (!redPath || !redPath.length || !bluePaths || !bluePaths.length) return 0;
 
     let penalty = 0;
@@ -1237,7 +1585,9 @@
         starts,
         goals: info.attacks,
         freeCells: new Set(),
-        objectPriorities
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType
       });
 
       if (!blueStandalone) continue;
@@ -1253,14 +1603,17 @@
     return penalty;
   }
 
-  function evaluateOrderedBlueForRedCandidate(
+  function evaluateOrderedBlueForRedCandidate({
     grid,
     starts,
     redCandidate,
     shaftClustersOrdered,
     bubbles,
-    objectPriorities
-  ) {
+    objectPriorities,
+    objectPriorityMap = null,
+    getCellObjectType = null,
+    requiredPriorityCells = [],
+  }) {
     const bluePaths = [];
     const shaftEntryDots = [];
     const attackPoints = [];
@@ -1299,6 +1652,8 @@
         routeKind: "cumulative",
         isLowestShaft,
         objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
       });
 
       if (cumulativeOption) {
@@ -1308,6 +1663,8 @@
           goals: info.attacks,
           freeCells: new Set(),
           objectPriorities,
+          objectPriorityMap,
+          getCellObjectType,
         });
 
         let dep = 0;
@@ -1333,6 +1690,8 @@
         routeKind: "base",
         isLowestShaft,
         objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
       });
 
       if (baseOption) {
@@ -1372,6 +1731,37 @@
       (redCandidate.redBubbles || []).map(([r, c]) => `${r},${c}`)
     );
 
+    const requiredLeft = (requiredPriorityCells || []).filter(([r, c]) => {
+      return !reusable.has(cellKey(r, c));
+    });
+
+    for (const target of requiredLeft) {
+      const requiredRoute = dijkstra({
+        grid,
+        starts: cumulativeStarts,
+        goals: [target],
+        freeCells: reusable,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+
+      if (requiredRoute) {
+        bluePaths.push(requiredRoute.path);
+        blueCost += requiredRoute.cost;
+
+        for (const [r, c] of requiredRoute.path) {
+          reusable.add(`${r},${c}`);
+        }
+
+        cumulativeStarts = dedupeCells(
+          cumulativeStarts.concat(requiredRoute.path).concat(getPathEndpoints(requiredRoute.path))
+        );
+      } else {
+        unresolved += 10;
+      }
+    }
+
     for (const bubble of bubbles) {
       const key = `${bubble[0]},${bubble[1]}`;
       if (redBubbleKeys.has(key)) continue;
@@ -1382,6 +1772,8 @@
         goals: [bubble],
         freeCells: reusable,
         objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
       });
 
       if (bubbleRoute) {
@@ -1408,7 +1800,9 @@
       shaftAttackInfos,
       grid,
       starts,
-      objectPriorities
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType
     );
 
     return {
@@ -1450,6 +1844,9 @@
       if (a.unresolvedTargets !== b.unresolvedTargets) {
         return a.unresolvedTargets - b.unresolvedTargets;
       }
+      if (a.missingPriorityCount !== b.missingPriorityCount) {
+        return a.missingPriorityCount - b.missingPriorityCount;
+      }
       if (a.redBubbleCount !== b.redBubbleCount) {
         return b.redBubbleCount - a.redBubbleCount;
       }
@@ -1482,6 +1879,8 @@
       if (!approved) {
         if (candidate.unresolvedTargets > best.unresolvedTargets) {
           reason = `More unresolved targets (${candidate.unresolvedTargets} vs ${best.unresolvedTargets})`;
+        } else if (candidate.missingPriorityCount > best.missingPriorityCount) {
+          reason = `Missed required priority cells (${candidate.missingPriorityCount} vs ${best.missingPriorityCount})`;
         } else if (candidate.redBubbleCount < best.redBubbleCount) {
           reason = `Fewer red bubbles (${candidate.redBubbleCount} vs ${best.redBubbleCount})`;
         } else if (candidate.firstBubbleTravelCost > best.firstBubbleTravelCost) {
@@ -1516,6 +1915,7 @@
         redMode: candidate.redMode,
         redVariant: candidate.redVariant,
         unresolvedTargets: candidate.unresolvedTargets,
+        missingPriorityCount: candidate.missingPriorityCount,
         redBubbleCount: candidate.redBubbleCount,
         firstBubbleTravelCost: roundCost(candidate.firstBubbleTravelCost),
         objectPriorityScore: roundCost(candidate.objectPriorityScore),
@@ -1531,6 +1931,22 @@
 
   function isLegacyEndPriorityMode(eventType, gateType) {
     return eventType === "Legacy" && gateType === "end";
+  }
+
+  function countMissingPriorityCells(allPriorityCells, usedPaths) {
+    if (!allPriorityCells || !allPriorityCells.length) return 0;
+    const used = new Set();
+    for (const path of usedPaths || []) {
+      for (const [r, c] of path || []) {
+        used.add(cellKey(r, c));
+      }
+    }
+
+    let missing = 0;
+    for (const [r, c] of allPriorityCells) {
+      if (!used.has(cellKey(r, c))) missing++;
+    }
+    return missing;
   }
 
   function solveGrid({
@@ -1569,6 +1985,8 @@
     const bubbles = getBubbles(grid);
     const shaftClusters = getShaftClusters(grid);
     const shaftClustersOrdered = sortShaftClustersBottomToTop(shaftClusters);
+    const requiredPriorityCells = getPriorityCells(grid, objectPriorityMap, getCellObjectType);
+    const avoidCells = getAvoidCells(grid, objectPriorityMap, getCellObjectType);
 
     const redCandidates = legacyEndMode
       ? buildLegacyEndRedCandidates(
@@ -1576,14 +1994,18 @@
           starts,
           gateGoals,
           bubbles,
-          normalizedObjectPriorities
+          normalizedObjectPriorities,
+          objectPriorityMap,
+          getCellObjectType
         )
       : buildRedCandidates(
           grid,
           starts,
           gateGoals,
           bubbles,
-          normalizedObjectPriorities
+          normalizedObjectPriorities,
+          objectPriorityMap,
+          getCellObjectType
         );
 
     if (!redCandidates.length) {
@@ -1600,21 +2022,26 @@
     for (const redCandidate of redCandidates) {
       if (hasPathLoop(redCandidate.path)) continue;
 
-      const blueEval = evaluateOrderedBlueForRedCandidate(
+      const blueEval = evaluateOrderedBlueForRedCandidate({
         grid,
         starts,
         redCandidate,
         shaftClustersOrdered,
         bubbles,
-        normalizedObjectPriorities
-      );
+        objectPriorities: normalizedObjectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+        requiredPriorityCells,
+      });
 
       const redBubbleCount = countRedBubbles(redCandidate.path, grid);
       const firstRedBubbleAt = firstBubbleStep(redCandidate.path, grid);
       const firstBubbleCost = firstBubbleTravelCost(
         redCandidate.path,
         grid,
-        normalizedObjectPriorities
+        normalizedObjectPriorities,
+        objectPriorityMap,
+        getCellObjectType
       );
       const redRaw = pathRawNumberSum(redCandidate.path, grid);
       const redObjectPriorityScore = getPathObjectPriorityScore(
@@ -1635,6 +2062,10 @@
       }
 
       const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
+      const missingPriorityCount = countMissingPriorityCells(
+        requiredPriorityCells,
+        [redCandidate.path, ...blueEval.bluePaths]
+      );
 
       let effectiveTotal =
         redCandidate.redCost +
@@ -1645,7 +2076,8 @@
         blueEval.bubbleBonus +
         blueEval.redLoopPenalty +
         blueEval.overAssistPenalty +
-        totalObjectPriorityScore;
+        totalObjectPriorityScore +
+        missingPriorityCount * 1000000000;
 
       if (legacyEndMode) {
         effectiveTotal += firstBubbleCost === Infinity ? 999999999999 : firstBubbleCost * 25;
@@ -1678,6 +2110,7 @@
         redObjectPriorityScore,
         blueObjectPriorityScore,
         objectPriorityScore: totalObjectPriorityScore,
+        missingPriorityCount,
         effectiveTotal,
       };
 
@@ -1694,6 +2127,11 @@
       }
 
       if (candidate.unresolvedTargets === best.unresolvedTargets) {
+        if (candidate.missingPriorityCount < best.missingPriorityCount) {
+          best = candidate;
+          continue;
+        }
+
         if (legacyEndMode) {
           if (candidate.redBubbleCount > best.redBubbleCount) {
             best = candidate;
@@ -1783,6 +2221,8 @@
       solverVersion: SOLVER_VERSION,
       objectPriorities: { ...normalizedObjectPriorities },
       objectPriorityMap: objectPriorityMap ? { ...objectPriorityMap } : null,
+      requiredPriorityCells,
+      avoidCells,
       redMode: best.redMode,
       redVariant: best.redVariant,
       redBubble: best.redBubble,
@@ -1801,6 +2241,7 @@
       redObjectPriorityScore: roundCost(best.redObjectPriorityScore),
       blueObjectPriorityScore: roundCost(best.blueObjectPriorityScore),
       objectPriorityScore: roundCost(best.objectPriorityScore),
+      missingPriorityCount: best.missingPriorityCount,
       effectiveTotal: roundCost(best.effectiveTotal),
       dependencyCost: roundCost(best.dependencyCost),
       assistBonus: roundCost(best.assistBonus),
@@ -1822,6 +2263,8 @@
         `legacy_end_mode: ${legacyEndMode ? "yes" : "no"}\n` +
         `object_priorities: ${JSON.stringify(normalizedObjectPriorities)}\n` +
         `object_priority_map: ${JSON.stringify(objectPriorityMap || {})}\n` +
+        `required_priority_cells: ${JSON.stringify(requiredPriorityCells || [])}\n` +
+        `avoid_cells: ${JSON.stringify(avoidCells || [])}\n` +
         `red_mode: ${best.redMode}\n` +
         `red_variant: ${best.redVariant}\n` +
         `red_bubble_count: ${best.redBubbleCount}\n` +
@@ -1838,6 +2281,7 @@
         `red_object_priority_score: ${roundCost(best.redObjectPriorityScore)}\n` +
         `blue_object_priority_score: ${roundCost(best.blueObjectPriorityScore)}\n` +
         `object_priority_score: ${roundCost(best.objectPriorityScore)}\n` +
+        `missing_priority_count: ${best.missingPriorityCount}\n` +
         `dependency_cost: ${roundCost(best.dependencyCost)}\n` +
         `assist_bonus: ${roundCost(best.assistBonus)}\n` +
         `lower_shaft_bonus: ${roundCost(best.lowerShaftBonus)}\n` +
