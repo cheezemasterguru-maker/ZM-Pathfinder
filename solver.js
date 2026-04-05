@@ -16,14 +16,11 @@
     avoidObjectPenalty: 250000,
   };
 
-  const MAX_PATH_VARIANTS = 6;
-  const MAX_REQUIRED_PRIORITY_CANDIDATES = 20;
-  const MAX_RED_CANDIDATES = 24;
-  const MAX_LEGACY_RED_CANDIDATES = 40;
-  const MAX_FIRST_LEG_PRIORITY_VARIANTS = 3;
-  const MAX_SECOND_LEG_GATE_VARIANTS = 3;
-  const MAX_SECOND_LEG_BUBBLE_VARIANTS = 2;
-  const MAX_THIRD_LEG_GATE_VARIANTS = 2;
+  const MAX_PATH_VARIANTS = 8;
+  const MAX_REQUIRED_PRIORITY_GOALS = 3;
+  const MAX_REQUIRED_PRIORITY_CANDIDATES = 36;
+  const MAX_RED_CANDIDATES = 80;
+  const MAX_LEGACY_RED_CANDIDATES = 160;
 
   let GLOBAL_OBJECT_PRIORITIES = { ...DEFAULT_OBJECT_PRIORITIES };
 
@@ -53,13 +50,9 @@
       highMineralFlat:
         Number.isFinite(merged.highMineralFlat) ? merged.highMineralFlat : 0,
       priorityObjectBonus:
-        Number.isFinite(merged.priorityObjectBonus)
-          ? merged.priorityObjectBonus
-          : -250000,
+        Number.isFinite(merged.priorityObjectBonus) ? merged.priorityObjectBonus : -250000,
       avoidObjectPenalty:
-        Number.isFinite(merged.avoidObjectPenalty)
-          ? merged.avoidObjectPenalty
-          : 250000,
+        Number.isFinite(merged.avoidObjectPenalty) ? merged.avoidObjectPenalty : 250000,
     };
   }
 
@@ -165,7 +158,6 @@
     }
 
     baseCost += getPerObjectPriorityAdjustment(r, c, options);
-
     return baseCost;
   }
 
@@ -183,11 +175,8 @@
 
       const setting = normalizePrioritySetting(objectPriorityMap[objectType]);
 
-      if (setting === "priority") {
-        score += normalized.priorityObjectBonus;
-      } else if (setting === "avoid") {
-        score += normalized.avoidObjectPenalty;
-      }
+      if (setting === "priority") score += normalized.priorityObjectBonus;
+      else if (setting === "avoid") score += normalized.avoidObjectPenalty;
     }
 
     return score;
@@ -682,13 +671,7 @@
     return Infinity;
   }
 
-  function firstBubbleTravelCost(
-    path,
-    grid,
-    objectPriorities,
-    objectPriorityMap = null,
-    getCellObjectType = null
-  ) {
+  function firstBubbleTravelCost(path, grid, objectPriorities, objectPriorityMap = null, getCellObjectType = null) {
     const idx = firstBubbleStep(path, grid);
     if (idx === Infinity) return Infinity;
 
@@ -1015,6 +998,28 @@
     return deduped.slice(0, MAX_PATH_VARIANTS);
   }
 
+  function choosePriorityGoals(priorityCells, starts, gateGoals) {
+    const deduped = dedupeCells(priorityCells || []);
+    if (deduped.length <= MAX_REQUIRED_PRIORITY_GOALS) return deduped;
+
+    function minManhattanToAny(cell, list) {
+      let best = Infinity;
+      for (const target of list || []) {
+        const dist = Math.abs(cell[0] - target[0]) + Math.abs(cell[1] - target[1]);
+        if (dist < best) best = dist;
+      }
+      return best;
+    }
+
+    return [...deduped]
+      .sort((a, b) => {
+        const aScore = minManhattanToAny(a, starts) + minManhattanToAny(a, gateGoals);
+        const bScore = minManhattanToAny(b, starts) + minManhattanToAny(b, gateGoals);
+        return aScore - bScore || a[0] - b[0] || a[1] - b[1];
+      })
+      .slice(0, MAX_REQUIRED_PRIORITY_GOALS);
+  }
+
   function buildRequiredPriorityRouteCandidates(
     grid,
     starts,
@@ -1026,7 +1031,7 @@
     getCellObjectType
   ) {
     const candidates = [];
-    const uniqueGoals = dedupeCells(priorityCells || []);
+    const uniqueGoals = choosePriorityGoals(priorityCells || [], starts, gateGoals);
 
     function addRequiredCandidate(mode, variant, redBubbles, path, redCost, gateGoal) {
       addCandidate(candidates, {
@@ -1053,7 +1058,7 @@
       );
       if (!toPriorityVariants.length) continue;
 
-      for (const firstLeg of toPriorityVariants.slice(0, MAX_FIRST_LEG_PRIORITY_VARIANTS)) {
+      for (const firstLeg of toPriorityVariants) {
         for (const gateGoal of gateGoals) {
           const toGateVariants = makePathVariants(
             grid,
@@ -1064,7 +1069,7 @@
             getCellObjectType
           );
 
-          for (const secondLeg of toGateVariants.slice(0, MAX_SECOND_LEG_GATE_VARIANTS)) {
+          for (const secondLeg of toGateVariants) {
             addRequiredCandidate(
               "required priority",
               `priority-then-gate-${firstLeg.tag}-${secondLeg.tag}`,
@@ -1088,7 +1093,7 @@
             getCellObjectType
           );
 
-          for (const secondLeg of toBubbleVariants.slice(0, MAX_SECOND_LEG_BUBBLE_VARIANTS)) {
+          for (const secondLeg of toBubbleVariants) {
             for (const gateGoal of gateGoals) {
               const toGateVariants = makePathVariants(
                 grid,
@@ -1099,7 +1104,7 @@
                 getCellObjectType
               );
 
-              for (const thirdLeg of toGateVariants.slice(0, MAX_THIRD_LEG_GATE_VARIANTS)) {
+              for (const thirdLeg of toGateVariants) {
                 addRequiredCandidate(
                   "required priority",
                   `priority-bubble-gate-${firstLeg.tag}-${secondLeg.tag}-${thirdLeg.tag}`,
