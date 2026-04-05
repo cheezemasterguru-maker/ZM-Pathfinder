@@ -853,12 +853,11 @@
       }
 
       const finalPath = uniquePath(route.path);
-      const entry = info.entryMap.get(cellKey(route.goal[0], route.goal[1]));
+      const entry = info.entryMap.get(cellKey(route.goal[0], route.goal[0], route.goal[1]));
+      if (entry) shaftEntryDots.push(entry);
 
       bluePaths.push(finalPath);
       attackPoints.push(route.goal);
-      if (entry) shaftEntryDots.push(entry);
-
       blueCost += route.cost;
       assistBonus += Math.min(1.25, countAdjacentSharedOpens(redCandidate.path, finalPath) * 0.03);
       lowerShaftBonus += getLowestShaftPreferenceBonus(route, entry, cluster, "base", i === 0);
