@@ -1,4 +1,4 @@
-function renderRouteAudit(routeAnalysis){
+function renderRouteAudit(routeAnalysis) {
   const body = getRouteReportBody();
   if (!body) return;
 
@@ -6,14 +6,26 @@ function renderRouteAudit(routeAnalysis){
   const shaftClusters = getOrderedPhysicalShaftClusters();
 
   body.innerHTML = "";
+  body.style.whiteSpace = "normal";
+  body.style.wordBreak = "break-word";
+  body.style.overflowWrap = "anywhere";
+  body.style.boxSizing = "border-box";
+  body.style.maxWidth = "100%";
 
   const summarySection = document.createElement("div");
   summarySection.className = "help-section";
+  summarySection.style.whiteSpace = "normal";
+  summarySection.style.wordBreak = "break-word";
+  summarySection.style.overflowWrap = "anywhere";
+  summarySection.style.maxWidth = "100%";
 
   const summaryTitle = document.createElement("h3");
   summaryTitle.textContent = t("solveSummary");
 
   const summaryText = document.createElement("p");
+  summaryText.style.whiteSpace = "normal";
+  summaryText.style.wordBreak = "break-word";
+  summaryText.style.overflowWrap = "anywhere";
   summaryText.innerHTML =
     `${t("solve")}: <b>${solveState.solved ? t("solvedYes") : t("solvedNo")}</b><br>` +
     `Solver version: <b>${solveState.solverVersion || "unknown"}</b><br>` +
@@ -21,6 +33,7 @@ function renderRouteAudit(routeAnalysis){
     `Red bubble count: <b>${solveState.redBubbleCount ?? 0}</b><br>` +
     `First bubble travel cost: <b>${solveState.firstBubbleTravelCost ?? "n/a"}</b><br>` +
     `Red cost: <b>${solveState.redCost ?? "n/a"}</b> | Blue cost: <b>${solveState.blueCost ?? "n/a"}</b><br>` +
+    `Object priority score: <b>${solveState.objectPriorityScore ?? 0}</b><br>` +
     `Effective total: <b>${solveState.effectiveTotal ?? "n/a"}</b><br>` +
     `Red path cells: <b>${solveState.redPath.length}</b><br>` +
     `Blue route count: <b>${solveState.bluePaths.length}</b><br>` +
@@ -33,11 +46,18 @@ function renderRouteAudit(routeAnalysis){
 
   const shaftSection = document.createElement("div");
   shaftSection.className = "help-section";
+  shaftSection.style.whiteSpace = "normal";
+  shaftSection.style.wordBreak = "break-word";
+  shaftSection.style.overflowWrap = "anywhere";
+  shaftSection.style.maxWidth = "100%";
 
   const shaftTitle = document.createElement("h3");
   shaftTitle.textContent = t("shaftData");
 
   const shaftText = document.createElement("p");
+  shaftText.style.whiteSpace = "normal";
+  shaftText.style.wordBreak = "break-word";
+  shaftText.style.overflowWrap = "anywhere";
 
   if (!currentMapContext.eventType || !currentMapContext.eventName || !currentMapContext.chamberName) {
     shaftText.innerHTML = t("noChamberLoadedForShafts");
@@ -57,7 +77,7 @@ function renderRouteAudit(routeAnalysis){
     shaftText.innerHTML =
       `${t("resolvedShaftDataPath")}<br>` +
       `<b>${getCurrentShaftDataPathLabel()}</b><br><br>` +
-      lines.map(line => line.replace(/</g, "&lt;").replace(/>/g, "&gt;")).join("<br>");
+      lines.map((line) => line.replace(/</g, "&lt;").replace(/>/g, "&gt;")).join("<br>");
   }
 
   shaftSection.appendChild(shaftTitle);
@@ -66,11 +86,19 @@ function renderRouteAudit(routeAnalysis){
 
   const physicalSection = document.createElement("div");
   physicalSection.className = "help-section";
+  physicalSection.style.whiteSpace = "normal";
+  physicalSection.style.wordBreak = "break-word";
+  physicalSection.style.overflowWrap = "anywhere";
+  physicalSection.style.maxWidth = "100%";
 
   const physicalTitle = document.createElement("h3");
   physicalTitle.textContent = t("physicalShaftClusters");
 
   const physicalText = document.createElement("p");
+  physicalText.style.whiteSpace = "normal";
+  physicalText.style.wordBreak = "break-word";
+  physicalText.style.overflowWrap = "anywhere";
+
   if (!shaftClusters.length) {
     physicalText.innerHTML = t("noPhysicalShaftClusters");
   } else {
@@ -94,6 +122,10 @@ function renderRouteAudit(routeAnalysis){
 
   const reportSection = document.createElement("div");
   reportSection.className = "help-section";
+  reportSection.style.whiteSpace = "normal";
+  reportSection.style.wordBreak = "break-word";
+  reportSection.style.overflowWrap = "anywhere";
+  reportSection.style.maxWidth = "100%";
 
   const reportTitle = document.createElement("h3");
   reportTitle.textContent = t("routeAnalysis");
@@ -102,16 +134,19 @@ function renderRouteAudit(routeAnalysis){
 
   if (!routeAnalysis || !routeAnalysis.length) {
     const emptyText = document.createElement("p");
+    emptyText.style.whiteSpace = "normal";
+    emptyText.style.wordBreak = "break-word";
+    emptyText.style.overflowWrap = "anywhere";
     emptyText.innerHTML = t("noRouteAnalysis");
     reportSection.appendChild(emptyText);
     body.appendChild(reportSection);
     return;
   }
 
-  const approved = routeAnalysis.filter(item => item.approved);
-  const rejected = routeAnalysis.filter(item => !item.approved);
+  const approved = routeAnalysis.filter((item) => item.approved);
+  const rejected = routeAnalysis.filter((item) => !item.approved);
 
-  function makeRouteBox(item, isApproved){
+  function makeRouteBox(item, isApproved) {
     const box = document.createElement("div");
     box.style.borderRadius = "16px";
     box.style.padding = "12px 14px";
@@ -120,12 +155,20 @@ function renderRouteAudit(routeAnalysis){
     box.style.background = isApproved ? "rgba(34,197,94,0.14)" : "rgba(239,68,68,0.10)";
     box.style.color = "#fff";
     box.style.boxSizing = "border-box";
+    box.style.maxWidth = "100%";
+    box.style.whiteSpace = "normal";
+    box.style.wordBreak = "break-word";
+    box.style.overflowWrap = "anywhere";
+    box.style.overflow = "hidden";
 
     const heading = document.createElement("div");
     heading.textContent = isApproved ? t("approvedRoute") : t("ignoredRoute");
     heading.style.fontWeight = "700";
     heading.style.fontSize = "18px";
     heading.style.marginBottom = "8px";
+    heading.style.whiteSpace = "normal";
+    heading.style.wordBreak = "break-word";
+    heading.style.overflowWrap = "anywhere";
 
     const pathLine = document.createElement("div");
     pathLine.textContent = item.redPathValues;
@@ -133,6 +176,8 @@ function renderRouteAudit(routeAnalysis){
     pathLine.style.fontSize = "16px";
     pathLine.style.lineHeight = "1.4";
     pathLine.style.wordBreak = "break-word";
+    pathLine.style.overflowWrap = "anywhere";
+    pathLine.style.whiteSpace = "normal";
     pathLine.style.marginBottom = "8px";
 
     const coords = document.createElement("div");
@@ -140,19 +185,26 @@ function renderRouteAudit(routeAnalysis){
     coords.style.fontSize = "12px";
     coords.style.lineHeight = "1.45";
     coords.style.wordBreak = "break-word";
+    coords.style.overflowWrap = "anywhere";
+    coords.style.whiteSpace = "normal";
     coords.style.opacity = "0.92";
     coords.style.marginBottom = "8px";
 
     const meta = document.createElement("div");
     meta.style.fontSize = "14px";
     meta.style.lineHeight = "1.5";
+    meta.style.wordBreak = "break-word";
+    meta.style.overflowWrap = "anywhere";
+    meta.style.whiteSpace = "normal";
 
     const redBubbleCount = item.redBubbleCount ?? 0;
     const firstBubbleTravelCost = item.firstBubbleTravelCost ?? "n/a";
+    const objectPriorityScore = item.objectPriorityScore ?? 0;
 
     meta.innerHTML =
       `${t("mode")}: <b>${item.redMode}</b> | ${t("variant")}: <b>${item.redVariant}</b><br>` +
       `Red bubble count: <b>${redBubbleCount}</b> | First bubble travel cost: <b>${firstBubbleTravelCost}</b><br>` +
+      `Object priority score: <b>${objectPriorityScore}</b><br>` +
       `${t("effectiveTotal")}: <b>${item.effectiveTotal}</b>` +
       (isApproved ? "" : ` | ${t("worseBy")}: <b>${item.deltaFromBest}</b>`) + `<br>` +
       `${t("redCost")}: <b>${item.redCost}</b> | ${t("blueCost")}: <b>${item.blueCost}</b><br>` +
@@ -167,8 +219,8 @@ function renderRouteAudit(routeAnalysis){
     return box;
   }
 
-  approved.forEach(item => reportSection.appendChild(makeRouteBox(item, true)));
-  rejected.forEach(item => reportSection.appendChild(makeRouteBox(item, false)));
+  approved.forEach((item) => reportSection.appendChild(makeRouteBox(item, true)));
+  rejected.forEach((item) => reportSection.appendChild(makeRouteBox(item, false)));
 
   body.appendChild(reportSection);
 }
@@ -287,7 +339,7 @@ function drawCenteredMultilineText(ctx, lines, x, y, w, h) {
   });
 }
 
-function getHtmlCodeFontSize(code){
+function getHtmlCodeFontSize(code) {
   const len = String(code || "").length;
   if (len >= 6) return "8px";
   if (len === 5) return "9px";
@@ -295,7 +347,7 @@ function getHtmlCodeFontSize(code){
   return "11px";
 }
 
-function getCanvasCodeFontSize(code){
+function getCanvasCodeFontSize(code) {
   const len = String(code || "").length;
   if (len >= 6) return 8;
   if (len === 5) return 9;
@@ -303,7 +355,7 @@ function getCanvasCodeFontSize(code){
   return 12;
 }
 
-function getCanvasNumberFontSize(code){
+function getCanvasNumberFontSize(code) {
   if (!code) return 28;
   const len = String(code).length;
   if (len >= 6) return 21;
@@ -312,7 +364,7 @@ function getCanvasNumberFontSize(code){
   return 24;
 }
 
-function applyHtmlTileFill(cell, fill){
+function applyHtmlTileFill(cell, fill) {
   if (!cell) return;
 
   cell.style.background = "";
@@ -327,7 +379,7 @@ function applyHtmlTileFill(cell, fill){
   }
 }
 
-function drawCanvasTileFill(ctx, x, y, cellSize, fill){
+function drawCanvasTileFill(ctx, x, y, cellSize, fill) {
   if (!fill) return false;
 
   if (typeof fill === "string") {
@@ -350,21 +402,21 @@ function drawCanvasTileFill(ctx, x, y, cellSize, fill){
   return false;
 }
 
-function setTool(nextTool){
+function setTool(nextTool) {
   tool = nextTool;
-  ["number","block","bubble","shaft"].forEach(id => {
+  ["number", "block", "bubble", "shaft"].forEach((id) => {
     document.getElementById(`tool-${id}`).classList.remove("tool-active");
   });
   document.getElementById(`tool-${nextTool}`).classList.add("tool-active");
 }
 
-function render(){
+function render() {
   const gridEl = document.getElementById("grid");
   gridEl.style.gridTemplateColumns = `repeat(${COLS}, minmax(0, 1fr))`;
   gridEl.innerHTML = "";
 
-  for(let r = 0; r < currentRowCount; r++){
-    for(let c = 0; c < COLS; c++){
+  for (let r = 0; r < currentRowCount; r++) {
+    for (let c = 0; c < COLS; c++) {
       const cell = document.createElement("div");
       const val = grid[r][c];
       const meta = getTileMeta(
@@ -381,19 +433,19 @@ function render(){
       cell.dataset.c = c;
       cell.onclick = () => clickCell(r, c);
 
-      if(r === lastSelected.r && c === lastSelected.c){
+      if (r === lastSelected.r && c === lastSelected.c) {
         cell.classList.add("selected");
       }
 
-      if(val === "X"){
+      if (val === "X") {
         cell.classList.add("block");
-      } else if(val === "B"){
+      } else if (val === "B") {
         cell.classList.add("bubble");
         cell.textContent = "B";
-      } else if(val === "S"){
+      } else if (val === "S") {
         cell.classList.add("shaft");
         cell.textContent = "S";
-      } else if(typeof val === "number"){
+      } else if (typeof val === "number") {
         applyHtmlTileFill(cell, visual.fill);
 
         if (OBJECT_RENDER_MODE === "object_only" && visual.code) {
@@ -435,26 +487,26 @@ function render(){
   }
 }
 
-function clickCell(r, c){
+function clickCell(r, c) {
   if (r >= currentRowCount) return;
   lastSelected = { r, c };
 
-  if(tool === "number"){
+  if (tool === "number") {
     activateInlineNumberEditor(r, c);
     return;
   }
 
-  if(tool === "block"){
+  if (tool === "block") {
     grid[r][c] = grid[r][c] === "X" ? "" : "X";
-  } else if(tool === "bubble"){
+  } else if (tool === "bubble") {
     grid[r][c] = grid[r][c] === "B" ? "" : "B";
-  } else if(tool === "shaft"){
+  } else if (tool === "shaft") {
     const removing = grid[r][c] === "S";
-    for(let dr = 0; dr < 3; dr++){
-      for(let dc = 0; dc < 2; dc++){
+    for (let dr = 0; dr < 3; dr++) {
+      for (let dc = 0; dc < 2; dc++) {
         const rr = r + dr;
         const cc = c + dc;
-        if(rr < currentRowCount && grid[rr] && grid[rr][cc] !== undefined){
+        if (rr < currentRowCount && grid[rr] && grid[rr][cc] !== undefined) {
           grid[rr][cc] = removing ? "" : "S";
         }
       }
@@ -470,11 +522,11 @@ function clickCell(r, c){
   renderPreview();
 }
 
-function activateInlineNumberEditor(r, c){
+function activateInlineNumberEditor(r, c) {
   render();
 
   const target = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-  if(!target) return;
+  if (!target) return;
 
   target.innerHTML = "";
   const input = document.createElement("input");
@@ -488,9 +540,9 @@ function activateInlineNumberEditor(r, c){
 
   input.onblur = () => {
     const raw = input.value.trim();
-    if(raw === ""){
+    if (raw === "") {
       grid[r][c] = "";
-    } else if(!isNaN(raw) && Number(raw) > 0){
+    } else if (!isNaN(raw) && Number(raw) > 0) {
       grid[r][c] = Number(raw);
     }
 
@@ -504,7 +556,7 @@ function activateInlineNumberEditor(r, c){
   };
 
   input.onkeydown = (e) => {
-    if(e.key === "Enter") input.blur();
+    if (e.key === "Enter") input.blur();
   };
 }
 
@@ -512,50 +564,50 @@ function parseClipboard(text) {
   return text
     .replace(/\r/g, "")
     .split("\n")
-    .filter(row => row.length > 0)
-    .map(row => row.split("\t"));
+    .filter((row) => row.length > 0)
+    .map((row) => row.split("\t"));
 }
 
-async function pasteFromClipboard(){
-  try{
+async function pasteFromClipboard() {
+  try {
     const text = await navigator.clipboard.readText();
     applyText(text);
-  } catch(e){
+  } catch (e) {
     setReport(t("clipboardBlocked"));
   }
 }
 
-function applyText(text){
-  if(!text) return;
+function applyText(text) {
+  if (!text) return;
 
   const data = parseClipboard(text);
   const startR = lastSelected.r;
   const startC = lastSelected.c;
 
-  for(let ri = 0; ri < data.length; ri++){
-    for(let ci = 0; ci < data[ri].length; ci++){
+  for (let ri = 0; ri < data.length; ri++) {
+    for (let ci = 0; ci < data[ri].length; ci++) {
       const r = startR + ri;
       const c = startC + ci;
-      if(r >= currentRowCount) continue;
-      if(!grid[r] || grid[r][c] === undefined) continue;
+      if (r >= currentRowCount) continue;
+      if (!grid[r] || grid[r][c] === undefined) continue;
 
       const raw = data[ri][ci];
       const val = String(raw ?? "");
 
-      if(val === ""){
+      if (val === "") {
         continue;
-      } else if(!isNaN(val)){
+      } else if (!isNaN(val)) {
         grid[r][c] = Number(val);
-      } else if(val.toUpperCase() === "X"){
+      } else if (val.toUpperCase() === "X") {
         grid[r][c] = "X";
-      } else if(val.toUpperCase() === "B"){
+      } else if (val.toUpperCase() === "B") {
         grid[r][c] = "B";
-      } else if(val.toUpperCase() === "S" || val.toUpperCase() === "SHAFT"){
-        for(let dr = 0; dr < 3; dr++){
-          for(let dc = 0; dc < 2; dc++){
+      } else if (val.toUpperCase() === "S" || val.toUpperCase() === "SHAFT") {
+        for (let dr = 0; dr < 3; dr++) {
+          for (let dc = 0; dc < 2; dc++) {
             const rr = r + dr;
             const cc = c + dc;
-            if(rr < currentRowCount && grid[rr] && grid[rr][cc] !== undefined){
+            if (rr < currentRowCount && grid[rr] && grid[rr][cc] !== undefined) {
               grid[rr][cc] = "S";
             }
           }
@@ -574,9 +626,9 @@ function applyText(text){
   setReport(formatT("pastedIntoBoard", { row: startR + 1, col: startC + 1 }));
 }
 
-function clearBoard(updateReport = true){
-  for(let r = 0; r < MAX_ROWS; r++){
-    for(let c = 0; c < COLS; c++){
+function clearBoard(updateReport = true) {
+  for (let r = 0; r < MAX_ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
       grid[r][c] = "";
     }
   }
@@ -600,7 +652,7 @@ function clearBoard(updateReport = true){
   updateDifficultyMeter();
 }
 
-function loadSampleGrid(){
+function loadSampleGrid() {
   clearBoard(false);
   document.getElementById("gateType").value = "standard";
   document.getElementById("titleInput").value = "Gate 1";
@@ -608,21 +660,21 @@ function loadSampleGrid(){
   currentRowCount = MINED_ROWS;
 
   const sample = [
-    [8,9,11,9,12,8,9],
-    [10,"X",8,"X",7,11,7],
-    [8,7,9,6,9,6,"X"],
-    ["X",8,6,8,"B","S","S"],
-    ["X",6,7,6,5,"S","S"],
-    ["X",5,4,5,"X","S","S"],
-    ["X",4,5,4,5,4,6],
-    ["S","S",4,5,4,"X",5],
-    ["S","S",3,4,3,5,4],
-    ["S","S",2,"",2,4,3],
-    [1,2,"","","",3,""]
+    [8, 9, 11, 9, 12, 8, 9],
+    [10, "X", 8, "X", 7, 11, 7],
+    [8, 7, 9, 6, 9, 6, "X"],
+    ["X", 8, 6, 8, "B", "S", "S"],
+    ["X", 6, 7, 6, 5, "S", "S"],
+    ["X", 5, 4, 5, "X", "S", "S"],
+    ["X", 4, 5, 4, 5, 4, 6],
+    ["S", "S", 4, 5, 4, "X", 5],
+    ["S", "S", 3, 4, 3, 5, 4],
+    ["S", "S", 2, "", 2, 4, 3],
+    [1, 2, "", "", "", 3, ""]
   ];
 
-  for(let r = 0; r < sample.length; r++){
-    for(let c = 0; c < COLS; c++){
+  for (let r = 0; r < sample.length; r++) {
+    for (let c = 0; c < COLS; c++) {
       grid[r][c] = sample[r][c] === undefined ? "" : sample[r][c];
     }
   }
@@ -638,7 +690,7 @@ function loadSampleGrid(){
   updateDifficultyMeter();
 }
 
-function renderPreview(){
+function renderPreview() {
   const canvas = document.getElementById("previewCanvas");
   const ctx = canvas.getContext("2d");
 
@@ -647,9 +699,9 @@ function renderPreview(){
   const topPad = 145;
 
   const usedRows = [];
-  for(let r = 0; r < currentRowCount; r++){
-    for(let c = 0; c < COLS; c++){
-      if(grid[r][c] !== ""){
+  for (let r = 0; r < currentRowCount; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c] !== "") {
         usedRows.push(r);
         break;
       }
@@ -708,7 +760,7 @@ function renderPreview(){
         currentPreviewTitle || document.getElementById("titleInput").value || "Gate"
       ).trim();
 
-      const parts = rawTitle.split(" - ").map(s => s.trim()).filter(Boolean);
+      const parts = rawTitle.split(" - ").map((s) => s.trim()).filter(Boolean);
 
       let line1 = rawTitle.toUpperCase();
       let line2 = "";
@@ -738,11 +790,11 @@ function renderPreview(){
   drawEverything();
 }
 
-function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
+function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow) {
   const rowOffset = minRow;
 
-  for(let r = minRow; r <= maxRow; r++){
-    for(let c = 0; c < COLS; c++){
+  for (let r = minRow; r <= maxRow; r++) {
+    for (let c = 0; c < COLS; c++) {
       const x = pad + c * cell;
       const y = topPad + (r - rowOffset) * cell;
       const val = grid[r][c];
@@ -755,7 +807,7 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
       );
       const visual = getObjectVisual(meta);
 
-      if(val === "S") continue;
+      if (val === "S") continue;
 
       let usedCustomFill = false;
 
@@ -764,9 +816,9 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
       }
 
       if (!usedCustomFill) {
-        if(val === "X"){
+        if (val === "X") {
           ctx.fillStyle = "#000";
-        } else if(val === "B"){
+        } else if (val === "B") {
           ctx.fillStyle = "#8fd3f7";
         } else {
           ctx.fillStyle = "#ececef";
@@ -778,32 +830,32 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
       ctx.lineWidth = 2;
       ctx.strokeRect(x, y, cell, cell);
 
-      if(val === "B"){
+      if (val === "B") {
         ctx.fillStyle = "#111";
         ctx.font = "700 28px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("B", x + cell/2, y + cell/2);
-      } else if(typeof val === "number"){
+        ctx.fillText("B", x + cell / 2, y + cell / 2);
+      } else if (typeof val === "number") {
         ctx.fillStyle = "#111";
         ctx.textAlign = "center";
 
         if (OBJECT_RENDER_MODE === "object_only" && visual.code) {
           ctx.font = "700 22px Arial";
           ctx.textBaseline = "middle";
-          ctx.fillText(visual.code, x + cell/2, y + cell/2);
+          ctx.fillText(visual.code, x + cell / 2, y + cell / 2);
         } else {
           if (visual.code) {
             ctx.font = `700 ${getCanvasNumberFontSize(visual.code)}px Arial`;
             ctx.textBaseline = "middle";
-            ctx.fillText(String(val), x + cell/2, y + cell/2 - 10);
+            ctx.fillText(String(val), x + cell / 2, y + cell / 2 - 10);
 
             ctx.font = `700 ${getCanvasCodeFontSize(visual.code)}px Arial`;
-            ctx.fillText(visual.code, x + cell/2, y + cell/2 + 18);
+            ctx.fillText(visual.code, x + cell / 2, y + cell / 2 + 18);
           } else {
             ctx.font = "700 28px Arial";
             ctx.textBaseline = "middle";
-            ctx.fillText(String(val), x + cell/2, y + cell/2);
+            ctx.fillText(String(val), x + cell / 2, y + cell / 2);
           }
         }
       }
@@ -813,16 +865,16 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
   const shafts = getOrderedPhysicalShaftClusters();
   const shaftData = getCurrentChamberShaftData();
 
-  for(let i = 0; i < shafts.length; i++){
+  for (let i = 0; i < shafts.length; i++) {
     const cluster = shafts[i];
-    const rows = cluster.map(v => v[0]);
-    const cols = cluster.map(v => v[1]);
+    const rows = cluster.map((v) => v[0]);
+    const cols = cluster.map((v) => v[1]);
     const minR = Math.min(...rows);
     const maxR = Math.max(...rows);
     const minC = Math.min(...cols);
     const maxC = Math.max(...cols);
 
-    if(maxR < minRow || minR > maxRow) continue;
+    if (maxR < minRow || minR > maxRow) continue;
 
     const x = pad + minC * cell;
     const y = topPad + (minR - rowOffset) * cell;
@@ -838,9 +890,10 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
     drawCenteredMultilineText(ctx, getShaftDisplayLines(i, shaftData), x, y, w, h);
   }
 
-  for(const path of solveState.bluePaths){
+  for (const path of solveState.bluePaths) {
     drawPath(ctx, path, "#2563eb", 10, cell, pad, topPad, rowOffset);
   }
+
   drawPath(ctx, solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset);
 
   const ly = ctx.canvas.height - 35;
@@ -883,27 +936,27 @@ function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow){
   ctx.fillText(t("strongestBlue"), 460, ly + 6);
 }
 
-function getShaftClustersFromGrid(){
+function getShaftClustersFromGrid() {
   const seen = new Set();
   const clusters = [];
 
-  for(let r = 0; r < currentRowCount; r++){
-    for(let c = 0; c < COLS; c++){
-      if(grid[r][c] !== "S") continue;
+  for (let r = 0; r < currentRowCount; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c] !== "S") continue;
       const key = `${r},${c}`;
-      if(seen.has(key)) continue;
+      if (seen.has(key)) continue;
 
-      const stack = [[r,c]];
+      const stack = [[r, c]];
       const cluster = [];
 
-      while(stack.length){
-        const [rr,cc] = stack.pop();
+      while (stack.length) {
+        const [rr, cc] = stack.pop();
         const k = `${rr},${cc}`;
-        if(rr < 0 || cc < 0 || rr >= currentRowCount || cc >= COLS) continue;
-        if(grid[rr][cc] !== "S" || seen.has(k)) continue;
+        if (rr < 0 || cc < 0 || rr >= currentRowCount || cc >= COLS) continue;
+        if (grid[rr][cc] !== "S" || seen.has(k)) continue;
         seen.add(k);
-        cluster.push([rr,cc]);
-        stack.push([rr+1,cc],[rr-1,cc],[rr,cc+1],[rr,cc-1]);
+        cluster.push([rr, cc]);
+        stack.push([rr + 1, cc], [rr - 1, cc], [rr, cc + 1], [rr, cc - 1]);
       }
 
       clusters.push(cluster);
@@ -922,33 +975,33 @@ function getShaftClustersFromGrid(){
   return clusters;
 }
 
-function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
-  if(!path || path.length < 1) return;
+function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
+  if (!path || path.length < 1) return;
 
   const isRed = color === "#ef4444";
   const isBlue = color === "#2563eb";
 
-  function center(pt){
+  function center(pt) {
     return {
       x: pad + pt[1] * cell + cell / 2,
       y: topPad + (pt[0] - rowOffset) * cell + cell / 2
     };
   }
 
-  function manhattan(a, b){
+  function manhattan(a, b) {
     return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
   }
 
-  function isInBounds(r, c){
+  function isInBounds(r, c) {
     return r >= 0 && c >= 0 && r < currentRowCount && c < COLS;
   }
 
-  function getCellValue(r, c){
+  function getCellValue(r, c) {
     if (!isInBounds(r, c)) return null;
     return grid[r]?.[c];
   }
 
-  function getBoundaryTouchPoint(fromPt, toPt){
+  function getBoundaryTouchPoint(fromPt, toPt) {
     if (!fromPt || !toPt) return null;
 
     const [fr, fc] = fromPt;
@@ -969,7 +1022,7 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
     return null;
   }
 
-  function getBlueEndpointPoint(){
+  function getBlueEndpointPoint() {
     if (path.length === 1) return center(path[0]);
 
     const last = path[path.length - 1];
@@ -996,7 +1049,7 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
     return center(last);
   }
 
-  function getRedEndpointPoint(){
+  function getRedEndpointPoint() {
     if (path.length === 1) return center(path[0]);
 
     const last = path[path.length - 1];
@@ -1004,7 +1057,7 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
 
     if (!attackPoints.length) return center(last);
 
-    const adjacentAttackPoints = attackPoints.filter(pt => manhattan(last, pt) === 1);
+    const adjacentAttackPoints = attackPoints.filter((pt) => manhattan(last, pt) === 1);
 
     if (adjacentAttackPoints.length) {
       const touch = getBoundaryTouchPoint(last, adjacentAttackPoints[0]);
@@ -1031,7 +1084,7 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
 
-  for(let i = 1; i < points.length; i++){
+  for (let i = 1; i < points.length; i++) {
     ctx.lineTo(points[i].x, points[i].y);
   }
 
@@ -1046,7 +1099,7 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
 
-  for(let i = 1; i < points.length; i++){
+  for (let i = 1; i < points.length; i++) {
     ctx.lineTo(points[i].x, points[i].y);
   }
 
@@ -1057,14 +1110,29 @@ function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset){
   ctx.stroke();
 }
 
-function downloadPNG(){
+function downloadPNG() {
   renderPreview();
   setTimeout(() => {
     const canvas = document.getElementById("previewCanvas");
     const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${(currentPreviewTitle || document.getElementById("titleInput").value || "zm-pathfinder").replace(/\s+/g, "-").toLowerCase()}.png`;
+    a.download = `${(currentPreviewTitle || document.getElementById("titleInput").value || "zm-pathfinder")
+      .replace(/\s+/g, "-")
+      .toLowerCase()}.png`;
     a.click();
   }, 160);
 }
+
+window.setTool = setTool;
+window.clearBoard = clearBoard;
+window.downloadPNG = downloadPNG;
+window.loadSampleGrid = loadSampleGrid;
+window.pasteFromClipboard = pasteFromClipboard;
+window.renderPreview = renderPreview;
+window.renderRouteAudit = renderRouteAudit;
+window.getCurrentChamberShaftData = getCurrentChamberShaftData;
+window.getCurrentShaftDataPathLabel = getCurrentShaftDataPathLabel;
+window.getOrderedPhysicalShaftClusters = getOrderedPhysicalShaftClusters;
+window.getShaftDisplayLines = getShaftDisplayLines;
+window.getShaftClustersFromGrid = getShaftClustersFromGrid;x
