@@ -1,183 +1,6 @@
 (function () {
   "use strict";
 
-  const w = window;
-
-  if (!w.grid) w.grid = Array.from({ length: w.MAX_ROWS || 20 }, () => Array(w.COLS || 7).fill(""));
-  if (!w.solveState) {
-    w.solveState = {
-      redPath: [],
-      bluePaths: [],
-      shaftEntryDots: [],
-      shaftClusters: [],
-      attackPoints: [],
-      solved: false,
-      message: "",
-      routeAnalysis: [],
-      solverVersion: null,
-      solverMode: "standard",
-      legacyEndMode: false,
-      redBubbleCount: 0,
-      firstBubbleTravelCost: null,
-      effectiveTotal: null,
-      redCost: null,
-      blueCost: null,
-      redObjectPriorityScore: 0,
-      blueObjectPriorityScore: 0,
-      objectPriorityScore: 0,
-      missingPriorityCount: 0
-    };
-  }
-
-  if (!Number.isFinite(w.MAX_ROWS)) w.MAX_ROWS = 20;
-  if (!Number.isFinite(w.MINED_ROWS)) w.MINED_ROWS = 13;
-  if (!Number.isFinite(w.COLS)) w.COLS = 7;
-  if (!Number.isFinite(w.currentRowCount)) w.currentRowCount = w.MINED_ROWS;
-
-  if (!w.currentMapContext) {
-    w.currentMapContext = {
-      eventType: null,
-      eventName: null,
-      chamberName: null,
-      eventMine: null
-    };
-  }
-
-  if (!w.lastSelected) w.lastSelected = { r: 0, c: 0 };
-  if (!w.currentPreviewTitle) w.currentPreviewTitle = "Gate 1";
-  if (!w.tool) w.tool = "number";
-  if (!w.OBJECT_RENDER_MODE) w.OBJECT_RENDER_MODE = "overlay";
-
-  function t(key) {
-    if (typeof w.t === "function" && w.t !== t) return w.t(key);
-    return key;
-  }
-
-  function formatT(key, values = {}) {
-    if (typeof w.formatT === "function" && w.formatT !== formatT) return w.formatT(key, values);
-    let out = key;
-    Object.keys(values).forEach((k) => {
-      out = out.replace(new RegExp(`\\{${k}\\}`, "g"), String(values[k]));
-    });
-    return out;
-  }
-
-  function setReport(msg) {
-    if (typeof w.setReport === "function" && w.setReport !== setReport) return w.setReport(msg);
-    const el = document.getElementById("report");
-    if (el) el.textContent = msg || "";
-  }
-
-  function updateDifficultyMeter() {
-    if (typeof w.updateDifficultyMeter === "function" && w.updateDifficultyMeter !== updateDifficultyMeter) {
-      return w.updateDifficultyMeter();
-    }
-  }
-
-  function translateShaftType(value) {
-    if (typeof w.translateShaftType === "function" && w.translateShaftType !== translateShaftType) {
-      return w.translateShaftType(value);
-    }
-    return String(value || "Shaft");
-  }
-
-  function getRouteReportBody() {
-    if (typeof w.getRouteReportBody === "function" && w.getRouteReportBody !== getRouteReportBody) {
-      return w.getRouteReportBody();
-    }
-    return document.getElementById("routeReportBody");
-  }
-
-  function openRouteReportModal() {
-    const el = document.getElementById("routeReportOverlay");
-    if (el) el.classList.add("show");
-  }
-
-  function closeRouteReportModal() {
-    const el = document.getElementById("routeReportOverlay");
-    if (el) el.classList.remove("show");
-  }
-
-  function getTileMeta(eventType, eventName, chamberName, r, c) {
-    if (typeof w.getTileMeta === "function" && w.getTileMeta !== getTileMeta) {
-      return w.getTileMeta(eventType, eventName, chamberName, r, c);
-    }
-
-    const mineName = w.currentMapContext?.eventMine;
-
-    if (eventType === "Legacy") {
-      return (
-        w.ZM_TILE_META?.Legacy?.[eventName]?.[mineName]?.[chamberName]?.tiles?.[`${r},${c}`] ||
-        { object: "plain" }
-      );
-    }
-
-    return (
-      w.ZM_TILE_META?.[eventType]?.[eventName]?.[chamberName]?.tiles?.[`${r},${c}`] ||
-      { object: "plain" }
-    );
-  }
-
-  function getObjectVisual(meta) {
-    if (typeof w.getObjectVisual === "function" && w.getObjectVisual !== getObjectVisual) {
-      return w.getObjectVisual(meta);
-    }
-
-    if (!meta || !meta.object || meta.object === "plain" || !w.ZM_OBJECT_TYPES) {
-      return { code: "", fill: null };
-    }
-
-    const objDef = w.ZM_OBJECT_TYPES[meta.object];
-    if (!objDef) return { code: "", fill: null };
-
-    if (meta.subtype && objDef.subtypes?.[meta.subtype]) {
-      return {
-        code: objDef.subtypes[meta.subtype].code || "",
-        fill: objDef.subtypes[meta.subtype].fill || null
-      };
-    }
-
-    return {
-      code: objDef.code || "",
-      fill: objDef.fill || null
-    };
-  }
-
-  function getPriorityVisualMeta(objectType) {
-    if (typeof w.getPriorityVisualMeta === "function" && w.getPriorityVisualMeta !== getPriorityVisualMeta) {
-      return w.getPriorityVisualMeta(objectType);
-    }
-    return null;
-  }
-
-  function scanActiveObjectTypes() {
-    if (typeof w.scanActiveObjectTypes === "function" && w.scanActiveObjectTypes !== scanActiveObjectTypes) {
-      return w.scanActiveObjectTypes();
-    }
-    return [];
-  }
-
-  function getSolverMode() {
-    if (typeof w.getSolverMode === "function" && w.getSolverMode !== getSolverMode) {
-      return w.getSolverMode();
-    }
-    return w.solveState?.solverMode || "standard";
-  }
-
-  function getObjectPriorityValue(type) {
-    if (typeof w.getObjectPriorityValue === "function" && w.getObjectPriorityValue !== getObjectPriorityValue) {
-      return w.getObjectPriorityValue(type);
-    }
-    return "normal";
-  }
-
-  function formatObjectPriorityLabel(type) {
-    if (typeof w.formatObjectPriorityLabel === "function" && w.formatObjectPriorityLabel !== formatObjectPriorityLabel) {
-      return w.formatObjectPriorityLabel(type);
-    }
-    return String(type || "");
-  }
-
   function renderRouteAudit(routeAnalysis) {
     const body = getRouteReportBody();
     if (!body) return;
@@ -207,17 +30,17 @@
     summaryText.style.wordBreak = "break-word";
     summaryText.style.overflowWrap = "anywhere";
     summaryText.innerHTML =
-      `${t("solve")}: <b>${w.solveState.solved ? t("solvedYes") : t("solvedNo")}</b><br>` +
-      `Solver version: <b>${w.solveState.solverVersion || "unknown"}</b><br>` +
-      `Solver mode: <b>${w.solveState.solverMode || "standard"}</b><br>` +
-      `Legacy end mode: <b>${w.solveState.legacyEndMode ? "Yes" : "No"}</b><br>` +
-      `Red bubble count: <b>${w.solveState.redBubbleCount ?? 0}</b><br>` +
-      `First bubble travel cost: <b>${w.solveState.firstBubbleTravelCost ?? "n/a"}</b><br>` +
-      `Red cost: <b>${w.solveState.redCost ?? "n/a"}</b> | Blue cost: <b>${w.solveState.blueCost ?? "n/a"}</b><br>` +
-      `Object priority score: <b>${w.solveState.objectPriorityScore ?? 0}</b><br>` +
-      `Effective total: <b>${w.solveState.effectiveTotal ?? "n/a"}</b><br>` +
-      `Red path cells: <b>${w.solveState.redPath.length}</b><br>` +
-      `Blue route count: <b>${w.solveState.bluePaths.length}</b><br>` +
+      `${t("solve")}: <b>${solveState.solved ? t("solvedYes") : t("solvedNo")}</b><br>` +
+      `Solver version: <b>${solveState.solverVersion || "unknown"}</b><br>` +
+      `Solver mode: <b>${solveState.solverMode || "standard"}</b><br>` +
+      `Legacy end mode: <b>${solveState.legacyEndMode ? "Yes" : "No"}</b><br>` +
+      `Red bubble count: <b>${solveState.redBubbleCount ?? 0}</b><br>` +
+      `First bubble travel cost: <b>${solveState.firstBubbleTravelCost ?? "n/a"}</b><br>` +
+      `Red cost: <b>${solveState.redCost ?? "n/a"}</b> | Blue cost: <b>${solveState.blueCost ?? "n/a"}</b><br>` +
+      `Object priority score: <b>${solveState.objectPriorityScore ?? 0}</b><br>` +
+      `Effective total: <b>${solveState.effectiveTotal ?? "n/a"}</b><br>` +
+      `Red path cells: <b>${solveState.redPath.length}</b><br>` +
+      `Blue route count: <b>${solveState.bluePaths.length}</b><br>` +
       `${t("physicalShaftClusters")}: <b>${shaftClusters.length}</b><br>` +
       `${t("shaftData")}: <b>${shaftData.length}</b>`;
 
@@ -240,7 +63,7 @@
     shaftText.style.wordBreak = "break-word";
     shaftText.style.overflowWrap = "anywhere";
 
-    if (!w.currentMapContext.eventType || !w.currentMapContext.eventName || !w.currentMapContext.chamberName) {
+    if (!currentMapContext.eventType || !currentMapContext.eventName || !currentMapContext.chamberName) {
       shaftText.innerHTML = t("noChamberLoadedForShafts");
     } else if (!shaftData.length) {
       shaftText.innerHTML =
@@ -395,33 +218,33 @@
   }
 
   function getCurrentChamberShaftData() {
-    const type = w.currentMapContext.eventType;
-    const eventName = w.currentMapContext.eventName;
-    const chamberName = w.currentMapContext.chamberName;
-    const mineName = w.currentMapContext.eventMine;
+    const type = currentMapContext.eventType;
+    const eventName = currentMapContext.eventName;
+    const chamberName = currentMapContext.chamberName;
+    const mineName = currentMapContext.eventMine;
 
-    if (!type || !eventName || !chamberName || !w.ZM_SHAFT_DATA) return [];
+    if (!type || !eventName || !chamberName || !window.ZM_SHAFT_DATA) return [];
 
     if (type === "MainDeep") {
-      return w.ZM_SHAFT_DATA?.MainDeep?.[eventName]?.[chamberName] || [];
+      return window.ZM_SHAFT_DATA?.MainDeep?.[eventName]?.[chamberName] || [];
     }
 
     if (type === "Main") {
-      return w.ZM_SHAFT_DATA?.Main?.[eventName]?.[chamberName] || [];
+      return window.ZM_SHAFT_DATA?.Main?.[eventName]?.[chamberName] || [];
     }
 
     if (type === "Legacy") {
-      return w.ZM_SHAFT_DATA?.Legacy?.[eventName]?.[mineName]?.[chamberName] || [];
+      return window.ZM_SHAFT_DATA?.Legacy?.[eventName]?.[mineName]?.[chamberName] || [];
     }
 
     return [];
   }
 
   function getCurrentShaftDataPathLabel() {
-    const type = w.currentMapContext.eventType || "(none)";
-    const eventName = w.currentMapContext.eventName || "(none)";
-    const chamberName = w.currentMapContext.chamberName || "(none)";
-    const mineName = w.currentMapContext.eventMine || null;
+    const type = currentMapContext.eventType || "(none)";
+    const eventName = currentMapContext.eventName || "(none)";
+    const chamberName = currentMapContext.chamberName || "(none)";
+    const mineName = currentMapContext.eventMine || null;
 
     if (type === "Legacy") {
       return `ZM_SHAFT_DATA.Legacy["${eventName}"]["${mineName || "(none)"}"]["${chamberName}"]`;
@@ -442,9 +265,9 @@
     const seen = new Set();
     const clusters = [];
 
-    for (let r = 0; r < w.currentRowCount; r++) {
-      for (let c = 0; c < w.COLS; c++) {
-        if (w.grid[r][c] !== "S") continue;
+    for (let r = 0; r < currentRowCount; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (grid[r][c] !== "S") continue;
         const key = `${r},${c}`;
         if (seen.has(key)) continue;
 
@@ -454,8 +277,8 @@
         while (stack.length) {
           const [rr, cc] = stack.pop();
           const k = `${rr},${cc}`;
-          if (rr < 0 || cc < 0 || rr >= w.currentRowCount || cc >= w.COLS) continue;
-          if (w.grid[rr][cc] !== "S" || seen.has(k)) continue;
+          if (rr < 0 || cc < 0 || rr >= currentRowCount || cc >= COLS) continue;
+          if (grid[rr][cc] !== "S" || seen.has(k)) continue;
           seen.add(k);
           cluster.push([rr, cc]);
           stack.push([rr + 1, cc], [rr - 1, cc], [rr, cc + 1], [rr, cc - 1]);
@@ -478,8 +301,8 @@
   }
 
   function getOrderedPhysicalShaftClusters() {
-    if (w.solveState.shaftClusters && w.solveState.shaftClusters.length) {
-      return w.solveState.shaftClusters;
+    if (solveState.shaftClusters && solveState.shaftClusters.length) {
+      return solveState.shaftClusters;
     }
     return getShaftClustersFromGrid();
   }
@@ -609,7 +432,7 @@
   }
 
   function setTool(nextTool) {
-    w.tool = nextTool;
+    tool = nextTool;
     ["number", "block", "bubble", "shaft"].forEach((id) => {
       const el = document.getElementById(`tool-${id}`);
       if (el) el.classList.remove("tool-active");
@@ -622,17 +445,17 @@
     const gridEl = document.getElementById("grid");
     if (!gridEl) return;
 
-    gridEl.style.gridTemplateColumns = `repeat(${w.COLS}, minmax(0, 1fr))`;
+    gridEl.style.gridTemplateColumns = `repeat(${COLS}, minmax(0, 1fr))`;
     gridEl.innerHTML = "";
 
-    for (let r = 0; r < w.currentRowCount; r++) {
-      for (let c = 0; c < w.COLS; c++) {
+    for (let r = 0; r < currentRowCount; r++) {
+      for (let c = 0; c < COLS; c++) {
         const cell = document.createElement("div");
-        const val = w.grid[r][c];
+        const val = grid[r][c];
         const meta = getTileMeta(
-          w.currentMapContext.eventType,
-          w.currentMapContext.eventName,
-          w.currentMapContext.chamberName,
+          currentMapContext.eventType,
+          currentMapContext.eventName,
+          currentMapContext.chamberName,
           r,
           c
         );
@@ -643,7 +466,7 @@
         cell.dataset.c = c;
         cell.onclick = () => clickCell(r, c);
 
-        if (r === w.lastSelected.r && c === w.lastSelected.c) {
+        if (r === lastSelected.r && c === lastSelected.c) {
           cell.classList.add("selected");
         }
 
@@ -658,7 +481,7 @@
         } else if (typeof val === "number") {
           applyHtmlTileFill(cell, visual.fill);
 
-          if (w.OBJECT_RENDER_MODE === "object_only" && visual.code) {
+          if (OBJECT_RENDER_MODE === "object_only" && visual.code) {
             cell.textContent = visual.code;
           } else {
             const wrapper = document.createElement("div");
@@ -698,26 +521,26 @@
   }
 
   function clickCell(r, c) {
-    if (r >= w.currentRowCount) return;
-    w.lastSelected = { r, c };
+    if (r >= currentRowCount) return;
+    lastSelected = { r, c };
 
-    if (w.tool === "number") {
+    if (tool === "number") {
       activateInlineNumberEditor(r, c);
       return;
     }
 
-    if (w.tool === "block") {
-      w.grid[r][c] = w.grid[r][c] === "X" ? "" : "X";
-    } else if (w.tool === "bubble") {
-      w.grid[r][c] = w.grid[r][c] === "B" ? "" : "B";
-    } else if (w.tool === "shaft") {
-      const removing = w.grid[r][c] === "S";
+    if (tool === "block") {
+      grid[r][c] = grid[r][c] === "X" ? "" : "X";
+    } else if (tool === "bubble") {
+      grid[r][c] = grid[r][c] === "B" ? "" : "B";
+    } else if (tool === "shaft") {
+      const removing = grid[r][c] === "S";
       for (let dr = 0; dr < 3; dr++) {
         for (let dc = 0; dc < 2; dc++) {
           const rr = r + dr;
           const cc = c + dc;
-          if (rr < w.currentRowCount && w.grid[rr] && w.grid[rr][cc] !== undefined) {
-            w.grid[rr][cc] = removing ? "" : "S";
+          if (rr < currentRowCount && grid[rr] && grid[rr][cc] !== undefined) {
+            grid[rr][cc] = removing ? "" : "S";
           }
         }
       }
@@ -743,7 +566,7 @@
     input.type = "number";
     input.min = "1";
     input.className = "cell-editor";
-    input.value = typeof w.grid[r][c] === "number" ? String(w.grid[r][c]) : "";
+    input.value = typeof grid[r][c] === "number" ? String(grid[r][c]) : "";
     target.appendChild(input);
     input.focus();
     input.select();
@@ -751,9 +574,9 @@
     input.onblur = () => {
       const raw = input.value.trim();
       if (raw === "") {
-        w.grid[r][c] = "";
+        grid[r][c] = "";
       } else if (!isNaN(raw) && Number(raw) > 0) {
-        w.grid[r][c] = Number(raw);
+        grid[r][c] = Number(raw);
       }
 
       if (typeof scanActiveObjectTypes === "function") {
@@ -791,15 +614,15 @@
     if (!text) return;
 
     const data = parseClipboard(text);
-    const startR = w.lastSelected.r;
-    const startC = w.lastSelected.c;
+    const startR = lastSelected.r;
+    const startC = lastSelected.c;
 
     for (let ri = 0; ri < data.length; ri++) {
       for (let ci = 0; ci < data[ri].length; ci++) {
         const r = startR + ri;
         const c = startC + ci;
-        if (r >= w.currentRowCount) continue;
-        if (!w.grid[r] || w.grid[r][c] === undefined) continue;
+        if (r >= currentRowCount) continue;
+        if (!grid[r] || grid[r][c] === undefined) continue;
 
         const raw = data[ri][ci];
         const val = String(raw ?? "");
@@ -807,18 +630,18 @@
         if (val === "") {
           continue;
         } else if (!isNaN(val)) {
-          w.grid[r][c] = Number(val);
+          grid[r][c] = Number(val);
         } else if (val.toUpperCase() === "X") {
-          w.grid[r][c] = "X";
+          grid[r][c] = "X";
         } else if (val.toUpperCase() === "B") {
-          w.grid[r][c] = "B";
+          grid[r][c] = "B";
         } else if (val.toUpperCase() === "S" || val.toUpperCase() === "SHAFT") {
           for (let dr = 0; dr < 3; dr++) {
             for (let dc = 0; dc < 2; dc++) {
               const rr = r + dr;
               const cc = c + dc;
-              if (rr < w.currentRowCount && w.grid[rr] && w.grid[rr][cc] !== undefined) {
-                w.grid[rr][cc] = "S";
+              if (rr < currentRowCount && grid[rr] && grid[rr][cc] !== undefined) {
+                grid[rr][cc] = "S";
               }
             }
           }
@@ -837,15 +660,15 @@
   }
 
   function clearBoard(updateReport = true) {
-    for (let r = 0; r < w.MAX_ROWS; r++) {
-      for (let c = 0; c < w.COLS; c++) {
-        w.grid[r][c] = "";
+    for (let r = 0; r < MAX_ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        grid[r][c] = "";
       }
     }
 
-    w.currentRowCount = w.MINED_ROWS;
-    w.currentPreviewTitle = document.getElementById("titleInput")?.value || "Gate 1";
-    w.currentMapContext = {
+    currentRowCount = MINED_ROWS;
+    currentPreviewTitle = document.getElementById("titleInput")?.value || "Gate 1";
+    currentMapContext = {
       eventType: null,
       eventName: null,
       chamberName: null,
@@ -869,8 +692,8 @@
     if (gateTypeEl) gateTypeEl.value = "standard";
     const titleInput = document.getElementById("titleInput");
     if (titleInput) titleInput.value = "Gate 1";
-    w.currentPreviewTitle = "Gate 1";
-    w.currentRowCount = w.MINED_ROWS;
+    currentPreviewTitle = "Gate 1";
+    currentRowCount = MINED_ROWS;
 
     const sample = [
       [8, 9, 11, 9, 12, 8, 9],
@@ -887,8 +710,8 @@
     ];
 
     for (let r = 0; r < sample.length; r++) {
-      for (let c = 0; c < w.COLS; c++) {
-        w.grid[r][c] = sample[r][c] === undefined ? "" : sample[r][c];
+      for (let c = 0; c < COLS; c++) {
+        grid[r][c] = sample[r][c] === undefined ? "" : sample[r][c];
       }
     }
 
@@ -906,7 +729,7 @@
   function getPriorityLegendItems() {
     const items = [];
     const currentMode =
-      (w.solveState && w.solveState.solverMode) ||
+      (solveState && solveState.solverMode) ||
       (typeof getSolverMode === "function" ? getSolverMode() : "standard");
 
     if (currentMode !== "custom") return items;
@@ -1053,13 +876,13 @@
 
     const legendItems = getPriorityLegendItems();
     const customMode =
-      ((w.solveState && w.solveState.solverMode) ||
+      ((solveState && solveState.solverMode) ||
         (typeof getSolverMode === "function" ? getSolverMode() : "standard")) === "custom";
 
     const usedRows = [];
-    for (let r = 0; r < w.currentRowCount; r++) {
-      for (let c = 0; c < w.COLS; c++) {
-        if (w.grid[r][c] !== "") {
+    for (let r = 0; r < currentRowCount; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (grid[r][c] !== "") {
           usedRows.push(r);
           break;
         }
@@ -1067,15 +890,15 @@
     }
 
     const minRow = 0;
-    const maxFilled = usedRows.length ? Math.max(...usedRows) : Math.max(4, w.currentRowCount - 1);
-    const maxRow = Math.max(w.currentRowCount - 1, maxFilled);
+    const maxFilled = usedRows.length ? Math.max(...usedRows) : Math.max(4, currentRowCount - 1);
+    const maxRow = Math.max(currentRowCount - 1, maxFilled);
     const visibleRows = maxRow - minRow + 1;
 
     const legendHeight = customMode
       ? Math.max(120, 42 + Math.ceil(Math.max(1, legendItems.length) / 2) * 24)
       : 120;
 
-    canvas.width = pad * 2 + cell * w.COLS;
+    canvas.width = pad * 2 + cell * COLS;
     canvas.height = topPad + visibleRows * cell + legendHeight;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1083,18 +906,18 @@
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const drawEverything = (logoReady, logo) => {
-    const headerY = 12;
-const headerH = 118;
+      const headerY = 12;
+      const headerH = 118;
 
-const logoBoxX = 26;
-const logoBoxY = headerY;
-const logoBoxW = 220;
-const logoBoxH = headerH;
+      const logoBoxX = 26;
+      const logoBoxY = headerY;
+      const logoBoxW = 220;
+      const logoBoxH = headerH;
 
-const titleBoxX = logoBoxX + logoBoxW + 16;
-const titleBoxY = headerY;
-const titleBoxW = canvas.width - titleBoxX - 26;
-const titleBoxH = headerH;
+      const titleBoxX = logoBoxX + logoBoxW + 16;
+      const titleBoxY = headerY;
+      const titleBoxW = canvas.width - titleBoxX - 26;
+      const titleBoxH = headerH;
 
       if (logoReady && logo) {
         const logoMaxW = 180;
@@ -1130,7 +953,7 @@ const titleBoxH = headerH;
       ctx.strokeRect(titleBoxX, titleBoxY, titleBoxW, titleBoxH);
 
       const rawTitle = String(
-        w.currentPreviewTitle || document.getElementById("titleInput")?.value || "Gate"
+        currentPreviewTitle || document.getElementById("titleInput")?.value || "Gate"
       ).trim();
 
       const parts = rawTitle.split(" - ").map((s) => s.trim()).filter(Boolean);
@@ -1168,14 +991,14 @@ const titleBoxH = headerH;
     const rowOffset = minRow;
 
     for (let r = minRow; r <= maxRow; r++) {
-      for (let c = 0; c < w.COLS; c++) {
+      for (let c = 0; c < COLS; c++) {
         const x = pad + c * cell;
         const y = topPad + (r - rowOffset) * cell;
-        const val = w.grid[r][c];
+        const val = grid[r][c];
         const meta = getTileMeta(
-          w.currentMapContext.eventType,
-          w.currentMapContext.eventName,
-          w.currentMapContext.chamberName,
+          currentMapContext.eventType,
+          currentMapContext.eventName,
+          currentMapContext.chamberName,
           r,
           c
         );
@@ -1214,7 +1037,7 @@ const titleBoxH = headerH;
           ctx.fillStyle = "#111";
           ctx.textAlign = "center";
 
-          if (w.OBJECT_RENDER_MODE === "object_only" && visual.code) {
+          if (OBJECT_RENDER_MODE === "object_only" && visual.code) {
             ctx.font = "700 22px Arial";
             ctx.textBaseline = "middle";
             ctx.fillText(visual.code, x + cell / 2, y + cell / 2);
@@ -1267,15 +1090,15 @@ const titleBoxH = headerH;
     const customColor = "#a855f7";
 
     if (customMode) {
-      for (const path of w.solveState.bluePaths) {
+      for (const path of solveState.bluePaths) {
         drawPath(ctx, path, customColor, 10, cell, pad, topPad, rowOffset);
       }
-      drawPath(ctx, w.solveState.redPath, customColor, 12, cell, pad, topPad, rowOffset);
+      drawPath(ctx, solveState.redPath, customColor, 12, cell, pad, topPad, rowOffset);
     } else {
-      for (const path of w.solveState.bluePaths) {
+      for (const path of solveState.bluePaths) {
         drawPath(ctx, path, "#2563eb", 10, cell, pad, topPad, rowOffset);
       }
-      drawPath(ctx, w.solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset);
+      drawPath(ctx, solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset);
     }
 
     const legendTop = ctx.canvas.height - legendHeight + 18;
@@ -1379,7 +1202,7 @@ const titleBoxH = headerH;
     if (!path || path.length < 1) return;
 
     const customMode =
-      ((w.solveState && w.solveState.solverMode) ||
+      ((solveState && solveState.solverMode) ||
         (typeof getSolverMode === "function" ? getSolverMode() : "standard")) === "custom";
 
     const isRed = color === "#ef4444" || (customMode && color === "#a855f7");
@@ -1397,12 +1220,12 @@ const titleBoxH = headerH;
     }
 
     function isInBounds(r, c) {
-      return r >= 0 && c >= 0 && r < w.currentRowCount && c < w.COLS;
+      return r >= 0 && c >= 0 && r < currentRowCount && c < COLS;
     }
 
     function getCellValue(r, c) {
       if (!isInBounds(r, c)) return null;
-      return w.grid[r]?.[c];
+      return grid[r]?.[c];
     }
 
     function getBoundaryTouchPoint(fromPt, toPt) {
@@ -1457,7 +1280,7 @@ const titleBoxH = headerH;
       if (path.length === 1) return center(path[0]);
 
       const last = path[path.length - 1];
-      const attackPoints = Array.isArray(w.solveState.attackPoints) ? w.solveState.attackPoints : [];
+      const attackPoints = Array.isArray(solveState.attackPoints) ? solveState.attackPoints : [];
 
       if (!attackPoints.length) return center(last);
 
@@ -1525,35 +1348,6 @@ const titleBoxH = headerH;
     ctx.stroke();
   }
 
-  function resetSolve() {
-    w.solveState = {
-      redPath: [],
-      bluePaths: [],
-      shaftEntryDots: [],
-      shaftClusters: [],
-      attackPoints: [],
-      solved: false,
-      message: "",
-      routeAnalysis: [],
-      solverVersion: null,
-      solverMode: typeof getSolverMode === "function" ? getSolverMode() : "standard",
-      legacyEndMode: false,
-      redBubbleCount: 0,
-      firstBubbleTravelCost: null,
-      effectiveTotal: null,
-      redCost: null,
-      blueCost: null,
-      redObjectPriorityScore: 0,
-      blueObjectPriorityScore: 0,
-      objectPriorityScore: 0,
-      missingPriorityCount: 0
-    };
-  }
-
-  function getVisibleGridSlice() {
-    return w.grid.slice(0, w.currentRowCount).map((row) => row.slice(0, w.COLS));
-  }
-
   function downloadPNG() {
     renderPreview();
     const canvas = document.getElementById("previewCanvas");
@@ -1561,7 +1355,7 @@ const titleBoxH = headerH;
 
     const link = document.createElement("a");
     const safeTitle = String(
-      w.currentPreviewTitle || document.getElementById("titleInput")?.value || "zm-pathfinder"
+      currentPreviewTitle || document.getElementById("titleInput")?.value || "zm-pathfinder"
     )
       .trim()
       .replace(/[^\w\-]+/g, "_");
@@ -1571,65 +1365,15 @@ const titleBoxH = headerH;
     link.click();
   }
 
-  w.setTool = setTool;
-  w.render = render;
-  w.renderPreview = renderPreview;
-  w.clickCell = clickCell;
-  w.clearBoard = clearBoard;
-  w.loadSampleGrid = loadSampleGrid;
-  w.pasteFromClipboard = pasteFromClipboard;
-  w.applyText = applyText;
-  w.downloadPNG = downloadPNG;
-  w.resetSolve = resetSolve;
-  w.getVisibleGridSlice = getVisibleGridSlice;
-
-  if (typeof openRouteReportModal === "function") {
-    w.openRouteReportModal = openRouteReportModal;
-  }
-  if (typeof closeRouteReportModal === "function") {
-    w.closeRouteReportModal = closeRouteReportModal;
-  }
-  w.renderRouteAudit = renderRouteAudit;
-
-  function safeInitialRender() {
-    try {
-      const gridEl = document.getElementById("grid");
-      const canvasEl = document.getElementById("previewCanvas");
-
-      if (!gridEl || !canvasEl) return false;
-      if (!Array.isArray(w.grid)) return false;
-
-      if (!Number.isFinite(w.currentRowCount) || w.currentRowCount <= 0) {
-        w.currentRowCount = w.MINED_ROWS;
-      }
-
-      render();
-      renderPreview();
-      return true;
-    } catch (err) {
-      console.error("Initial render failed:", err);
-      return false;
-    }
-  }
-
-  function bootRenderWithRetry(attempt = 0) {
-    if (safeInitialRender()) return;
-
-    if (attempt >= 40) {
-      console.error("Grid/preview never became ready.");
-      return;
-    }
-
-    setTimeout(() => {
-      bootRenderWithRetry(attempt + 1);
-    }, 150);
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      bootRenderWithRetry(0);
-    });
-  } else {
-    bootRenderWithRetry(0);
-  }
+  window.setTool = setTool;
+  window.render = render;
+  window.renderPreview = renderPreview;
+  window.clickCell = clickCell;
+  window.clearBoard = clearBoard;
+  window.loadSampleGrid = loadSampleGrid;
+  window.pasteFromClipboard = pasteFromClipboard;
+  window.applyText = applyText;
+  window.downloadPNG = downloadPNG;
+  window.getVisibleGridSlice = getVisibleGridSlice;
+  window.renderRouteAudit = renderRouteAudit;
 })();
