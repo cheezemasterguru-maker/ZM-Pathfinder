@@ -1412,26 +1412,54 @@ window.applyText = applyText;
 window.downloadPNG = downloadPNG;
 window.resetSolve = resetSolve;
 window.getVisibleGridSlice = getVisibleGridSlice;
-window.openRouteReportModal = openRouteReportModal;
-window.closeRouteReportModal = closeRouteReportModal;
+
+if (typeof openRouteReportModal === "function") {
+  window.openRouteReportModal = openRouteReportModal;
+}
+if (typeof closeRouteReportModal === "function") {
+  window.closeRouteReportModal = closeRouteReportModal;
+}
 window.renderRouteAudit = renderRouteAudit;
 
 function safeInitialRender() {
   try {
-    if (!Array.isArray(grid)) return;
+    const gridEl = document.getElementById("grid");
+    const canvasEl = document.getElementById("previewCanvas");
+
+    if (!gridEl || !canvasEl) return false;
+    if (!Array.isArray(grid)) return false;
+
     if (!Number.isFinite(currentRowCount) || currentRowCount <= 0) {
       currentRowCount = MINED_ROWS;
     }
+
     render();
     renderPreview();
+    return true;
   } catch (err) {
     console.error("Initial render failed:", err);
+    return false;
   }
 }
 
+function bootRenderWithRetry(attempt = 0) {
+  if (safeInitialRender()) return;
+
+  if (attempt >= 40) {
+    console.error("Grid/preview never became ready.");
+    return;
+  }
+
+  setTimeout(() => {
+    bootRenderWithRetry(attempt + 1);
+  }, 150);
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", safeInitialRender);
+  document.addEventListener("DOMContentLoaded", () => {
+    bootRenderWithRetry(0);
+  });
 } else {
-  safeInitialRender();
+  bootRenderWithRetry(0);
 }
 })();
