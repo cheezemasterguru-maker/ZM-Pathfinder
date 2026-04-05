@@ -425,6 +425,10 @@ function setBoardRowCount(nextRows){
   currentRowCount = nextRows === MAX_ROWS ? MAX_ROWS : MINED_ROWS;
   render();
   renderPreview();
+
+  if (typeof scanActiveObjectTypes === "function") {
+    scanActiveObjectTypes();
+  }
 }
 
 function ensureBoardRowCountFromCurrentContext(){
@@ -923,6 +927,10 @@ function loadSelectedMap(){
     }
   }
 
+  if (typeof scanActiveObjectTypes === "function") {
+    scanActiveObjectTypes();
+  }
+
   resetSolve();
   render();
   renderPreview();
@@ -1111,5 +1119,10 @@ function init(){
   updateUserUI();
   ensureDifficultyMeter();
   updateDifficultyMeter();
+
+  if (typeof scanActiveObjectTypes === "function") {
+    scanActiveObjectTypes();
+  }
+
   renderRouteAudit([]);
 }
