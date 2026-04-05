@@ -88,6 +88,11 @@ function formatT(key, vars = {}) {
   return str;
 }
 
+function safeT(key, fallback) {
+  const value = t(key);
+  return value === key ? fallback : value;
+}
+
 function getEventTranslationKey(name) {
   const map = {
     "Treasures in Ice": "treasuresInIce",
@@ -319,7 +324,9 @@ function applyLanguage() {
   if (routeReportBtn) routeReportBtn.textContent = t("routeReport");
 
   const objectPrioritiesBtn = document.getElementById("objectPrioritiesBtn");
-  if (objectPrioritiesBtn) objectPrioritiesBtn.textContent = t("objectPriorities");
+  if (objectPrioritiesBtn) {
+    objectPrioritiesBtn.textContent = safeT("objectPriorities", "Object Priorities");
+  }
 
   const editableBoardTitle = document.getElementById("editableBoardTitle");
   if (editableBoardTitle) editableBoardTitle.textContent = t("editableBoard");
@@ -358,13 +365,22 @@ function applyLanguage() {
   if (solverHelpModalTitle) solverHelpModalTitle.textContent = t("solverHelp");
 
   const objectPrioritiesIntro = document.getElementById("objectPrioritiesIntro");
-  if (objectPrioritiesIntro) objectPrioritiesIntro.textContent = t("objectPrioritiesIntro");
+  if (objectPrioritiesIntro) {
+    objectPrioritiesIntro.textContent = safeT(
+      "objectPrioritiesIntro",
+      "Optional object preferences for the current board."
+    );
+  }
 
   const objectPrioritiesResetBtn = document.getElementById("objectPrioritiesResetBtn");
-  if (objectPrioritiesResetBtn) objectPrioritiesResetBtn.textContent = t("reset");
+  if (objectPrioritiesResetBtn) {
+    objectPrioritiesResetBtn.textContent = safeT("reset", "Reset");
+  }
 
   const objectPrioritiesCloseBtn = document.getElementById("objectPrioritiesCloseBtn");
-  if (objectPrioritiesCloseBtn) objectPrioritiesCloseBtn.textContent = t("close");
+  if (objectPrioritiesCloseBtn) {
+    objectPrioritiesCloseBtn.textContent = t("close");
+  }
 
   loadHelpContent();
 }
@@ -372,7 +388,12 @@ function applyLanguage() {
 function setReport(msg) {
   const reportEl = document.getElementById("report");
   if (!reportEl) return;
+
   reportEl.textContent = msg;
+  reportEl.style.whiteSpace = "pre-wrap";
+  reportEl.style.overflowWrap = "anywhere";
+  reportEl.style.wordBreak = "break-word";
+
   updateDifficultyMeter();
 }
 
@@ -1113,7 +1134,6 @@ function ensureDifficultyMeter() {
   barWrap.appendChild(bar);
   meter.appendChild(label);
   meter.appendChild(barWrap);
-
   report.parentNode.insertBefore(meter, report);
 
   return meter;
