@@ -995,8 +995,7 @@ window.ZM_TILE_META = {
         "16,4": { object: "essence" }  
       }  
     }  
-  },  
-  
+  ,  
   "The Deep": {
       "Chamber 1": {
         tiles: {
