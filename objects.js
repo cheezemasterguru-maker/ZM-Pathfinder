@@ -11,15 +11,15 @@ window.ZM_OBJECT_TYPES = {
     fill: "#ff6b6b"
   },
 
-  badges: {
-    label: "Badges",
-    code: "Badge",
-    fill: "#c084fc"
-  },
-
   emblems: {
     label: "Emblems",
     code: "Emb",
+    fill: "#c084fc"
+  },
+
+  badges: {
+    label: "Badges",
+    code: "Badge",
     fill: {
       type: "dual",
       colors: ["#ef4444", "#facc15"]
