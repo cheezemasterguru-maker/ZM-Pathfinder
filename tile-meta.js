@@ -1189,9 +1189,9 @@ window.ZM_TILE_META = {
         "17,0": { object: "essence" },  
         "17,2": { object: "essence" },  
         "17,6": { object: "essence" }  
-      }  
-    }  
-  },  
+      }
+  }
+},
   
   "4th of July": {  
     "Mine 1": {},  
