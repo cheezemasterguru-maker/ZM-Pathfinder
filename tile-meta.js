@@ -1037,11 +1037,12 @@ window.ZM_TILE_META = {
       "15,5": { object: "emblems" },
       "15,6": { object: "chest", subtype: "steel" },
       "16,1": { object: "essence" },
-      "16,4": { object: "essence" }
-    }
-  }
-}},
-  "The Deep": {
+      "16,4": { object: "essence" }  
+      }  
+    }  
+  },  
+  
+  "The Deep": {  
   "Chamber 1": {
     tiles: {
       "0,1": { object: "badges" },
@@ -1232,12 +1233,12 @@ window.ZM_TILE_META = {
       "16,5": { object: "essence" },
       "17,0": { object: "essence" },
       "17,2": { object: "essence" },
-      "17,6": { object: "essence" }
-    }
-  }
-  },
-
-    "4th of July": {
+      "17,6": { object: "essence" }  
+      }  
+    }  
+  },  
+  
+  "4th of July": {
       "Mine 1": {},
       "Mine 2": {},
       "Mine 3": {},
