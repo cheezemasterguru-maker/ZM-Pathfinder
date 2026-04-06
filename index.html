@@ -111,7 +111,7 @@
         <div class="btn-grid">
           <button id="clearBoardBtn" class="btn-action" onclick="clearBoard()">Clear Board</button>
           <button id="solveBtn" class="btn-solve" onclick="solveBoard()">Solve</button>
-          <button id="downloadPngBtn" class="btn-action" onclick="downloadPNG()">Download PNG</button>
+          <button id="downloadPngBtn" class="btn-action" onclick="downloadPNGFixed()">Download PNG</button>
 
           <button id="sampleGridBtn" class="btn-action" onclick="loadSampleGrid()">Sample Grid</button>
           <button id="pasteClipboardBtn" class="btn-action" onclick="pasteFromClipboard()">Paste From Clipboard</button>
@@ -143,7 +143,7 @@
       <div class="card">
         <div class="section-title" id="previewTitle">Preview</div>
         <div class="preview-wrap">
-          <canvas id="previewCanvas"></canvas>
+          <canvas id="previewCanvas" width="700" height="1200"></canvas>
         </div>
       </div>
     </div>
@@ -163,63 +163,20 @@
     </div>
   </div>
 
-  <div id="routeReportOverlay" class="overlay" onclick="closeRouteReportModal()">
-    <div class="modal modal-box" onclick="event.stopPropagation()">
-      <button class="modal-close" onclick="closeRouteReportModal()">×</button>
-      <h2 id="routeReportModalTitle">Route Report</h2>
-      <div id="routeReportBody" class="help-content"></div>
-      <div class="modal-actions">
-        <button id="routeReportCloseBtn" class="btn-action" onclick="closeRouteReportModal()">Close</button>
-      </div>
-    </div>
-  </div>
+  <script>
+    function downloadPNGFixed() {
+      const canvas = document.getElementById("previewCanvas");
 
-  <div id="solverHelpOverlay" class="overlay" onclick="closeSolverHelp()">
-    <div class="modal modal-box" onclick="event.stopPropagation()">
-      <button class="modal-close" onclick="closeSolverHelp()">×</button>
-      <h2 id="solverHelpModalTitle">Solver Help</h2>
-      <div id="solverHelpBody" class="help-content"></div>
-    </div>
-  </div>
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        alert("Nothing to export.");
+        return;
+      }
 
-  <div id="objectPrioritiesOverlay" class="overlay" onclick="closeObjectPrioritiesModal()">
-    <div class="modal modal-box" onclick="event.stopPropagation()">
-      <button class="modal-close" onclick="closeObjectPrioritiesModal()">×</button>
-      <h2>Object Priorities</h2>
-
-      <div id="objectPrioritiesIntro" class="help-content" style="margin-bottom: 12px;">
-        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
-          <button
-            id="standardSolverModeBtn"
-            class="btn-solve"
-            type="button"
-            onclick="setSolverMode('standard');"
-          >
-            Standard Solver
-          </button>
-
-          <button
-            id="customSolverModeBtn"
-            class="btn-action"
-            type="button"
-            onclick="setSolverMode('custom');"
-          >
-            Custom Solver
-          </button>
-        </div>
-
-        <div id="objectPrioritiesModeNote">
-          Standard rules are active. Custom objective toggles are disabled.
-        </div>
-      </div>
-
-      <div id="objectPrioritiesBody" class="help-content"></div>
-
-      <div class="modal-actions">
-        <button id="objectPrioritiesResetBtn" class="btn-action" onclick="resetObjectPriorities()">Reset</button>
-        <button id="objectPrioritiesCloseBtn" class="btn-action" onclick="closeObjectPrioritiesModal()">Close</button>
-      </div>
-    </div>
-  </div>
+      const link = document.createElement("a");
+      link.download = "zm-pathfinder.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    }
+  </script>
 </body>
 </html>
