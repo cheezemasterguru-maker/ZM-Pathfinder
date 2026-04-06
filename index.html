@@ -143,7 +143,7 @@
       <div class="card">
         <div class="section-title" id="previewTitle">Preview</div>
         <div class="preview-wrap">
-          <canvas id="previewCanvas" width="700" height="1200"></canvas>
+          <canvas id="previewCanvas"></canvas>
         </div>
       </div>
     </div>
@@ -163,18 +163,90 @@
     </div>
   </div>
 
+  <div id="routeReportOverlay" class="overlay" onclick="closeRouteReportModal()">
+    <div class="modal modal-box" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeRouteReportModal()">×</button>
+      <h2 id="routeReportModalTitle">Route Report</h2>
+      <div id="routeReportBody" class="help-content"></div>
+      <div class="modal-actions">
+        <button id="routeReportCloseBtn" class="btn-action" onclick="closeRouteReportModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="solverHelpOverlay" class="overlay" onclick="closeSolverHelp()">
+    <div class="modal modal-box" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeSolverHelp()">×</button>
+      <h2 id="solverHelpModalTitle">Solver Help</h2>
+      <div id="solverHelpBody" class="help-content"></div>
+    </div>
+  </div>
+
+  <div id="objectPrioritiesOverlay" class="overlay" onclick="closeObjectPrioritiesModal()">
+    <div class="modal modal-box" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeObjectPrioritiesModal()">×</button>
+      <h2>Object Priorities</h2>
+
+      <div id="objectPrioritiesIntro" class="help-content" style="margin-bottom: 12px;">
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+          <button
+            id="standardSolverModeBtn"
+            class="btn-solve"
+            type="button"
+            onclick="setSolverMode('standard');"
+          >
+            Standard Solver
+          </button>
+
+          <button
+            id="customSolverModeBtn"
+            class="btn-action"
+            type="button"
+            onclick="setSolverMode('custom');"
+          >
+            Custom Solver
+          </button>
+        </div>
+
+        <div id="objectPrioritiesModeNote">
+          Standard rules are active. Custom objective toggles are disabled.
+        </div>
+      </div>
+
+      <div id="objectPrioritiesBody" class="help-content"></div>
+
+      <div class="modal-actions">
+        <button id="objectPrioritiesResetBtn" class="btn-action" onclick="resetObjectPriorities()">Reset</button>
+        <button id="objectPrioritiesCloseBtn" class="btn-action" onclick="closeObjectPrioritiesModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     function downloadPNGFixed() {
       const canvas = document.getElementById("previewCanvas");
-
-      if (!canvas || canvas.width === 0 || canvas.height === 0) {
-        alert("Nothing to export.");
+      if (!canvas) {
+        alert("Preview canvas not found.");
         return;
       }
 
+      const exportCanvas = document.createElement("canvas");
+      exportCanvas.width = canvas.width;
+      exportCanvas.height = canvas.height;
+
+      const ctx = exportCanvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+      ctx.drawImage(canvas, 0, 0);
+
       const link = document.createElement("a");
-      link.download = "zm-pathfinder.png";
-      link.href = canvas.toDataURL("image/png");
+      const safeTitle = ((document.getElementById("titleInput")?.value || "zm-pathfinder")
+        .trim()
+        .replace(/[^\w\- ]+/g, "")
+        .replace(/\s+/g, "_"));
+
+      link.download = `${safeTitle || "zm-pathfinder"}.png`;
+      link.href = exportCanvas.toDataURL("image/png");
       link.click();
     }
   </script>
