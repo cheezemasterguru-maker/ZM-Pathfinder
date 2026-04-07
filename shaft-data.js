@@ -1,5 +1,6 @@
 window.ZM_SHAFT_DATA = {
   MainDeep: {
+  "DEEP 1": {
     "Chamber 1": [
     { shaftType: "Beryl", level: 33, auto: "C-14" },
     { shaftType: "Quartz", level: 39, auto: "U-13" },
