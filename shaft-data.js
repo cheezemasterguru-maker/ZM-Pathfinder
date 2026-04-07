@@ -1,10 +1,24 @@
 window.ZM_SHAFT_DATA = {
   MainDeep: {
-    "DEEP 1": {
-      "Chamber 1": [],
-      "Chamber 2": [],
-      "Chamber 3": []
-    },
+    "Chamber 1": [
+    { shaftType: "Beryl", level: 33, auto: "C-14" },
+    { shaftType: "Quartz", level: 39, auto: "U-13" },
+    { shaftType: "Amber", level: 41, auto: "C-14" }
+  ],
+
+  "Chamber 2": [
+    { shaftType: "Ametrine", level: 46, auto: "U-12" },
+    { shaftType: "Barite", level: 48, auto: "U-12" },
+    { shaftType: "Obsidian", level: 50, auto: "C-14" },
+    { shaftType: "Sephirot", level: 52, auto: "U-12" }
+  ],
+
+  "Chamber 3": [
+    { shaftType: "Silithium", level: 57, auto: "C-14" },
+    { shaftType: "Sapphire", level: 60, auto: "C-14" },
+    { shaftType: "Morganite", level: 64, auto: "C-14" }
+  ]
+},
     "DEEP 2": {
       "Chamber 1": [],
       "Chamber 2": [],
