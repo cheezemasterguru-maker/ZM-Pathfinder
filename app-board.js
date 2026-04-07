@@ -292,9 +292,18 @@
       const aBottom = Math.max(...a.map(([r]) => r));
       const bBottom = Math.max(...b.map(([r]) => r));
       if (aBottom !== bBottom) return bBottom - aBottom;
+
       const aTop = Math.min(...a.map(([r]) => r));
       const bTop = Math.min(...b.map(([r]) => r));
-      return bTop - aTop;
+      if (aTop !== bTop) return bTop - aTop;
+
+      const aLeft = Math.min(...a.map(([, c]) => c));
+      const bLeft = Math.min(...b.map(([, c]) => c));
+      if (aLeft !== bLeft) return aLeft - bLeft;
+
+      const aRight = Math.max(...a.map(([, c]) => c));
+      const bRight = Math.max(...b.map(([, c]) => c));
+      return aRight - bRight;
     });
 
     return clusters;
