@@ -155,18 +155,170 @@ window.ZM_TILE_META = {
     },
 
     "DEEP 3": {
-      "Chamber 1": { tiles: {} },
-      "Chamber 2": { tiles: {} },
-      "Chamber 3": { tiles: {} },
-      "Chamber 4": { tiles: {} }
+
+      "Chamber 1": {
+        tiles: {
+          "0,2": { object: "essence" },
+          "0,5": { object: "essence" },
+          "1,3": { object: "gems" },
+          "2,1": { object: "badges" },
+          "2,4": { object: "essence" },
+          "3,2": { object: "chest", subtype: "iron" },
+          "4,1": { object: "gems" },
+          "4,4": { object: "chest", subtype: "iron" },
+          "5,0": { object: "gems" },
+          "5,2": { object: "essence" },
+          "5,5": { object: "chest", subtype: "wood" },
+          "6,3": { object: "gems" },
+          "8,2": { object: "badges" },
+          "8,3": { object: "essence" },
+          "8,4": { object: "badges" },
+          "9,3": { object: "badges" },
+          "10,5": { object: "chest", subtype: "wood" }
+        }
+      },
+
+      "Chamber 2": {
+        tiles: {
+          "0,2": { object: "essence" },
+          "0,4": { object: "gems" },
+          "0,6": { object: "chest", subtype: "wood" },
+          "1,2": { object: "chest", subtype: "wood" },
+          "2,4": { object: "gems" },
+          "3,1": { object: "badges" },
+          "3,3": { object: "badges" },
+          "4,2": { object: "badges" },
+          "5,1": { object: "badges" },
+          "5,3": { object: "badges" },
+          "6,4": { object: "gems" },
+          "7,2": { object: "gems" },
+          "7,6": { object: "chest", subtype: "wood" },
+          "8,3": { object: "essence" },
+          "8,4": { object: "essence" },
+          "9,3": { object: "essence" },
+          "9,4": { object: "essence" },
+          "10,0": { object: "chest", subtype: "wood" }
+        }
+      },
+
+      "Chamber 3": {
+        tiles: {
+          "0,1": { object: "chest", subtype: "steel" },
+          "0,4": { object: "badges" },
+          "1,3": { object: "badges" },
+          "1,5": { object: "essence" },
+          "2,0": { object: "gems" },
+          "2,1": { object: "gems" },
+          "2,2": { object: "chest", subtype: "iron" },
+          "3,0": { object: "stickers" },
+          "3,1": { object: "gems" },
+          "3,5": { object: "badges" },
+          "4,2": { object: "badges" },
+          "4,6": { object: "chest", subtype: "wood" },
+          "5,3": { object: "gems" },
+          "6,4": { object: "chest", subtype: "iron" },
+          "7,3": { object: "essence" },
+          "8,2": { object: "essence" },
+          "10,2": { object: "essence" },
+          "11,3": { object: "essence" },
+          "11,6": { object: "chest", subtype: "wood" }
+        }
+      },
+
+      "Chamber 4": {
+        tiles: {
+          "0,3": { object: "gems" },
+          "0,4": { object: "badges" },
+          "1,1": { object: "chest", subtype: "wood" },
+          "1,2": { object: "badges" },
+          "1,4": { object: "essence" },
+          "1,6": { object: "chest", subtype: "silver" },
+          "2,3": { object: "gems" },
+          "3,0": { object: "stickers" },
+          "3,1": { object: "chest", subtype: "steel" },
+          "3,4": { object: "badges" },
+          "4,3": { object: "gems" },
+          "5,2": { object: "badges" },
+          "6,3": { object: "chest", subtype: "wood" },
+          "6,5": { object: "gems" },
+          "7,2": { object: "badges" },
+          "7,3": { object: "gems" },
+          "7,4": { object: "badges" },
+          "8,0": { object: "chest", subtype: "iron" },
+          "8,3": { object: "badges" },
+          "9,3": { object: "essence" },
+          "10,1": { object: "essence" },
+          "10,2": { object: "chest", subtype: "wood" },
+          "10,4": { object: "essence" },
+          "11,0": { object: "essence" }
+        }
+      }
     },
 
     "DEEP 4": {
-      "Chamber 1": { tiles: {} },
-      "Chamber 2": { tiles: {} },
-      "Chamber 3": { tiles: {} }
-    }
-  },
+
+      "Chamber 1": {
+        tiles: {
+          "0,2": { object: "gems" },
+          "0,5": { object: "chest", subtype: "iron" },
+          "1,3": { object: "essence" },
+          "1,4": { object: "essence" },
+          "2,2": { object: "gems" },
+          "3,3": { object: "badges" },
+          "4,0": { object: "chest", subtype: "wood" },
+          "4,2": { object: "badges" },
+          "4,3": { object: "chest", subtype: "iron" },
+          "4,4": { object: "badges" },
+          "5,3": { object: "badges" },
+          "5,6": { object: "gems" },
+          "6,3": { object: "essence" },
+          "7,3": { object: "chest", subtype: "wood" },
+          "7,4": { object: "essence" },
+          "9,2": { object: "badges" }
+        }
+      },
+
+      "Chamber 2": {
+        tiles: {
+          "0,1": { object: "gems" },
+          "0,4": { object: "chest", subtype: "wood" },
+          "1,3": { object: "badges" },
+          "1,6": { object: "badges" },
+          "2,2": { object: "gems" },
+          "2,4": { object: "essence" },
+          "4,0": { object: "essence" },
+          "4,2": { object: "badges" },
+          "5,3": { object: "gems" },
+          "6,4": { object: "chest", subtype: "wood" },
+          "6,6": { object: "stickers" },
+          "7,2": { object: "essence" },
+          "7,3": { object: "essence" },
+          "7,5": { object: "badges" }
+        }
+      },
+
+      "Chamber 3": {
+        tiles: {
+          "0,2": { object: "gems" },
+          "0,6": { object: "stickers" },
+          "1,3": { object: "chest", subtype: "wood" },
+          "1,4": { object: "gems" },
+          "3,2": { object: "gems" },
+          "3,3": { object: "chest", subtype: "wood" },
+          "4,1": { object: "chest", subtype: "iron" },
+          "5,3": { object: "essence" },
+          "5,4": { object: "essence" },
+          "6,3": { object: "essence" },
+          "6,4": { object: "essence" },
+          "7,2": { object: "badges" },
+          "7,3": { object: "badges" },
+          "8,2": { object: "badges" },
+          "8,3": { object: "badges" },
+          "9,1": { object: "gems" },
+          "9,4": { object: "chest", subtype: "wood" }
+        }
+      }
+    },
 
   Main: {
     "Treasures in Ice": {
