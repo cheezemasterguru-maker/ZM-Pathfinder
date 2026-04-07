@@ -126,7 +126,8 @@ window.ZM_MAP_DATA = {
       [51,64,50,49,61,"X","X"]
     ]
   }
-},
+    }
+  },
 
   Main: {
     "Treasures in Ice": {
