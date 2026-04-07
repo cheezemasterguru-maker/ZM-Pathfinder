@@ -150,6 +150,8 @@ window.ZM_TILE_META = {
           "10,2": { object: "badges" },
           "10,3": { object: "chest", subtype: "wood" },
           "10,6": { object: "badges" }
+        }
+      }
     },
 
     "DEEP 3": {
