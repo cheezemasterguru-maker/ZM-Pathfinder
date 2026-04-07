@@ -318,8 +318,9 @@ window.ZM_TILE_META = {
           "9,4": { object: "chest", subtype: "wood" }
         }
       }
-    },
-    
+    }
+  },
+
   Main: {
     "Treasures in Ice": {
       "Chamber 1": {
