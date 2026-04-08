@@ -295,6 +295,74 @@ button{
   color:#f3f6ff;
 }
 
+/* Steel Showdown */
+.steel-showdown-card{
+  margin-top:-4px;
+}
+
+.steel-showdown-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:10px;
+  align-items:end;
+  margin-top:6px;
+}
+
+.steel-display-box{
+  width:100%;
+  min-height:46px;
+  border-radius:14px;
+  padding:8px 12px;
+  background:var(--panel2);
+  color:var(--text);
+  border:1px solid #36406a;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:20px;
+  font-weight:800;
+}
+
+.steel-gear-icon{
+  width:24px;
+  height:24px;
+  object-fit:contain;
+  flex:0 0 auto;
+}
+
+.steel-calc-field{
+  display:flex;
+  flex-direction:column;
+}
+
+.steel-calc-btn{
+  width:100%;
+}
+
+.steel-total-row{
+  margin-top:12px;
+  padding:12px 14px;
+  background:#131a30;
+  border:1px solid #2a355f;
+  border-radius:16px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.steel-total-label{
+  color:#f3f6ff;
+  font-size:16px;
+  font-weight:800;
+}
+
+.steel-total-value{
+  color:#39ff5a;
+  font-size:22px;
+  font-weight:900;
+}
+
 .editor-card{
   position:relative;
 }
@@ -567,6 +635,18 @@ canvas{
   #loadMapBtn{
     flex:0 0 148px;
     width:148px;
+  }
+
+  .steel-showdown-grid{
+    grid-template-columns:1fr;
+  }
+
+  .steel-total-label{
+    font-size:15px;
+  }
+
+  .steel-total-value{
+    font-size:20px;
   }
 }
 
