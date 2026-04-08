@@ -300,43 +300,51 @@ button{
   margin-top:-4px;
 }
 
-.steel-showdown-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:10px;
-  align-items:end;
-  margin-top:6px;
-}
-
-.steel-display-box{
-  width:100%;
-  min-height:46px;
-  border-radius:14px;
-  padding:8px 12px;
-  background:var(--panel2);
-  color:var(--text);
-  border:1px solid #36406a;
+.steel-showdown-title{
   display:flex;
   align-items:center;
-  gap:10px;
-  font-size:20px;
-  font-weight:800;
+  justify-content:center;
+  gap:12px;
+  width:100%;
+  margin:2px 0 12px;
+  text-align:center;
 }
 
-.steel-gear-icon{
+.steel-showdown-title span{
+  font-size:20px;
+  font-weight:800;
+  line-height:1.1;
+  text-align:center;
+}
+
+.steel-title-icon{
   width:24px;
   height:24px;
   object-fit:contain;
   flex:0 0 auto;
 }
 
-.steel-calc-field{
-  display:flex;
-  flex-direction:column;
+.steel-showdown-controls{
+  display:grid;
+  grid-template-columns:minmax(110px, 160px) 1fr;
+  gap:10px;
+  align-items:end;
+  margin-top:6px;
+}
+
+.steel-showdown-controls .field{
+  margin:0;
+}
+
+.steel-showdown-controls .field label{
+  margin-bottom:6px;
 }
 
 .steel-calc-btn{
   width:100%;
+  min-height:46px;
+  border-radius:14px;
+  font-size:16px;
 }
 
 .steel-total-row{
@@ -351,7 +359,18 @@ button{
   flex-wrap:wrap;
 }
 
-.steel-total-label{
+.steel-gear-icon{
+  width:24px;
+  height:24px;
+  object-fit:contain;
+  flex:0 0 auto;
+}
+
+.steel-total-text{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  flex-wrap:wrap;
   color:#f3f6ff;
   font-size:16px;
   font-weight:800;
@@ -637,11 +656,15 @@ canvas{
     width:148px;
   }
 
-  .steel-showdown-grid{
-    grid-template-columns:1fr;
+  .steel-showdown-controls{
+    grid-template-columns:1fr 1fr;
   }
 
-  .steel-total-label{
+  .steel-showdown-title span{
+    font-size:18px;
+  }
+
+  .steel-total-text{
     font-size:15px;
   }
 
@@ -673,5 +696,18 @@ canvas{
   .language-picker select{
     font-size:12px;
     padding:6px 8px;
+  }
+
+  .steel-showdown-controls{
+    grid-template-columns:1fr;
+  }
+
+  .steel-showdown-title{
+    gap:10px;
+  }
+
+  .steel-title-icon{
+    width:22px;
+    height:22px;
   }
 }
