@@ -1176,6 +1176,116 @@ function updateDifficultyMeter() {
   meter.style.display = "flex";
 }
 
+/* Steel Showdown */
+
+function getSteelShowdownMultiplier() {
+  const value = Number(document.getElementById("steelMultiplier")?.value || 1);
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
+function getSteelShowdownGateValue() {
+  const gateType = document.getElementById("gateType")?.value || "standard";
+  return gateType === "end" ? 10 : 5;
+}
+
+function getSteelShowdownBubbleCount() {
+  let count = 0;
+  for (let r = 0; r < currentRowCount; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r]?.[c] === "B") count += 1;
+    }
+  }
+  return count;
+}
+
+function getSteelShowdownShaftClusterCount() {
+  if (typeof getOrderedPhysicalShaftClusters === "function") {
+    const clusters = getOrderedPhysicalShaftClusters();
+    return Array.isArray(clusters) ? clusters.length : 0;
+  }
+
+  const seen = new Set();
+  let clusterCount = 0;
+
+  for (let r = 0; r < currentRowCount; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r]?.[c] !== "S") continue;
+
+      const key = `${r},${c}`;
+      if (seen.has(key)) continue;
+
+      clusterCount += 1;
+      const stack = [[r, c]];
+
+      while (stack.length) {
+        const [rr, cc] = stack.pop();
+        const k = `${rr},${cc}`;
+
+        if (rr < 0 || cc < 0 || rr >= currentRowCount || cc >= COLS) continue;
+        if (grid[rr]?.[cc] !== "S" || seen.has(k)) continue;
+
+        seen.add(k);
+        stack.push([rr + 1, cc], [rr - 1, cc], [rr, cc + 1], [rr, cc - 1]);
+      }
+    }
+  }
+
+  return clusterCount;
+}
+
+function getSteelShowdownObjectCount() {
+  let count = 0;
+
+  if (typeof getTileMeta !== "function") return 0;
+
+  for (let r = 0; r < currentRowCount; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const val = grid[r]?.[c];
+
+      if (val === "" || val === null || val === undefined) continue;
+      if (val === "X" || val === "S" || val === "B") continue;
+
+      const meta = getTileMeta(
+        currentMapContext.eventType,
+        currentMapContext.eventName,
+        currentMapContext.chamberName,
+        r,
+        c
+      );
+
+      if (meta?.object) count += 1;
+    }
+  }
+
+  return count;
+}
+
+function updateSteelShowdownDisplay(baseTotal, finalTotal) {
+  const baseEl = document.getElementById("steelBaseGears");
+  const totalEl = document.getElementById("steelTotalGears");
+
+  if (baseEl) baseEl.textContent = String(baseTotal);
+  if (totalEl) totalEl.textContent = String(finalTotal);
+}
+
+function calculateSteelShowdown() {
+  const objectCount = getSteelShowdownObjectCount();
+  const bubbleCount = getSteelShowdownBubbleCount();
+  const shaftClusterCount = getSteelShowdownShaftClusterCount();
+  const gateValue = getSteelShowdownGateValue();
+  const multiplier = getSteelShowdownMultiplier();
+
+  const baseTotal =
+    objectCount +
+    (bubbleCount * 5) +
+    (shaftClusterCount * 3) +
+    gateValue;
+
+  const finalTotal = baseTotal * multiplier;
+
+  updateSteelShowdownDisplay(baseTotal, finalTotal);
+}
+
 function init() {
   initGridData();
 
@@ -1213,6 +1323,7 @@ function init() {
 
   ensureDifficultyMeter();
   updateDifficultyMeter();
+  updateSteelShowdownDisplay(0, 0);
 
   if (typeof scanActiveObjectTypes === "function") {
     scanActiveObjectTypes();
@@ -1234,5 +1345,6 @@ window.handleEventMineChange = handleEventMineChange;
 window.handleEventChamberChange = handleEventChamberChange;
 window.loadSelectedMap = loadSelectedMap;
 window.handleTitleInputChange = handleTitleInputChange;
+window.calculateSteelShowdown = calculateSteelShowdown;
 
 window.addEventListener("load", init);
