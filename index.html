@@ -123,6 +123,42 @@
         <div id="report" class="report">Ready. Grid and solver are wired together.</div>
       </div>
 
+      <div class="card steel-showdown-card">
+        <div class="section-title">Steel Showdown</div>
+
+        <div class="steel-showdown-grid">
+          <div class="field">
+            <label for="steelGearsDisplay">Gears</label>
+            <div id="steelGearsDisplay" class="steel-display-box">
+              <img src="gear-icon.png" alt="Gears" class="steel-gear-icon">
+              <span id="steelBaseGears">0</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="steelMultiplier">Multiplier</label>
+            <select id="steelMultiplier">
+              <option value="1" selected>1x</option>
+              <option value="2">2x</option>
+              <option value="3">3x</option>
+              <option value="5">5x</option>
+              <option value="10">10x</option>
+            </select>
+          </div>
+
+          <div class="field steel-calc-field">
+            <label>&nbsp;</label>
+            <button id="steelCalculateBtn" class="btn-success steel-calc-btn" onclick="calculateSteelShowdown()">Calculate</button>
+          </div>
+        </div>
+
+        <div class="steel-total-row">
+          <img src="gear-icon.png" alt="Gears" class="steel-gear-icon">
+          <span class="steel-total-label">Total Gears = </span>
+          <span id="steelTotalGears" class="steel-total-value">0</span>
+        </div>
+      </div>
+
       <div class="card editor-card">
         <div class="sticky-tools">
           <div class="section-title" id="editableBoardTitle" style="margin-top:0;">Editable Board</div>
