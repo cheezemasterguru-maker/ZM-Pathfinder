@@ -1242,6 +1242,8 @@ function getSteelShowdownObjectCount() {
     for (let c = 0; c < COLS; c++) {
       const val = grid[r]?.[c];
 
+      // Skip non-playable tiles
+      if (val === "" || val === null || val === undefined) continue;
       if (val === "X" || val === "S" || val === "B") continue;
 
       const meta = getTileMeta(
@@ -1252,9 +1254,15 @@ function getSteelShowdownObjectCount() {
         c
       );
 
-      if (meta && meta.object) {
-        count += 1;
-      }
+      // ✅ ONLY count real objects (NOT plain tiles)
+      if (!meta || !meta.object) continue;
+
+      const type = meta.object.type;
+
+      // ❗ Ignore "plain" tiles (this is your bug)
+      if (type === "plain") continue;
+
+      count += 1;
     }
   }
 
