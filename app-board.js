@@ -1,6 +1,12 @@
 (function () {
   "use strict";
 
+  function resetSteelShowdownResult() {
+    if (typeof window.updateSteelShowdownDisplay === "function") {
+      window.updateSteelShowdownDisplay(0, 0);
+    }
+  }
+
   function renderRouteAudit(routeAnalysis) {
     const body = getRouteReportBody();
     if (!body) return;
@@ -560,6 +566,7 @@
     }
 
     resetSolve();
+    resetSteelShowdownResult();
     render();
     renderPreview();
   }
@@ -593,6 +600,7 @@
       }
 
       resetSolve();
+      resetSteelShowdownResult();
       render();
       renderPreview();
     };
@@ -663,6 +671,7 @@
     }
 
     resetSolve();
+    resetSteelShowdownResult();
     render();
     renderPreview();
     setReport(formatT("pastedIntoBoard", { row: startR + 1, col: startC + 1 }));
@@ -689,6 +698,7 @@
     }
 
     resetSolve();
+    resetSteelShowdownResult();
     render();
     renderPreview();
     if (updateReport) setReport(t("boardCleared"));
@@ -729,6 +739,7 @@
     }
 
     resetSolve();
+    resetSteelShowdownResult();
     render();
     renderPreview();
     setReport(t("sampleLoaded"));
@@ -742,41 +753,41 @@
       (typeof getSolverMode === "function" ? getSolverMode() : "standard");
 
     if (currentMode !== "custom") return items;
-    if (typeof scanActiveObjectTypes !== "function") return items;
+    if (typeof scanActiveObjectTypes === "function") {
+      const active = scanActiveObjectTypes() || [];
+      const priorityOrder = ["priority", "normal", "avoid"];
 
-    const active = scanActiveObjectTypes() || [];
-    const priorityOrder = ["priority", "normal", "avoid"];
+      function labelForSetting(setting) {
+        if (setting === "priority") return "Priority";
+        if (setting === "avoid") return "Avoid";
+        return "Normal";
+      }
 
-    function labelForSetting(setting) {
-      if (setting === "priority") return "Priority";
-      if (setting === "avoid") return "Avoid";
-      return "Normal";
-    }
-
-    active
-      .filter((type) => typeof getObjectPriorityValue === "function")
-      .map((type) => ({
-        type,
-        setting: getObjectPriorityValue(type)
-      }))
-      .sort((a, b) => {
-        const pa = priorityOrder.indexOf(a.setting);
-        const pb = priorityOrder.indexOf(b.setting);
-        if (pa !== pb) return pa - pb;
-        const la = typeof formatObjectPriorityLabel === "function" ? formatObjectPriorityLabel(a.type) : a.type;
-        const lb = typeof formatObjectPriorityLabel === "function" ? formatObjectPriorityLabel(b.type) : b.type;
-        return la.localeCompare(lb);
-      })
-      .forEach((item) => {
-        items.push({
-          type: item.type,
-          label: typeof formatObjectPriorityLabel === "function"
-            ? formatObjectPriorityLabel(item.type)
-            : item.type,
-          setting: item.setting,
-          settingLabel: labelForSetting(item.setting)
+      active
+        .filter((type) => typeof getObjectPriorityValue === "function")
+        .map((type) => ({
+          type,
+          setting: getObjectPriorityValue(type)
+        }))
+        .sort((a, b) => {
+          const pa = priorityOrder.indexOf(a.setting);
+          const pb = priorityOrder.indexOf(b.setting);
+          if (pa !== pb) return pa - pb;
+          const la = typeof formatObjectPriorityLabel === "function" ? formatObjectPriorityLabel(a.type) : a.type;
+          const lb = typeof formatObjectPriorityLabel === "function" ? formatObjectPriorityLabel(b.type) : b.type;
+          return la.localeCompare(lb);
+        })
+        .forEach((item) => {
+          items.push({
+            type: item.type,
+            label: typeof formatObjectPriorityLabel === "function"
+              ? formatObjectPriorityLabel(item.type)
+              : item.type,
+            setting: item.setting,
+            settingLabel: labelForSetting(item.setting)
+          });
         });
-      });
+    }
 
     return items;
   }
@@ -1385,4 +1396,5 @@
   window.downloadPNG = downloadPNG;
   window.getVisibleGridSlice = getVisibleGridSlice;
   window.renderRouteAudit = renderRouteAudit;
+  window.getOrderedPhysicalShaftClusters = getOrderedPhysicalShaftClusters;
 })();
