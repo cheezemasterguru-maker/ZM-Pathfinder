@@ -1233,6 +1233,65 @@ function getSteelShowdownShaftClusterCount() {
   return clusterCount;
 }
 
+/* Steel Showdown */
+
+function getSteelShowdownMultiplier() {
+  const value = Number(document.getElementById("steelMultiplier")?.value || 1);
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
+function getSteelShowdownGateValue() {
+  const gateType = document.getElementById("gateType")?.value || "standard";
+  return gateType === "end" ? 10 : 5;
+}
+
+function getSteelShowdownBubbleCount() {
+  let count = 0;
+
+  for (let r = 0; r < currentRowCount; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r]?.[c] === "B") count += 1;
+    }
+  }
+
+  return count;
+}
+
+function getSteelShowdownShaftClusterCount() {
+  if (typeof getOrderedPhysicalShaftClusters === "function") {
+    const clusters = getOrderedPhysicalShaftClusters();
+    return Array.isArray(clusters) ? clusters.length : 0;
+  }
+
+  const seen = new Set();
+  let clusterCount = 0;
+
+  for (let r = 0; r < currentRowCount; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r]?.[c] !== "S") continue;
+
+      const key = `${r},${c}`;
+      if (seen.has(key)) continue;
+
+      clusterCount += 1;
+      const stack = [[r, c]];
+
+      while (stack.length) {
+        const [rr, cc] = stack.pop();
+        const k = `${rr},${cc}`;
+
+        if (rr < 0 || cc < 0 || rr >= currentRowCount || cc >= COLS) continue;
+        if (grid[rr]?.[cc] !== "S" || seen.has(k)) continue;
+
+        seen.add(k);
+        stack.push([rr + 1, cc], [rr - 1, cc], [rr, cc + 1], [rr, cc - 1]);
+      }
+    }
+  }
+
+  return clusterCount;
+}
+
 function getSteelShowdownObjectCount() {
   let count = 0;
 
@@ -1242,9 +1301,9 @@ function getSteelShowdownObjectCount() {
     for (let c = 0; c < COLS; c++) {
       const val = grid[r]?.[c];
 
-      // Skip non-playable tiles
       if (val === "" || val === null || val === undefined) continue;
       if (val === "X" || val === "S" || val === "B") continue;
+      if (typeof val !== "number") continue;
 
       const meta = getTileMeta(
         currentMapContext.eventType,
@@ -1254,13 +1313,8 @@ function getSteelShowdownObjectCount() {
         c
       );
 
-      // ✅ ONLY count real objects (NOT plain tiles)
       if (!meta || !meta.object) continue;
-
-      const type = meta.object.type;
-
-      // ❗ Ignore "plain" tiles (this is your bug)
-      if (type === "plain") continue;
+      if (meta.object === "plain") continue;
 
       count += 1;
     }
