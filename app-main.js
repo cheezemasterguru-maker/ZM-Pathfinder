@@ -1242,7 +1242,6 @@ function getSteelShowdownObjectCount() {
     for (let c = 0; c < COLS; c++) {
       const val = grid[r]?.[c];
 
-      if (val === "" || val === null || val === undefined) continue;
       if (val === "X" || val === "S" || val === "B") continue;
 
       const meta = getTileMeta(
@@ -1253,7 +1252,9 @@ function getSteelShowdownObjectCount() {
         c
       );
 
-      if (meta?.object) count += 1;
+      if (meta && meta.object) {
+        count += 1;
+      }
     }
   }
 
