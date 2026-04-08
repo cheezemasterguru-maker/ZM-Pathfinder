@@ -18,7 +18,7 @@
   <script src="auth.js?v=222" defer></script>
   <script src="timing-tables.js?v=111"></script>
 
-  <script src="app-main.js?v=5555" defer></script>
+  <script src="app-main.js?v=5402" defer></script>
   <script src="app-board.js?v=5402" defer></script>
   <script src="app-solver.js?v=5402" defer></script>
 </head>
@@ -124,18 +124,13 @@
       </div>
 
       <div class="card steel-showdown-card">
-        <div class="section-title">Steel Showdown</div>
+        <div class="steel-showdown-title">
+          <img src="gear-icon.png" alt="Gears" class="steel-gear-icon steel-title-icon">
+          <span>Steel Showdown</span>
+        </div>
 
-        <div class="steel-showdown-grid">
-          <div class="field">
-            <label for="steelGearsDisplay">Gears</label>
-            <div id="steelGearsDisplay" class="steel-display-box">
-              <img src="gear-icon.png" alt="Gears" class="steel-gear-icon">
-              <span id="steelBaseGears">0</span>
-            </div>
-          </div>
-
-          <div class="field">
+        <div class="steel-showdown-controls">
+          <div class="field steel-multiplier-field">
             <label for="steelMultiplier">Multiplier</label>
             <select id="steelMultiplier">
               <option value="1" selected>1x</option>
@@ -154,8 +149,14 @@
 
         <div class="steel-total-row">
           <img src="gear-icon.png" alt="Gears" class="steel-gear-icon">
-          <span class="steel-total-label">Total Gears = </span>
-          <span id="steelTotalGears" class="steel-total-value">0</span>
+          <div class="steel-total-text">
+            <span class="steel-inline-label">Gears - </span>
+            <span id="steelBaseGears" class="steel-inline-value">0</span>
+            <span class="steel-inline-label"> x </span>
+            <span id="steelShownMultiplier" class="steel-inline-value">1x</span>
+            <span class="steel-inline-label"> = </span>
+            <span id="steelTotalGears" class="steel-total-value">0</span>
+          </div>
         </div>
       </div>
 
