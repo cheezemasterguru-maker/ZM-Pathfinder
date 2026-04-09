@@ -1,6 +1,20 @@
 (function () {
   "use strict";
 
+  const CUSTOM_META_STORE_KEY = "__ZM_CUSTOM_TILE_META_STORE__";
+  const PAINTER_VALUE_KEY = "__ZM_PAINTER_OBJECT_VALUE__";
+
+  const originalGetTileMeta =
+    typeof window.getTileMeta === "function" ? window.getTileMeta.bind(window) : null;
+
+  if (!window[CUSTOM_META_STORE_KEY]) {
+    window[CUSTOM_META_STORE_KEY] = {};
+  }
+
+  if (!window[PAINTER_VALUE_KEY]) {
+    window[PAINTER_VALUE_KEY] = "plain";
+  }
+
   function resetSteelShowdownResult() {
     if (typeof window.updateSteelShowdownDisplay === "function") {
       window.updateSteelShowdownDisplay(0, 0);
@@ -11,7 +25,9 @@
   }
 
   function getPainterButtons() {
-    return Array.from(document.querySelectorAll(".btn-object, [onclick*=\"setPainterObject('plain')\"]"));
+    return Array.from(
+      document.querySelectorAll(".btn-object, [onclick*=\"setPainterObject('plain')\"]")
+    );
   }
 
   function clearPainterButtonActiveState() {
@@ -39,8 +55,8 @@
     const activeTool = document.getElementById(`tool-${tool}`);
     if (activeTool) activeTool.classList.add("tool-active");
 
-    if (tool === "painter" && typeof window.getPainterObject === "function") {
-      setActivePainterButtonByValue(window.getPainterObject() || "plain");
+    if (tool === "painter") {
+      setActivePainterButtonByValue(getPainterObject());
     } else {
       clearPainterButtonActiveState();
     }
@@ -55,6 +71,116 @@
     resetSteelShowdownResult();
     render();
     renderPreview();
+  }
+
+  function getContextMetaKey() {
+    return JSON.stringify({
+      eventType: currentMapContext?.eventType || null,
+      eventName: currentMapContext?.eventName || null,
+      chamberName: currentMapContext?.chamberName || null,
+      eventMine: currentMapContext?.eventMine || null,
+      title: String(currentPreviewTitle || document.getElementById("titleInput")?.value || "Gate 1")
+    });
+  }
+
+  function getCustomMetaBucket(createIfMissing = false) {
+    const store = window[CUSTOM_META_STORE_KEY];
+    const key = getContextMetaKey();
+
+    if (!store[key] && createIfMissing) {
+      store[key] = {};
+    }
+
+    return store[key] || null;
+  }
+
+  function getCellMetaKey(r, c) {
+    return `${r},${c}`;
+  }
+
+  function cloneMeta(meta) {
+    if (!meta || typeof meta !== "object") return meta;
+    return JSON.parse(JSON.stringify(meta));
+  }
+
+  function getBaseTileMeta(eventType, eventName, chamberName, r, c) {
+    if (!originalGetTileMeta) return null;
+    return originalGetTileMeta(eventType, eventName, chamberName, r, c) || null;
+  }
+
+  function getMergedTileMeta(eventType, eventName, chamberName, r, c) {
+    const baseMeta = getBaseTileMeta(eventType, eventName, chamberName, r, c);
+    const bucket = getCustomMetaBucket(false);
+    const customMeta = bucket ? bucket[getCellMetaKey(r, c)] : undefined;
+
+    if (customMeta === undefined) {
+      return baseMeta;
+    }
+
+    if (customMeta && customMeta.__clear === true) {
+      return null;
+    }
+
+    return customMeta || null;
+  }
+
+  function getPainterObject() {
+    return window[PAINTER_VALUE_KEY] || "plain";
+  }
+
+  function setPainterObjectValue(value) {
+    window[PAINTER_VALUE_KEY] = value || "plain";
+    return window[PAINTER_VALUE_KEY];
+  }
+
+  function parsePainterValue(value) {
+    if (!value || value === "plain") return null;
+
+    if (value.includes(":")) {
+      const [object, subtype] = value.split(":");
+      return { object, subtype };
+    }
+
+    return { object: value };
+  }
+
+  function applyPainterObjectToTile(r, c) {
+    if (typeof grid?.[r]?.[c] !== "number") return;
+
+    const bucket = getCustomMetaBucket(true);
+    const parsed = parsePainterValue(getPainterObject());
+
+    if (!parsed) {
+      bucket[getCellMetaKey(r, c)] = { __clear: true };
+      return;
+    }
+
+    bucket[getCellMetaKey(r, c)] = parsed;
+  }
+
+  function clearSelectedTileMeta(r = lastSelected.r, c = lastSelected.c, shouldRefresh = true) {
+    const bucket = getCustomMetaBucket(true);
+    bucket[getCellMetaKey(r, c)] = { __clear: true };
+
+    if (shouldRefresh) {
+      resetRouteAndRefresh();
+    }
+  }
+
+  function clearAllBoardMeta(shouldRefresh = true) {
+    const bucket = getCustomMetaBucket(true);
+
+    for (let r = 0; r < currentRowCount; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (typeof grid?.[r]?.[c] === "number") {
+          bucket[getCellMetaKey(r, c)] = { __clear: true };
+        }
+      }
+    }
+
+    if (shouldRefresh) {
+      resetRouteAndRefresh();
+    }
   }
 
   function renderRouteAudit(routeAnalysis) {
@@ -512,7 +638,7 @@
       for (let c = 0; c < COLS; c++) {
         const cell = document.createElement("div");
         const val = grid[r][c];
-        const meta = getTileMeta(
+        const meta = getMergedTileMeta(
           currentMapContext.eventType,
           currentMapContext.eventName,
           currentMapContext.chamberName,
@@ -593,16 +719,14 @@
 
     if (tool === "delete") {
       grid[r][c] = "";
-      if (typeof window.clearSelectedTileMeta === "function") {
-        window.clearSelectedTileMeta(r, c);
-      }
+      clearSelectedTileMeta(r, c, false);
       resetRouteAndRefresh();
       return;
     }
 
     if (tool === "painter") {
-      if (typeof grid[r][c] === "number" && typeof window.applyPainterObjectToTile === "function") {
-        window.applyPainterObjectToTile(r, c);
+      if (typeof grid[r][c] === "number") {
+        applyPainterObjectToTile(r, c);
       }
       resetRouteAndRefresh();
       return;
@@ -736,9 +860,7 @@
       eventMine: null
     };
 
-    if (typeof window.clearAllBoardMeta === "function") {
-      window.clearAllBoardMeta(false);
-    }
+    clearAllBoardMeta(false);
 
     resetSolve();
     resetSteelShowdownResult();
@@ -809,16 +931,23 @@
           const pa = priorityOrder.indexOf(a.setting);
           const pb = priorityOrder.indexOf(b.setting);
           if (pa !== pb) return pa - pb;
-          const la = typeof formatObjectPriorityLabel === "function" ? formatObjectPriorityLabel(a.type) : a.type;
-          const lb = typeof formatObjectPriorityLabel === "function" ? formatObjectPriorityLabel(b.type) : b.type;
+          const la =
+            typeof formatObjectPriorityLabel === "function"
+              ? formatObjectPriorityLabel(a.type)
+              : a.type;
+          const lb =
+            typeof formatObjectPriorityLabel === "function"
+              ? formatObjectPriorityLabel(b.type)
+              : b.type;
           return la.localeCompare(lb);
         })
         .forEach((item) => {
           items.push({
             type: item.type,
-            label: typeof formatObjectPriorityLabel === "function"
-              ? formatObjectPriorityLabel(item.type)
-              : item.type,
+            label:
+              typeof formatObjectPriorityLabel === "function"
+                ? formatObjectPriorityLabel(item.type)
+                : item.type,
             setting: item.setting,
             settingLabel: labelForSetting(item.setting)
           });
@@ -871,12 +1000,12 @@
       ctx.textBaseline = "middle";
       ctx.fillText("B", x + boxSize / 2, y + boxSize / 2 + 0.5);
     } else {
-      const visualMeta = typeof getPriorityVisualMeta === "function"
-        ? getPriorityVisualMeta(item.type)
-        : null;
-      const visual = typeof getObjectVisual === "function"
-        ? getObjectVisual(visualMeta)
-        : { code: "", fill: "#2a3558" };
+      const visualMeta =
+        typeof getPriorityVisualMeta === "function" ? getPriorityVisualMeta(item.type) : null;
+      const visual =
+        typeof getObjectVisual === "function"
+          ? getObjectVisual(visualMeta)
+          : { code: "", fill: "#2a3558" };
 
       if (visual.fill) {
         if (typeof visual.fill === "string") {
@@ -1051,7 +1180,7 @@
         const x = pad + c * cell;
         const y = topPad + (r - rowOffset) * cell;
         const val = grid[r][c];
-        const meta = getTileMeta(
+        const meta = getMergedTileMeta(
           currentMapContext.eventType,
           currentMapContext.eventName,
           currentMapContext.chamberName,
@@ -1422,15 +1551,17 @@
   }
 
   function setPainterObject(value) {
-    if (typeof window.setPainterObjectValue === "function") {
-      window.setPainterObjectValue(value);
-    } else {
-      window.__zmPainterObjectValue = value;
-    }
-
+    setPainterObjectValue(value);
     tool = "painter";
     syncPainterToolState();
   }
+
+  window.getTileMeta = getMergedTileMeta;
+  window.getPainterObject = getPainterObject;
+  window.setPainterObjectValue = setPainterObjectValue;
+  window.applyPainterObjectToTile = applyPainterObjectToTile;
+  window.clearSelectedTileMeta = clearSelectedTileMeta;
+  window.clearAllBoardMeta = clearAllBoardMeta;
 
   window.setTool = setTool;
   window.setPainterObject = setPainterObject;
