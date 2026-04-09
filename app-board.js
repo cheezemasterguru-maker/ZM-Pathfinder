@@ -102,13 +102,13 @@
     return JSON.parse(JSON.stringify(meta));
   }
 
-  function getBaseTileMeta(eventType, eventName, chamberName, r, c) {
+  function getBaseTileMeta(eventType, eventName, eventMine, chamberName, r, c) {
     if (!originalGetTileMeta) return null;
-    return originalGetTileMeta(eventType, eventName, chamberName, r, c) || null;
+    return originalGetTileMeta(eventType, eventName, eventMine, chamberName, r, c) || null;
   }
 
-  function getMergedTileMeta(eventType, eventName, chamberName, r, c) {
-    const baseMeta = getBaseTileMeta(eventType, eventName, chamberName, r, c);
+  function getMergedTileMeta(eventType, eventName, eventMine, chamberName, r, c) {
+    const baseMeta = getBaseTileMeta(eventType, eventName, eventMine, chamberName, r, c);
     const bucket = getCustomMetaBucket(false);
     const customMeta = bucket ? bucket[getCellMetaKey(r, c)] : undefined;
 
@@ -641,6 +641,7 @@
         const meta = getMergedTileMeta(
           currentMapContext.eventType,
           currentMapContext.eventName,
+          currentMapContext.eventMine,
           currentMapContext.chamberName,
           r,
           c
@@ -1203,6 +1204,7 @@
         const meta = getMergedTileMeta(
           currentMapContext.eventType,
           currentMapContext.eventName,
+          currentMapContext.eventMine,
           currentMapContext.chamberName,
           r,
           c
