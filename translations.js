@@ -9,8 +9,8 @@ window.ZM_TRANSLATIONS = {
     howInputWorks: "How the input grid works",
     title: "Title",
     gateType: "Gate type",
-    standardGate: "Standard — 5 attack points",
-    endGate: "End — 3 attack points",
+    standardGate: "Standard — 5 Tiles",
+    endGate: "End - 3 Tiles",
 
     mapLoader: "Map Loader",
     eventType: "Event Type",
