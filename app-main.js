@@ -147,7 +147,7 @@ function clearBoardMetaOverrides() {
 
 function applyPainterMetaToSelectedTile() {
   const r = lastSelected?.r ?? 0;
-  const c = lastSsolverHelped?.c ?? 0;
+  const c = lastSelected?.c ?? 0;
 
   if (r < 0 || c < 0 || r >= currentRowCount || c >= COLS) return;
 
@@ -536,7 +536,7 @@ function applyLanguage() {
   if (routeReportCloseBtn) routeReportCloseBtn.textContent = t("close");
 
   const solverHelpModalTitle = document.getElementById("solverHelpModalTitle");
-  if (solverHelpModalTitle) solverHelpModalTitle.textContent = t("solverHelp");
+  if (solverHelpModalTitle) solverHelpModalTitle.textContent = t("Help");
 
   const objectPrioritiesIntro = document.getElementById("objectPrioritiesIntro");
   if (objectPrioritiesIntro) {
