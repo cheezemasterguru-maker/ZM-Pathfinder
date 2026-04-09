@@ -489,7 +489,7 @@ function applyLanguage() {
   if (pasteClipboardBtn) pasteClipboardBtn.textContent = t("pasteFromClipboard");
 
   const solverHelpBtn = document.getElementById("solverHelpBtn");
-  if (solverHelpBtn) solverHelpBtn.textContent t("Help");
+  if (solverHelpBtn) solverHelpBtn.textContent = "Help";
 
   const routeReportBtn = document.getElementById("routeReportBtn");
   if (routeReportBtn) routeReportBtn.textContent = t("routeReport");
@@ -536,7 +536,7 @@ function applyLanguage() {
   if (routeReportCloseBtn) routeReportCloseBtn.textContent = t("close");
 
   const solverHelpModalTitle = document.getElementById("solverHelpModalTitle");
-  if (solverHelpModalTitle) solverHelpModalTitle.textContent = t("Help");
+  if (solverHelpModalTitle) solverHelpModalTitle.textContent = "Help";
 
   const objectPrioritiesIntro = document.getElementById("objectPrioritiesIntro");
   if (objectPrioritiesIntro) {
