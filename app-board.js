@@ -21,13 +21,13 @@
     }
     if (typeof window.updateSteelShowdownMultiplierDisplay === "function") {
       window.updateSteelShowdownMultiplierDisplay();
+    } else if (typeof window.syncSteelMultiplierDisplay === "function") {
+      window.syncSteelMultiplierDisplay();
     }
   }
 
   function getPainterButtons() {
-    return Array.from(
-      document.querySelectorAll(".btn-object, [onclick*=\"setPainterObject('plain')\"]")
-    );
+    return Array.from(document.querySelectorAll(".btn-object"));
   }
 
   function clearPainterButtonActiveState() {
@@ -78,8 +78,7 @@
       eventType: currentMapContext?.eventType || null,
       eventName: currentMapContext?.eventName || null,
       chamberName: currentMapContext?.chamberName || null,
-      eventMine: currentMapContext?.eventMine || null,
-      title: String(currentPreviewTitle || document.getElementById("titleInput")?.value || "Gate 1")
+      eventMine: currentMapContext?.eventMine || null
     });
   }
 
@@ -121,7 +120,13 @@
       return null;
     }
 
-    return customMeta || null;
+    if (!customMeta) {
+      return baseMeta;
+    }
+
+    const merged = cloneMeta(baseMeta) || {};
+    Object.assign(merged, cloneMeta(customMeta));
+    return merged;
   }
 
   function getPainterObject() {
@@ -168,15 +173,10 @@
   }
 
   function clearAllBoardMeta(shouldRefresh = true) {
-    const bucket = getCustomMetaBucket(true);
+    const store = window[CUSTOM_META_STORE_KEY];
+    const key = getContextMetaKey();
 
-    for (let r = 0; r < currentRowCount; r++) {
-      for (let c = 0; c < COLS; c++) {
-        if (typeof grid?.[r]?.[c] === "number") {
-          bucket[getCellMetaKey(r, c)] = { __clear: true };
-        }
-      }
-    }
+    delete store[key];
 
     if (shouldRefresh) {
       resetRouteAndRefresh();
@@ -1163,7 +1163,17 @@
         ctx.fillText(line2, titleBoxX + titleBoxW / 2, titleBoxY + 78);
       }
 
-      drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow, legendHeight, legendItems, customMode);
+      drawBoardAndPaths(
+        ctx,
+        cell,
+        pad,
+        topPad,
+        minRow,
+        maxRow,
+        legendHeight,
+        legendItems,
+        customMode
+      );
     };
 
     const logo = new Image();
@@ -1172,7 +1182,17 @@
     logo.src = "file_00000000e35071fda5e92d9996ac3621.png";
   }
 
-  function drawBoardAndPaths(ctx, cell, pad, topPad, minRow, maxRow, legendHeight, legendItems, customMode) {
+  function drawBoardAndPaths(
+    ctx,
+    cell,
+    pad,
+    topPad,
+    minRow,
+    maxRow,
+    legendHeight,
+    legendItems,
+    customMode
+  ) {
     const rowOffset = minRow;
 
     for (let r = minRow; r <= maxRow; r++) {
@@ -1519,7 +1539,10 @@
       ctx.lineTo(endPoint.x, endPoint.y);
     } else if (isRed) {
       const endPoint = getRedEndpointPoint();
-      if (endPoint.x !== points[points.length - 1].x || endPoint.y !== points[points.length - 1].y) {
+      if (
+        endPoint.x !== points[points.length - 1].x ||
+        endPoint.y !== points[points.length - 1].y
+      ) {
         ctx.lineTo(endPoint.x, endPoint.y);
       }
     }
