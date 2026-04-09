@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ZM Pathfinder</title>
-  <link rel="stylesheet" href="styles.css?v=111" />
+  <link rel="stylesheet" href="styles.css?v=112" />
 
   <script src="translations.js?v=1"></script>
   <script src="help.js?v=111"></script>
@@ -18,9 +18,9 @@
   <script src="auth.js?v=222" defer></script>
   <script src="timing-tables.js?v=111"></script>
 
-  <script src="app-main.js?v=5444" defer></script>
-  <script src="app-board.js?v=5444" defer></script>
-  <script src="app-solver.js?v=5444" defer></script>
+  <script src="app-main.js?v=5403" defer></script>
+  <script src="app-board.js?v=5403" defer></script>
+  <script src="app-solver.js?v=5403" defer></script>
 </head>
 <body>
   <div id="appShell" class="app-shell locked">
@@ -49,9 +49,6 @@
             <button id="logoutBtn" class="btn-danger hidden" onclick="logoutTester()">Logout</button>
           </div>
         </div>
-
-        <div class="section-title" id="howInputGridTitle">How the input grid works</div>
-        <div id="shortHelpText" class="help"></div>
 
         <div id="mapLoaderSection" class="hidden">
           <div class="section-title" id="mapLoaderTitle">Map Loader</div>
@@ -100,12 +97,12 @@
 
           <button id="sampleGridBtn" class="btn-action" onclick="loadSampleGrid()">Sample Grid</button>
           <button id="pasteClipboardBtn" class="btn-action" onclick="pasteFromClipboard()">Paste From Clipboard</button>
-          <button id="solverHelpBtn" class="btn-action" onclick="openSolverHelp()">Solver Help</button>
+          <button id="solverHelpBtn" class="btn-action" onclick="openSolverHelp()">Help</button>
           <button id="routeReportBtn" class="btn-action" onclick="openRouteReportModal()">Route Report</button>
           <button id="objectPrioritiesBtn" class="btn-action" onclick="openObjectPrioritiesModal()">Object Priorities</button>
         </div>
 
-        <div id="report" class="report">Ready. Grid and solver are wired together.</div>
+        <div id="report" class="report">Ready.</div>
       </div>
 
       <div class="card steel-showdown-card">
@@ -118,7 +115,7 @@
         <div class="steel-showdown-controls">
           <div class="field steel-multiplier-field">
             <label for="steelMultiplier">Multiplier</label>
-            <select id="steelMultiplier" onchange="updateSteelShowdownMultiplierDisplay && updateSteelShowdownMultiplierDisplay()">
+            <select id="steelMultiplier">
               <option value="1" selected>1x</option>
               <option value="2">2x</option>
               <option value="3">3x</option>
@@ -168,7 +165,7 @@
             <button id="tool-block" class="btn-black" onclick="setTool('block')">Block</button>
             <button id="tool-bubble" class="btn-bubble" onclick="setTool('bubble')">Bubble</button>
             <button id="tool-shaft" class="btn-shaft" onclick="setTool('shaft')">Shaft</button>
-            <button type="button" class="btn-action" onclick="setPainterObject('plain')">Plain</button>
+            <button id="tool-delete" class="btn-danger" onclick="setTool('delete')">Delete</button>
 
             <button type="button" class="btn-object painter-gems" onclick="setPainterObject('gems')">Gems</button>
             <button type="button" class="btn-object painter-badges" onclick="setPainterObject('badges')">Badge</button>
@@ -183,7 +180,6 @@
             <button type="button" class="btn-object painter-silver" onclick="setPainterObject('chest:silver')">SILVER</button>
 
             <button type="button" class="btn-object painter-gold" onclick="setPainterObject('chest:gold')">GOLD</button>
-            <button id="tool-delete" class="btn-danger" onclick="setTool('delete')">Delete</button>
             <button type="button" class="btn-danger" onclick="clearAllBoardMeta()">Clear All Meta</button>
           </div>
         </div>
@@ -230,7 +226,7 @@
   <div id="solverHelpOverlay" class="overlay" onclick="closeSolverHelp()">
     <div class="modal modal-box" onclick="event.stopPropagation()">
       <button class="modal-close" onclick="closeSolverHelp()">×</button>
-      <h2 id="solverHelpModalTitle">Solver Help</h2>
+      <h2 id="solverHelpModalTitle">Help</h2>
       <div id="solverHelpBody" class="help-content"></div>
     </div>
   </div>
