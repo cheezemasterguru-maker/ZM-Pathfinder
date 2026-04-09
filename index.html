@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ZM Pathfinder</title>
-  <link rel="stylesheet" href="styles.css?v=5402" />
+  <link rel="stylesheet" href="styles.css?v=111" />
 
   <script src="translations.js?v=1"></script>
-  <script src="help.js?v=5402"></script>
+  <script src="help.js?v=111"></script>
   <script src="map-library.js?v=222"></script>
   <script src="map-data.js?v=9898"></script>
   <script src="map-validator.js?v=111"></script>
@@ -52,21 +52,6 @@
 
         <div class="section-title" id="howInputGridTitle">How the input grid works</div>
         <div id="shortHelpText" class="help"></div>
-
-        <div class="controls-grid">
-          <div class="field">
-            <label for="titleInput" id="titleLabel">Title</label>
-            <input id="titleInput" type="text" value="Gate 1" oninput="handleTitleInputChange()">
-          </div>
-
-          <div class="field">
-            <label for="gateType" id="gateTypeLabel">Gate type</label>
-            <select id="gateType" onchange="renderPreview()">
-              <option value="standard">Standard — 5 attack points</option>
-              <option value="end">End — 3 attack points</option>
-            </select>
-          </div>
-        </div>
 
         <div id="mapLoaderSection" class="hidden">
           <div class="section-title" id="mapLoaderTitle">Map Loader</div>
@@ -124,11 +109,11 @@
       </div>
 
       <div class="card steel-showdown-card">
-        <div class="steel-showdown-title">
-  <img src="gear-icon.png" class="steel-title-icon left">
-  <span>Steel Showdown</span>
-  <img src="gear-icon.png" class="steel-title-icon right">
-</div>
+        <div class="steel-showdown-header">
+          <img src="gear-icon.png" alt="Gears" class="steel-gear-icon steel-header-icon">
+          <div class="section-title steel-showdown-title">Steel Showdown</div>
+          <img src="gear-icon.png" alt="Gears" class="steel-gear-icon steel-header-icon">
+        </div>
 
         <div class="steel-showdown-controls">
           <div class="field steel-multiplier-field">
@@ -150,14 +135,12 @@
 
         <div class="steel-total-row">
           <img src="gear-icon.png" alt="Gears" class="steel-gear-icon">
-          <div class="steel-total-text">
-            <span class="steel-inline-label">Gears - </span>
-            <span id="steelBaseGears" class="steel-inline-value">0</span>
-            <span class="steel-inline-label"> x </span>
-            <span id="steelShownMultiplier" class="steel-inline-value">1x</span>
-            <span class="steel-inline-label"> = </span>
-            <span id="steelTotalGears" class="steel-total-value">0</span>
-          </div>
+          <span class="steel-total-label">Gears - </span>
+          <span id="steelBaseGears" class="steel-inline-value">0</span>
+          <span class="steel-total-label">x</span>
+          <span id="steelMultiplierDisplay" class="steel-inline-value">1x</span>
+          <span class="steel-total-label">=</span>
+          <span id="steelTotalGears" class="steel-total-value">0</span>
         </div>
       </div>
 
@@ -165,11 +148,44 @@
         <div class="sticky-tools">
           <div class="section-title" id="editableBoardTitle" style="margin-top:0;">Editable Board</div>
 
-          <div class="tool-grid">
+          <div class="editor-meta-grid">
+            <div class="field">
+              <label for="titleInput" id="titleLabel">Title</label>
+              <input id="titleInput" type="text" value="Gate 1" oninput="handleTitleInputChange()">
+            </div>
+
+            <div class="field">
+              <label for="gateType" id="gateTypeLabel">Gate type</label>
+              <select id="gateType" onchange="renderPreview()">
+                <option value="standard">Standard — 5 attack points</option>
+                <option value="end">End — 3 attack points</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="tool-grid tool-grid-compact">
             <button id="tool-number" class="btn-white tool-active" onclick="setTool('number')">Number</button>
             <button id="tool-block" class="btn-black" onclick="setTool('block')">Block</button>
             <button id="tool-bubble" class="btn-bubble" onclick="setTool('bubble')">Bubble</button>
             <button id="tool-shaft" class="btn-shaft" onclick="setTool('shaft')">Shaft</button>
+            <button id="tool-delete" class="btn-danger" onclick="setTool('delete')">Delete</button>
+
+            <button type="button" class="btn-object painter-gems" onclick="setPainterObject('gems')">Gems</button>
+            <button type="button" class="btn-object painter-badges" onclick="setPainterObject('badges')">Badge</button>
+            <button type="button" class="btn-object painter-emblems" onclick="setPainterObject('emblems')">Emb</button>
+            <button type="button" class="btn-object painter-keys" onclick="setPainterObject('keys')">Key</button>
+            <button type="button" class="btn-object painter-essence" onclick="setPainterObject('essence')">ESS</button>
+
+            <button type="button" class="btn-object painter-stickers" onclick="setPainterObject('stickers')">STK</button>
+            <button type="button" class="btn-object painter-wood" onclick="setPainterObject('chest:wood')">WOOD</button>
+            <button type="button" class="btn-object painter-iron" onclick="setPainterObject('chest:iron')">IRON</button>
+            <button type="button" class="btn-object painter-steel" onclick="setPainterObject('chest:steel')">STEEL</button>
+            <button type="button" class="btn-object painter-silver" onclick="setPainterObject('chest:silver')">SILVER</button>
+
+            <button type="button" class="btn-object painter-gold" onclick="setPainterObject('chest:gold')">GOLD</button>
+            <button type="button" class="btn-action" onclick="setPainterObject('plain')">Plain</button>
+            <button type="button" class="btn-action" onclick="clearSelectedTileMeta()">Clear Meta</button>
+            <button type="button" class="btn-danger" onclick="clearAllBoardMeta()">Clear All Meta</button>
           </div>
         </div>
 
