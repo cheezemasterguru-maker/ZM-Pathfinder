@@ -82,10 +82,11 @@ let selectedPainterObject = "plain";
 let boardMetaOverrides = {};
 let originalGetTileMetaRef = null;
 
-function getBoardMetaKey(eventType, eventName, chamberName, r, c) {
+function getBoardMetaKey(eventType, eventName, eventMine, chamberName, r, c) {
   return [
     eventType || "",
     eventName || "",
+    eventMine || "",
     chamberName || "",
     String(r),
     String(c)
@@ -118,12 +119,12 @@ function installTileMetaOverrideLayer() {
 
   originalGetTileMetaRef = window.getTileMeta;
 
-  const wrapped = function(eventType, eventName, chamberName, r, c) {
+  const wrapped = function(eventType, eventName, eventMine, chamberName, r, c) {
     const baseMeta = originalGetTileMetaRef
-      ? originalGetTileMetaRef(eventType, eventName, chamberName, r, c)
+      ? originalGetTileMetaRef(eventType, eventName, eventMine, chamberName, r, c)
       : null;
 
-    const key = getBoardMetaKey(eventType, eventName, chamberName, r, c);
+    const key = getBoardMetaKey(eventType, eventName, eventMine, chamberName, r, c);
     const override = boardMetaOverrides[key];
 
     if (override === undefined) {
@@ -154,13 +155,13 @@ function applyPainterMetaToSelectedTile() {
   const key = getBoardMetaKey(
     currentMapContext.eventType,
     currentMapContext.eventName,
+    currentMapContext.eventMine,
     currentMapContext.chamberName,
     r,
     c
   );
 
   const parsed = parsePainterObjectValue(selectedPainterObject);
-
   boardMetaOverrides[key] = parsed;
 
   if (typeof scanActiveObjectTypes === "function") {
@@ -171,15 +172,16 @@ function applyPainterMetaToSelectedTile() {
   if (typeof renderPreview === "function") renderPreview();
 }
 
-function clearSelectedTileMeta() {
-  const r = lastSelected?.r ?? 0;
-  const c = lastSelected?.c ?? 0;
+function clearSelectedTileMeta(rOverride, cOverride) {
+  const r = Number.isInteger(rOverride) ? rOverride : (lastSelected?.r ?? 0);
+  const c = Number.isInteger(cOverride) ? cOverride : (lastSelected?.c ?? 0);
 
   if (r < 0 || c < 0 || r >= currentRowCount || c >= COLS) return;
 
   const key = getBoardMetaKey(
     currentMapContext.eventType,
     currentMapContext.eventName,
+    currentMapContext.eventMine,
     currentMapContext.chamberName,
     r,
     c
@@ -195,7 +197,7 @@ function clearSelectedTileMeta() {
   if (typeof renderPreview === "function") renderPreview();
 }
 
-function clearAllBoardMeta() {
+function clearAllBoardMeta(showReport = true) {
   clearBoardMetaOverrides();
 
   if (typeof scanActiveObjectTypes === "function") {
@@ -204,6 +206,10 @@ function clearAllBoardMeta() {
 
   if (typeof render === "function") render();
   if (typeof renderPreview === "function") renderPreview();
+
+  if (showReport) {
+    setReport("All board meta cleared.");
+  }
 }
 
 function updatePainterButtonStates() {
@@ -224,6 +230,15 @@ function updatePainterButtonStates() {
 }
 
 function setPainterObject(value) {
+  selectedPainterObject = value || "plain";
+  updatePainterButtonStates();
+}
+
+function getPainterObject() {
+  return selectedPainterObject;
+}
+
+function setPainterObjectValue(value) {
   selectedPainterObject = value || "plain";
   updatePainterButtonStates();
 }
@@ -1421,12 +1436,12 @@ function getSteelShowdownObjectCount() {
   for (let r = 0; r < currentRowCount; r++) {
     for (let c = 0; c < COLS; c++) {
       const val = grid[r]?.[c];
-
       if (typeof val !== "number") continue;
 
       const meta = getTileMeta(
         currentMapContext.eventType,
         currentMapContext.eventName,
+        currentMapContext.eventMine,
         currentMapContext.chamberName,
         r,
         c
@@ -1451,6 +1466,10 @@ function updateSteelShowdownDisplay(baseTotal, finalTotal) {
   syncSteelMultiplierDisplay();
 }
 
+function updateSteelShowdownMultiplierDisplay() {
+  syncSteelMultiplierDisplay();
+}
+
 function calculateSteelShowdown() {
   const objectCount = getSteelShowdownObjectCount();
   const bubbleCount = getSteelShowdownBubbleCount();
@@ -1471,7 +1490,6 @@ function calculateSteelShowdown() {
 
 function init() {
   initGridData();
-
   installTileMetaOverrideLayer();
 
   const titleInput = document.getElementById("titleInput");
@@ -1538,8 +1556,12 @@ window.handleEventChamberChange = handleEventChamberChange;
 window.loadSelectedMap = loadSelectedMap;
 window.handleTitleInputChange = handleTitleInputChange;
 window.calculateSteelShowdown = calculateSteelShowdown;
+window.updateSteelShowdownDisplay = updateSteelShowdownDisplay;
+window.updateSteelShowdownMultiplierDisplay = updateSteelShowdownMultiplierDisplay;
 
 window.setPainterObject = setPainterObject;
+window.setPainterObjectValue = setPainterObjectValue;
+window.getPainterObject = getPainterObject;
 window.clearSelectedTileMeta = clearSelectedTileMeta;
 window.clearAllBoardMeta = clearAllBoardMeta;
 window.applyPainterMetaToSelectedTile = applyPainterMetaToSelectedTile;
