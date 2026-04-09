@@ -118,7 +118,7 @@
         <div class="steel-showdown-controls">
           <div class="field steel-multiplier-field">
             <label for="steelMultiplier">Multiplier</label>
-            <select id="steelMultiplier">
+            <select id="steelMultiplier" onchange="updateSteelShowdownMultiplierDisplay && updateSteelShowdownMultiplierDisplay()">
               <option value="1" selected>1x</option>
               <option value="2">2x</option>
               <option value="3">3x</option>
@@ -168,7 +168,7 @@
             <button id="tool-block" class="btn-black" onclick="setTool('block')">Block</button>
             <button id="tool-bubble" class="btn-bubble" onclick="setTool('bubble')">Bubble</button>
             <button id="tool-shaft" class="btn-shaft" onclick="setTool('shaft')">Shaft</button>
-            <button id="tool-delete" class="btn-danger" onclick="setTool('delete')">Delete</button>
+            <button type="button" class="btn-action" onclick="setPainterObject('plain')">Plain</button>
 
             <button type="button" class="btn-object painter-gems" onclick="setPainterObject('gems')">Gems</button>
             <button type="button" class="btn-object painter-badges" onclick="setPainterObject('badges')">Badge</button>
@@ -183,8 +183,7 @@
             <button type="button" class="btn-object painter-silver" onclick="setPainterObject('chest:silver')">SILVER</button>
 
             <button type="button" class="btn-object painter-gold" onclick="setPainterObject('chest:gold')">GOLD</button>
-            <button type="button" class="btn-action" onclick="setPainterObject('plain')">Plain</button>
-            <button type="button" class="btn-action" onclick="clearSelectedTileMeta()">Clear Meta</button>
+            <button id="tool-delete" class="btn-danger" onclick="setTool('delete')">Delete</button>
             <button type="button" class="btn-danger" onclick="clearAllBoardMeta()">Clear All Meta</button>
           </div>
         </div>
