@@ -670,17 +670,21 @@ function loadHelpContent() {
   const shortHelp = document.getElementById("shortHelpText");
   const solverHelpBody = document.getElementById("solverHelpBody");
 
-  if (!shortHelp || !solverHelpBody) return;
+  const translated = window.ZM_HELP_TRANSLATED?.[currentLanguage];
+  const fallback = window.ZM_HELP_TRANSLATED?.en || window.ZM_HELP || {};
 
-  if (window.ZM_HELP_TRANSLATED?.[currentLanguage]) {
-    shortHelp.innerHTML = window.ZM_HELP_TRANSLATED[currentLanguage].shortHelp || "";
-    solverHelpBody.innerHTML = window.ZM_HELP_TRANSLATED[currentLanguage].modalHelp || "";
-    return;
+  if (shortHelp) {
+    shortHelp.innerHTML =
+      translated?.shortHelp ||
+      fallback.shortHelp ||
+      "";
   }
 
-  if (window.ZM_HELP) {
-    shortHelp.innerHTML = window.ZM_HELP.shortHelp || "";
-    solverHelpBody.innerHTML = window.ZM_HELP.modalHelp || "";
+  if (solverHelpBody) {
+    solverHelpBody.innerHTML =
+      translated?.modalHelp ||
+      fallback.modalHelp ||
+      "";
   }
 }
 
