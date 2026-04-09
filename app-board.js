@@ -1579,7 +1579,6 @@
     syncPainterToolState();
   }
 
-  window.getTileMeta = getMergedTileMeta;
   window.getPainterObject = getPainterObject;
   window.setPainterObjectValue = setPainterObjectValue;
   window.applyPainterObjectToTile = applyPainterObjectToTile;
