@@ -75,172 +75,29 @@ let solveState = {
 };
 
 /* ------------------------------
-   Local painter/meta overrides
+   Shared UI helpers
 ------------------------------ */
-
-let selectedPainterObject = "plain";
-let boardMetaOverrides = {};
-let originalGetTileMetaRef = null;
-
-function getBoardMetaKey(eventType, eventName, eventMine, chamberName, r, c) {
-  return [
-    eventType || "",
-    eventName || "",
-    eventMine || "",
-    chamberName || "",
-    String(r),
-    String(c)
-  ].join("||");
-}
-
-function parsePainterObjectValue(value) {
-  const raw = String(value || "plain").trim().toLowerCase();
-
-  if (!raw || raw === "plain") {
-    return null;
-  }
-
-  if (raw.startsWith("chest:")) {
-    const subtype = raw.split(":")[1] || "";
-    return {
-      object: "chest",
-      subtype
-    };
-  }
-
-  return {
-    object: raw
-  };
-}
-
-function installTileMetaOverrideLayer() {
-  if (typeof window.getTileMeta !== "function") return;
-  if (window.getTileMeta.__zmPainterWrapped) return;
-
-  originalGetTileMetaRef = window.getTileMeta;
-
-  const wrapped = function(eventType, eventName, eventMine, chamberName, r, c) {
-    const baseMeta = originalGetTileMetaRef
-      ? originalGetTileMetaRef(eventType, eventName, eventMine, chamberName, r, c)
-      : null;
-
-    const key = getBoardMetaKey(eventType, eventName, eventMine, chamberName, r, c);
-    const override = boardMetaOverrides[key];
-
-    if (override === undefined) {
-      return baseMeta;
-    }
-
-    if (override === null) {
-      return null;
-    }
-
-    return override;
-  };
-
-  wrapped.__zmPainterWrapped = true;
-  window.getTileMeta = wrapped;
-}
-
-function clearBoardMetaOverrides() {
-  boardMetaOverrides = {};
-}
-
-function applyPainterMetaToSelectedTile() {
-  const r = lastSelected?.r ?? 0;
-  const c = lastSelected?.c ?? 0;
-
-  if (r < 0 || c < 0 || r >= currentRowCount || c >= COLS) return;
-
-  const key = getBoardMetaKey(
-    currentMapContext.eventType,
-    currentMapContext.eventName,
-    currentMapContext.eventMine,
-    currentMapContext.chamberName,
-    r,
-    c
-  );
-
-  const parsed = parsePainterObjectValue(selectedPainterObject);
-  boardMetaOverrides[key] = parsed;
-
-  if (typeof scanActiveObjectTypes === "function") {
-    scanActiveObjectTypes();
-  }
-
-  if (typeof render === "function") render();
-  if (typeof renderPreview === "function") renderPreview();
-}
-
-function clearSelectedTileMeta(rOverride, cOverride) {
-  const r = Number.isInteger(rOverride) ? rOverride : (lastSelected?.r ?? 0);
-  const c = Number.isInteger(cOverride) ? cOverride : (lastSelected?.c ?? 0);
-
-  if (r < 0 || c < 0 || r >= currentRowCount || c >= COLS) return;
-
-  const key = getBoardMetaKey(
-    currentMapContext.eventType,
-    currentMapContext.eventName,
-    currentMapContext.eventMine,
-    currentMapContext.chamberName,
-    r,
-    c
-  );
-
-  boardMetaOverrides[key] = null;
-
-  if (typeof scanActiveObjectTypes === "function") {
-    scanActiveObjectTypes();
-  }
-
-  if (typeof render === "function") render();
-  if (typeof renderPreview === "function") renderPreview();
-}
-
-function clearAllBoardMeta(showReport = true) {
-  clearBoardMetaOverrides();
-
-  if (typeof scanActiveObjectTypes === "function") {
-    scanActiveObjectTypes();
-  }
-
-  if (typeof render === "function") render();
-  if (typeof renderPreview === "function") renderPreview();
-
-  if (showReport) {
-    setReport("All board meta cleared.");
-  }
-}
 
 function updatePainterButtonStates() {
   const buttons = document.querySelectorAll("[onclick^=\"setPainterObject(\"]");
   buttons.forEach((btn) => btn.classList.remove("tool-active"));
 
-  const normalized = String(selectedPainterObject || "plain").toLowerCase();
+  const painterValue =
+    typeof window.getPainterObject === "function"
+      ? window.getPainterObject()
+      : "plain";
+
+  const normalized = String(painterValue || "plain").toLowerCase();
 
   buttons.forEach((btn) => {
     const onclickText = btn.getAttribute("onclick") || "";
-    const match = onclickText.match(/setPainterObject\('([^']+)'\)/i);
+    const match = onclickText.match(/setPainterObject'([^']+)'/i);
     if (!match) return;
 
     if (String(match[1]).toLowerCase() === normalized) {
       btn.classList.add("tool-active");
     }
   });
-}
-
-function setPainterObject(value) {
-  selectedPainterObject = value || "plain";
-  updatePainterButtonStates();
-}
-
-function getPainterObject() {
-  return selectedPainterObject;
-}
-
-function setPainterObjectValue(value) {
-  selectedPainterObject = value || "plain";
-  updatePainterButtonStates();
 }
 
 function syncSteelMultiplierDisplay() {
