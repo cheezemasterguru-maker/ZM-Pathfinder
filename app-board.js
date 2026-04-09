@@ -5,6 +5,56 @@
     if (typeof window.updateSteelShowdownDisplay === "function") {
       window.updateSteelShowdownDisplay(0, 0);
     }
+    if (typeof window.updateSteelShowdownMultiplierDisplay === "function") {
+      window.updateSteelShowdownMultiplierDisplay();
+    }
+  }
+
+  function getPainterButtons() {
+    return Array.from(document.querySelectorAll(".btn-object, [onclick*=\"setPainterObject('plain')\"]"));
+  }
+
+  function clearPainterButtonActiveState() {
+    getPainterButtons().forEach((btn) => btn.classList.remove("tool-active"));
+  }
+
+  function setActivePainterButtonByValue(value) {
+    clearPainterButtonActiveState();
+
+    const buttons = getPainterButtons();
+    const target = buttons.find((btn) => {
+      const click = btn.getAttribute("onclick") || "";
+      return click.includes(`setPainterObject('${value}')`);
+    });
+
+    if (target) target.classList.add("tool-active");
+  }
+
+  function syncPainterToolState() {
+    ["number", "block", "bubble", "shaft", "delete"].forEach((id) => {
+      const el = document.getElementById(`tool-${id}`);
+      if (el) el.classList.remove("tool-active");
+    });
+
+    const activeTool = document.getElementById(`tool-${tool}`);
+    if (activeTool) activeTool.classList.add("tool-active");
+
+    if (tool === "painter" && typeof window.getPainterObject === "function") {
+      setActivePainterButtonByValue(window.getPainterObject() || "plain");
+    } else {
+      clearPainterButtonActiveState();
+    }
+  }
+
+  function resetRouteAndRefresh() {
+    if (typeof scanActiveObjectTypes === "function") {
+      scanActiveObjectTypes();
+    }
+
+    resetSolve();
+    resetSteelShowdownResult();
+    render();
+    renderPreview();
   }
 
   function renderRouteAudit(routeAnalysis) {
@@ -448,12 +498,7 @@
 
   function setTool(nextTool) {
     tool = nextTool;
-    ["number", "block", "bubble", "shaft"].forEach((id) => {
-      const el = document.getElementById(`tool-${id}`);
-      if (el) el.classList.remove("tool-active");
-    });
-    const activeEl = document.getElementById(`tool-${nextTool}`);
-    if (activeEl) activeEl.classList.add("tool-active");
+    syncPainterToolState();
   }
 
   function render() {
@@ -533,6 +578,8 @@
         gridEl.appendChild(cell);
       }
     }
+
+    syncPainterToolState();
   }
 
   function clickCell(r, c) {
@@ -541,6 +588,23 @@
 
     if (tool === "number") {
       activateInlineNumberEditor(r, c);
+      return;
+    }
+
+    if (tool === "delete") {
+      grid[r][c] = "";
+      if (typeof window.clearSelectedTileMeta === "function") {
+        window.clearSelectedTileMeta(r, c);
+      }
+      resetRouteAndRefresh();
+      return;
+    }
+
+    if (tool === "painter") {
+      if (typeof grid[r][c] === "number" && typeof window.applyPainterObjectToTile === "function") {
+        window.applyPainterObjectToTile(r, c);
+      }
+      resetRouteAndRefresh();
       return;
     }
 
@@ -561,14 +625,7 @@
       }
     }
 
-    if (typeof scanActiveObjectTypes === "function") {
-      scanActiveObjectTypes();
-    }
-
-    resetSolve();
-    resetSteelShowdownResult();
-    render();
-    renderPreview();
+    resetRouteAndRefresh();
   }
 
   function activateInlineNumberEditor(r, c) {
@@ -595,14 +652,7 @@
         grid[r][c] = Number(raw);
       }
 
-      if (typeof scanActiveObjectTypes === "function") {
-        scanActiveObjectTypes();
-      }
-
-      resetSolve();
-      resetSteelShowdownResult();
-      render();
-      renderPreview();
+      resetRouteAndRefresh();
     };
 
     input.onkeydown = (e) => {
@@ -666,14 +716,7 @@
       }
     }
 
-    if (typeof scanActiveObjectTypes === "function") {
-      scanActiveObjectTypes();
-    }
-
-    resetSolve();
-    resetSteelShowdownResult();
-    render();
-    renderPreview();
+    resetRouteAndRefresh();
     setReport(formatT("pastedIntoBoard", { row: startR + 1, col: startC + 1 }));
   }
 
@@ -693,8 +736,8 @@
       eventMine: null
     };
 
-    if (typeof scanActiveObjectTypes === "function") {
-      scanActiveObjectTypes();
+    if (typeof window.clearAllBoardMeta === "function") {
+      window.clearAllBoardMeta(false);
     }
 
     resetSolve();
@@ -734,14 +777,7 @@
       }
     }
 
-    if (typeof scanActiveObjectTypes === "function") {
-      scanActiveObjectTypes();
-    }
-
-    resetSolve();
-    resetSteelShowdownResult();
-    render();
-    renderPreview();
+    resetRouteAndRefresh();
     setReport(t("sampleLoaded"));
     updateDifficultyMeter();
   }
@@ -1385,7 +1421,19 @@
     link.click();
   }
 
+  function setPainterObject(value) {
+    if (typeof window.setPainterObjectValue === "function") {
+      window.setPainterObjectValue(value);
+    } else {
+      window.__zmPainterObjectValue = value;
+    }
+
+    tool = "painter";
+    syncPainterToolState();
+  }
+
   window.setTool = setTool;
+  window.setPainterObject = setPainterObject;
   window.render = render;
   window.renderPreview = renderPreview;
   window.clickCell = clickCell;
