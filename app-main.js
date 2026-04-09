@@ -74,6 +74,174 @@ let solveState = {
   blueCost: null
 };
 
+/* ------------------------------
+   Local painter/meta overrides
+------------------------------ */
+
+let selectedPainterObject = "plain";
+let boardMetaOverrides = {};
+let originalGetTileMetaRef = null;
+
+function getBoardMetaKey(eventType, eventName, chamberName, r, c) {
+  return [
+    eventType || "",
+    eventName || "",
+    chamberName || "",
+    String(r),
+    String(c)
+  ].join("||");
+}
+
+function parsePainterObjectValue(value) {
+  const raw = String(value || "plain").trim().toLowerCase();
+
+  if (!raw || raw === "plain") {
+    return null;
+  }
+
+  if (raw.startsWith("chest:")) {
+    const subtype = raw.split(":")[1] || "";
+    return {
+      object: "chest",
+      subtype
+    };
+  }
+
+  return {
+    object: raw
+  };
+}
+
+function installTileMetaOverrideLayer() {
+  if (typeof window.getTileMeta !== "function") return;
+  if (window.getTileMeta.__zmPainterWrapped) return;
+
+  originalGetTileMetaRef = window.getTileMeta;
+
+  const wrapped = function(eventType, eventName, chamberName, r, c) {
+    const baseMeta = originalGetTileMetaRef
+      ? originalGetTileMetaRef(eventType, eventName, chamberName, r, c)
+      : null;
+
+    const key = getBoardMetaKey(eventType, eventName, chamberName, r, c);
+    const override = boardMetaOverrides[key];
+
+    if (override === undefined) {
+      return baseMeta;
+    }
+
+    if (override === null) {
+      return null;
+    }
+
+    return override;
+  };
+
+  wrapped.__zmPainterWrapped = true;
+  window.getTileMeta = wrapped;
+}
+
+function clearBoardMetaOverrides() {
+  boardMetaOverrides = {};
+}
+
+function applyPainterMetaToSelectedTile() {
+  const r = lastSelected?.r ?? 0;
+  const c = lastSelected?.c ?? 0;
+
+  if (r < 0 || c < 0 || r >= currentRowCount || c >= COLS) return;
+
+  const key = getBoardMetaKey(
+    currentMapContext.eventType,
+    currentMapContext.eventName,
+    currentMapContext.chamberName,
+    r,
+    c
+  );
+
+  const parsed = parsePainterObjectValue(selectedPainterObject);
+
+  boardMetaOverrides[key] = parsed;
+
+  if (typeof scanActiveObjectTypes === "function") {
+    scanActiveObjectTypes();
+  }
+
+  if (typeof render === "function") render();
+  if (typeof renderPreview === "function") renderPreview();
+}
+
+function clearSelectedTileMeta() {
+  const r = lastSelected?.r ?? 0;
+  const c = lastSelected?.c ?? 0;
+
+  if (r < 0 || c < 0 || r >= currentRowCount || c >= COLS) return;
+
+  const key = getBoardMetaKey(
+    currentMapContext.eventType,
+    currentMapContext.eventName,
+    currentMapContext.chamberName,
+    r,
+    c
+  );
+
+  boardMetaOverrides[key] = null;
+
+  if (typeof scanActiveObjectTypes === "function") {
+    scanActiveObjectTypes();
+  }
+
+  if (typeof render === "function") render();
+  if (typeof renderPreview === "function") renderPreview();
+}
+
+function clearAllBoardMeta() {
+  clearBoardMetaOverrides();
+
+  if (typeof scanActiveObjectTypes === "function") {
+    scanActiveObjectTypes();
+  }
+
+  if (typeof render === "function") render();
+  if (typeof renderPreview === "function") renderPreview();
+}
+
+function updatePainterButtonStates() {
+  const buttons = document.querySelectorAll("[onclick^=\"setPainterObject(\"]");
+  buttons.forEach((btn) => btn.classList.remove("tool-active"));
+
+  const normalized = String(selectedPainterObject || "plain").toLowerCase();
+
+  buttons.forEach((btn) => {
+    const onclickText = btn.getAttribute("onclick") || "";
+    const match = onclickText.match(/setPainterObject\('([^']+)'\)/i);
+    if (!match) return;
+
+    if (String(match[1]).toLowerCase() === normalized) {
+      btn.classList.add("tool-active");
+    }
+  });
+}
+
+function setPainterObject(value) {
+  selectedPainterObject = value || "plain";
+  updatePainterButtonStates();
+}
+
+function syncSteelMultiplierDisplay() {
+  const multiplierEl = document.getElementById("steelMultiplier");
+  const displayEl = document.getElementById("steelMultiplierDisplay");
+
+  if (!displayEl) return;
+
+  const raw = String(multiplierEl?.value || "1");
+  displayEl.textContent = `${raw}x`;
+}
+
+/* ------------------------------
+   Existing app logic
+------------------------------ */
+
 function t(key) {
   return window.ZM_TRANSLATIONS?.[currentLanguage]?.[key]
     || window.ZM_TRANSLATIONS?.en?.[key]
@@ -208,6 +376,9 @@ function changeLanguage(lang) {
   if (typeof renderRouteAudit === "function") {
     renderRouteAudit(solveState.routeAnalysis || []);
   }
+
+  updatePainterButtonStates();
+  syncSteelMultiplierDisplay();
 }
 
 function refreshTranslatedLoaderSelections() {
@@ -342,6 +513,9 @@ function applyLanguage() {
 
   const toolShaft = document.getElementById("tool-shaft");
   if (toolShaft) toolShaft.textContent = t("shaft");
+
+  const toolDelete = document.getElementById("tool-delete");
+  if (toolDelete) toolDelete.textContent = safeT("delete", "Delete");
 
   const previewTitle = document.getElementById("previewTitle");
   if (previewTitle) previewTitle.textContent = t("preview");
@@ -980,6 +1154,8 @@ function loadSelectedMap() {
     clearBoard(false);
   }
 
+  clearBoardMetaOverrides();
+
   currentMapContext = {
     eventType: selectedMapPath.eventType,
     eventName: selectedMapPath.eventName,
@@ -1267,6 +1443,8 @@ function updateSteelShowdownDisplay(baseTotal, finalTotal) {
 
   if (baseEl) baseEl.textContent = String(baseTotal);
   if (totalEl) totalEl.textContent = String(finalTotal);
+
+  syncSteelMultiplierDisplay();
 }
 
 function calculateSteelShowdown() {
@@ -1290,12 +1468,20 @@ function calculateSteelShowdown() {
 function init() {
   initGridData();
 
+  installTileMetaOverrideLayer();
+
   const titleInput = document.getElementById("titleInput");
   currentPreviewTitle = titleInput?.value || "Gate 1";
 
   loadHelpContent();
   populateEventTypeSelect();
   applyLanguage();
+
+  const multiplierEl = document.getElementById("steelMultiplier");
+  if (multiplierEl) {
+    multiplierEl.addEventListener("change", syncSteelMultiplierDisplay);
+    multiplierEl.addEventListener("input", syncSteelMultiplierDisplay);
+  }
 
   const editorHelp = document.querySelector(".sticky-tools .help");
   if (editorHelp) {
@@ -1325,6 +1511,7 @@ function init() {
   ensureDifficultyMeter();
   updateDifficultyMeter();
   updateSteelShowdownDisplay(0, 0);
+  updatePainterButtonStates();
 
   if (typeof scanActiveObjectTypes === "function") {
     scanActiveObjectTypes();
@@ -1347,5 +1534,11 @@ window.handleEventChamberChange = handleEventChamberChange;
 window.loadSelectedMap = loadSelectedMap;
 window.handleTitleInputChange = handleTitleInputChange;
 window.calculateSteelShowdown = calculateSteelShowdown;
+
+window.setPainterObject = setPainterObject;
+window.clearSelectedTileMeta = clearSelectedTileMeta;
+window.clearAllBoardMeta = clearAllBoardMeta;
+window.applyPainterMetaToSelectedTile = applyPainterMetaToSelectedTile;
+window.syncSteelMultiplierDisplay = syncSteelMultiplierDisplay;
 
 window.addEventListener("load", init);
