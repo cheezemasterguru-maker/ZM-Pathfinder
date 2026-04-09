@@ -1587,3 +1587,25 @@ window.ZM_TILE_META = {
     }
   }
 };
+window.getTileMeta = function(eventType, eventName, eventMine, chamberName, r, c) {
+  if (!window.ZM_TILE_META || !eventType || !eventName || !chamberName) {
+    return null;
+  }
+
+  const key = `${r},${c}`;
+
+  if (eventType === "MainDeep") {
+    return window.ZM_TILE_META?.MainDeep?.[eventName]?.[chamberName]?.tiles?.[key] || null;
+  }
+
+  if (eventType === "Main") {
+    return window.ZM_TILE_META?.Main?.[eventName]?.[chamberName]?.tiles?.[key] || null;
+  }
+
+  if (eventType === "Legacy") {
+    if (!eventMine) return null;
+    return window.ZM_TILE_META?.Legacy?.[eventName]?.[eventMine]?.[chamberName]?.tiles?.[key] || null;
+  }
+
+  return null;
+};
