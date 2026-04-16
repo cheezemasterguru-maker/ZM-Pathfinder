@@ -448,7 +448,6 @@ window.ZM_TILE_META = {
       "Chamber 3": { tiles: {} },
       "Chamber 4": { tiles: {} },
       "Graveyard": { tiles: {} }
-    }
     },
 
     "Sweet Valley": {
