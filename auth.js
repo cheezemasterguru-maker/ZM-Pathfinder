@@ -1,10 +1,10 @@
 const ADMIN_NAME = "CheezeMasterGuru";
-const ADMIN_ID = "7625451";
+const ADMIN_ID = "7625451!";
 const TESTER_STORAGE_KEY = "zm_pathfinder_beta_testers";
 const SESSION_STORAGE_KEY = "zm_pathfinder_beta_session";
 
 const DEFAULT_TESTERS = [
-  { name: "CheezeMasterGuru", id: "7625451", isAdmin: true },
+  { name: "CheezeMasterGuru", id: "7625451!", isAdmin: true },
   { name: "AniLaBanani", id: "23358613", isAdmin: false },
   { name: "ChristopherH", id: "17462546", isAdmin: false },
   { name: "Azshannia", id: "13276937", isAdmin: false },
@@ -21,7 +21,8 @@ const DEFAULT_TESTERS = [
   { name: "Creafee", id: "2909004", isAdmin: false },
   { name: "Yana2025", id: "13608092", isAdmin: false },
   { name: "Okiehustle", id: "9614738", isAdmin: false },
-  { name: "Pastafarian42", id: "20450746", isAdmin: false }
+  { name: "Pastafarian42", id: "20450746", isAdmin: false },
+  { name: "Sol", id: "23528629", isAdmin: false }
 ];
 
 window.currentTester = null;
