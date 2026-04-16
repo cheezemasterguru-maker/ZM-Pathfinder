@@ -169,12 +169,26 @@ window.ZM_SHAFT_DATA = {
     },
 
     "Excavations in the Sand": {
-      "Chamber 1": [],
-      "Chamber 2": [],
-      "Chamber 3": [],
-      "Chamber 4": [],
-      "Graveyard": []
-    },
+  "Chamber 1": [
+    { shaftType: "Beryl", level: 3, auto: 3 },
+    { shaftType: "Quartz", level: 5, auto: 4 },
+    { shaftType: "Cobalt", level: 8, auto: 5 }
+  ],
+  "Chamber 2": [
+    { shaftType: "Amber", level: 8, auto: 5 },
+    { shaftType: "Ametrine", level: 16, auto: 6 },
+    { shaftType: "Barite", level: 18, auto: 6 }
+  ],
+  "Chamber 3": [
+    { shaftType: "Elendir", level: 12, auto: 6 },
+    { shaftType: "Lapis Lazuli", level: 21, auto: 7 },
+    { shaftType: "Aventurine", level: 23, auto: 7 }
+  ],
+  "Chamber 4": [
+    { shaftType: "Obsidian", level: 27, auto: 7 }
+  ],
+  "Graveyard": []
+},
 
     "Moon Odyssey": {
   "Chamber 1": [
