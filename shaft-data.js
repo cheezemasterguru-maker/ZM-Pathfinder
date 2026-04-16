@@ -131,22 +131,73 @@ window.ZM_SHAFT_DATA = {
     },
 
     "Essence Cave": {
-  "Chamber 1": [
-    { shaftType: "Beryl", level: 3, auto: 3 },
-    { shaftType: "Quartz", level: 6, auto: 4 }
-  ],
+      "Chamber 1": [
+        { shaftType: "Beryl", level: 3, auto: 3 },
+        { shaftType: "Quartz", level: 6, auto: 4 }
+      ],
+      "Chamber 2": [
+        { shaftType: "Cobalt", level: 8, auto: 5 },
+        { shaftType: "Amber", level: 11, auto: 4 },
+        { shaftType: "Ametrine", level: 13, auto: 5 }
+      ],
+      "Chamber 3": [
+        { shaftType: "Barite", level: 16, auto: 6 }
+      ],
+      "Graveyard": []
+    },
 
-  "Chamber 2": [
-    { shaftType: "Cobalt", level: 8, auto: 5 },
-    { shaftType: "Amber", level: 11, auto: 4 },
-    { shaftType: "Ametrine", level: 13, auto: 5 }
-  ],
+    "Sweet Valley": {
+      "Chamber 1": [
+        { shaftType: "Beryl", level: 2, auto: 3 },
+        { shaftType: "Quartz", level: 4, auto: 3 },
+        { shaftType: "Cobalt", level: 6, auto: 4 }
+      ],
+      "Chamber 2": [
+        { shaftType: "Amber", level: 7, auto: 5 },
+        { shaftType: "Ametrine", level: 13, auto: 5 },
+        { shaftType: "Barite", level: 16, auto: 6 }
+      ],
+      "Chamber 3": [
+        { shaftType: "Elendir", level: 18, auto: 5 },
+        { shaftType: "Lapis Lazuli", level: 24, auto: 6 },
+        { shaftType: "Aventurine", level: 26, auto: 6 }
+      ],
+      "Chamber 4": [
+        { shaftType: "Obsidian", level: 20, auto: 7 }
+      ],
+      "Graveyard": []
+    },
 
-  "Chamber 3": [
-    { shaftType: "Barite", level: 16, auto: 6 }
-  ],
+    "Excavations in the Sand": {
+      "Chamber 1": [],
+      "Chamber 2": [],
+      "Chamber 3": [],
+      "Chamber 4": [],
+      "Graveyard": []
+    },
 
-  "Graveyard": []
+    "Moon Odyssey": {
+      "Chamber 1": [],
+      "Chamber 2": [],
+      "Chamber 3": [],
+      "Chamber 4": [],
+      "Graveyard": []
+    },
+
+    "Volcano Awakening": {
+      "Chamber 1": [],
+      "Chamber 2": [],
+      "Chamber 3": [],
+      "Chamber 4": [],
+      "Graveyard": []
+    },
+
+    "Grand Canyon": {
+      "Chamber 1": [],
+      "Chamber 2": [],
+      "Chamber 3": [],
+      "Chamber 4": [],
+      "Graveyard": []
     }
   },
 
