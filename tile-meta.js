@@ -931,7 +931,8 @@ window.ZM_TILE_META = {
       "13,2": { object: "chest", subtype: "wood" }
     }
   }
-},
+}
+  },
 
   Legacy: {
     "Love Story": {
