@@ -225,12 +225,29 @@ window.ZM_SHAFT_DATA = {
     },
 
     "Grand Canyon": {
-      "Chamber 1": [],
-      "Chamber 2": [],
-      "Chamber 3": [],
-      "Chamber 4": [],
-      "Graveyard": []
-    }
+  "Chamber 1": [
+    { shaftType: "Beryl", level: 3, auto: 3 },
+    { shaftType: "Quartz", level: 7, auto: 4 }
+  ],
+
+  "Chamber 2": [
+    { shaftType: "Cobalt", level: 8, auto: 5 },
+    { shaftType: "Amber", level: 14, auto: 5 },
+    { shaftType: "Ametrine", level: 19, auto: 6 }
+  ],
+
+  "Chamber 3": [
+    { shaftType: "Barite", level: 25, auto: 5 },
+    { shaftType: "Elendir", level: 27, auto: 6 },
+    { shaftType: "Lapis Lazuli", level: 29, auto: 7 }
+  ],
+
+  "Chamber 4": [
+    { shaftType: "Aventurine", level: 30, auto: 7 }
+  ],
+
+  "Graveyard": []
+}
   },
 
   Legacy: {
