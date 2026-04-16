@@ -131,10 +131,22 @@ window.ZM_SHAFT_DATA = {
     },
 
     "Essence Cave": {
-      "Chamber 1": [],
-      "Chamber 2": [],
-      "Chamber 3": [],
-      "Graveyard": []
+  "Chamber 1": [
+    { shaftType: "Beryl", level: 3, auto: 3 },
+    { shaftType: "Quartz", level: 6, auto: 4 }
+  ],
+
+  "Chamber 2": [
+    { shaftType: "Cobalt", level: 8, auto: 5 },
+    { shaftType: "Amber", level: 11, auto: 4 },
+    { shaftType: "Ametrine", level: 13, auto: 5 }
+  ],
+
+  "Chamber 3": [
+    { shaftType: "Barite", level: 16, auto: 6 }
+  ],
+
+  "Graveyard": []
     }
   },
 
