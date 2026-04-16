@@ -177,11 +177,29 @@ window.ZM_SHAFT_DATA = {
     },
 
     "Moon Odyssey": {
-      "Chamber 1": [],
-      "Chamber 2": [],
-      "Chamber 3": [],
-      "Chamber 4": [],
-      "Graveyard": []
+  "Chamber 1": [
+    { shaftType: "Beryl", level: 2, auto: 3 },
+    { shaftType: "Quartz", level: 4, auto: 3 },
+    { shaftType: "Cobalt", level: 6, auto: 4 }
+  ],
+
+  "Chamber 2": [
+    { shaftType: "Amber", level: 7, auto: 5 },
+    { shaftType: "Ametrine", level: 13, auto: 5 },
+    { shaftType: "Barite", level: 18, auto: 6 }
+  ],
+
+  "Chamber 3": [
+    { shaftType: "Elendir", level: 18, auto: 5 },
+    { shaftType: "Lapis Lazuli", level: 26, auto: 6 },
+    { shaftType: "Aventurine", level: 26, auto: 6 }
+  ],
+
+  "Chamber 4": [
+    { shaftType: "Obsidian", level: 20, auto: 7 }
+  ],
+
+  "Graveyard": []
     },
 
     "Volcano Awakening": {
