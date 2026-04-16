@@ -1,74 +1,77 @@
 window.ZM_SHAFT_DATA = {
   MainDeep: {
-  "DEEP 1": {
-    "Chamber 1": [
-    { shaftType: "Beryl", level: 33, auto: "C-14" },
-    { shaftType: "Quartz", level: 39, auto: "U-13" },
-    { shaftType: "Amber", level: 41, auto: "C-14" }
-  ],
+    "DEEP 1": {
+      "Chamber 1": [
+        { shaftType: "Beryl", level: 33, auto: "C-14" },
+        { shaftType: "Quartz", level: 39, auto: "U-13" },
+        { shaftType: "Amber", level: 41, auto: "C-14" }
+      ],
 
-  "Chamber 2": [
-    { shaftType: "Ametrine", level: 46, auto: "U-12" },
-    { shaftType: "Barite", level: 48, auto: "U-12" },
-    { shaftType: "Obsidian", level: 50, auto: "C-14" },
-    { shaftType: "Sephirot", level: 52, auto: "U-12" }
-  ],
+      "Chamber 2": [
+        { shaftType: "Ametrine", level: 46, auto: "U-12" },
+        { shaftType: "Barite", level: 48, auto: "U-12" },
+        { shaftType: "Obsidian", level: 50, auto: "C-14" },
+        { shaftType: "Sephirot", level: 52, auto: "U-12" }
+      ],
 
-  "Chamber 3": [
-    { shaftType: "Silithium", level: 57, auto: "C-14" },
-    { shaftType: "Sapphire", level: 60, auto: "C-14" },
-    { shaftType: "Morganite", level: 64, auto: "C-14" }
-  ]
-},
+      "Chamber 3": [
+        { shaftType: "Silithium", level: 57, auto: "C-14" },
+        { shaftType: "Sapphire", level: 60, auto: "C-14" },
+        { shaftType: "Morganite", level: 64, auto: "C-14" }
+      ]
+    },
+
     "DEEP 2": {
-  "Chamber 1": [
-    { shaftType: "Cobalt", level: 32, auto: "C-14" },
-    { shaftType: "Elendir", level: 34, auto: "U-12" }
-  ],
+      "Chamber 1": [
+        { shaftType: "Cobalt", level: 32, auto: "C-14" },
+        { shaftType: "Elendir", level: 34, auto: "U-12" }
+      ],
 
-  "Chamber 2": [
-    { shaftType: "Lapis Lazuli", level: 43, auto: "C-14" },
-    { shaftType: "Aventurine", level: 45, auto: "U-12" },
-    { shaftType: "Peridot", level: 50, auto: "C-14" }
-  ],
+      "Chamber 2": [
+        { shaftType: "Lapis Lazuli", level: 43, auto: "C-14" },
+        { shaftType: "Aventurine", level: 45, auto: "U-12" },
+        { shaftType: "Peridot", level: 50, auto: "C-14" }
+      ],
 
-  "Chamber 3": [
-    { shaftType: "Malachite", level: 55, auto: "U-12" },
-    { shaftType: "Turquoise", level: 57, auto: "C-14" },
-    { shaftType: "Tanzanite", level: 59, auto: "U-12" },
-    { shaftType: "Cyril", level: 62, auto: "U-12" }
-  ],
+      "Chamber 3": [
+        { shaftType: "Malachite", level: 55, auto: "U-12" },
+        { shaftType: "Turquoise", level: 57, auto: "C-14" },
+        { shaftType: "Tanzanite", level: 59, auto: "U-12" },
+        { shaftType: "Cyril", level: 62, auto: "U-12" }
+      ],
 
-  "Chamber 4": [
-    { shaftType: "Vulcanite", level: 62, auto: "U-12" },
-    { shaftType: "Galaxite", level: 65, auto: "C-14" },
-    { shaftType: "Morganite", level: 67, auto: "C-14" }
-  ]
-},
+      "Chamber 4": [
+        { shaftType: "Vulcanite", level: 62, auto: "U-12" },
+        { shaftType: "Galaxite", level: 65, auto: "C-14" },
+        { shaftType: "Morganite", level: 67, auto: "C-14" }
+      ]
+    },
+
     "DEEP 3": {
-  "Chamber 1": [
-    { shaftType: "Amber", level: 32, auto: "C-14" },
-    { shaftType: "Ametrine", level: 35, auto: "U-12" }
-  ],
+      "Chamber 1": [
+        { shaftType: "Amber", level: 32, auto: "C-14" },
+        { shaftType: "Ametrine", level: 35, auto: "U-12" }
+      ],
 
-  "Chamber 2": [
-    { shaftType: "Barite", level: 44, auto: "C-14" },
-    { shaftType: "Obsidian", level: 46, auto: "U-12" },
-    { shaftType: "Tanzanite", level: 49, auto: "C-14" }
-  ],
+      "Chamber 2": [
+        { shaftType: "Barite", level: 44, auto: "C-14" },
+        { shaftType: "Obsidian", level: 46, auto: "U-12" },
+        { shaftType: "Tanzanite", level: 49, auto: "C-14" }
+      ],
 
-  "Chamber 3": [
-    { shaftType: "Malachite", level: 54, auto: "U-12" },
-    { shaftType: "Turquoise", level: 56, auto: "C-14" },
-    { shaftType: "Silithium", level: 60, auto: "U-12" }
-  ],
+      "Chamber 3": [
+        { shaftType: "Malachite", level: 54, auto: "U-12" },
+        { shaftType: "Turquoise", level: 56, auto: "C-14" },
+        { shaftType: "Silithium", level: 60, auto: "U-12" }
+      ],
 
-  "Chamber 4": [
-    { shaftType: "Sapphire", level: 61, auto: "U-12" },
-    { shaftType: "Rhodonite", level: 63, auto: "U-12" },
-    { shaftType: "Morganite", level: 65, auto: "C-14" }
-  ]
-},
+      "Chamber 4": [
+        { shaftType: "Sapphire", level: 61, auto: "U-12" },
+        { shaftType: "Rhodonite", level: 63, auto: "U-12" },
+        { shaftType: "Morganite", level: 65, auto: "C-14" }
+      ]
+    },
+
     "DEEP 4": {
       "Chamber 1": [
         { shaftType: "Beryl", level: 32, auto: "U-13" },
@@ -108,6 +111,29 @@ window.ZM_SHAFT_DATA = {
       "Chamber 4": [
         { shaftType: "Aventurine", level: 31, auto: 7 }
       ],
+      "Graveyard": []
+    },
+
+    "Treasure Trove of Gems": {
+      "Chamber 1": [
+        { shaftType: "Beryl", level: 3, auto: 3 },
+        { shaftType: "Quartz", level: 7, auto: 4 }
+      ],
+      "Chamber 2": [
+        { shaftType: "Cobalt", level: 9, auto: 5 },
+        { shaftType: "Amber", level: 11, auto: 5 }
+      ],
+      "Chamber 3": [
+        { shaftType: "Ametrine", level: 13, auto: 7 },
+        { shaftType: "Barite", level: 15, auto: 7 }
+      ],
+      "Graveyard": []
+    },
+
+    "Essence Cave": {
+      "Chamber 1": [],
+      "Chamber 2": [],
+      "Chamber 3": [],
       "Graveyard": []
     }
   },
