@@ -835,8 +835,9 @@ window.ZM_TILE_META = {
     "16,0": { object: "chest", subtype: "wood" },
     "16,4": { object: "essence" },
     "16,6": { object: "emblems" }
-  }
-},
+        }
+      }
+    },
 
     "Volcano Awakening": {
       "Chamber 1": {
