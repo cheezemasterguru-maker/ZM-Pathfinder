@@ -1270,7 +1270,7 @@ window.ZM_TILE_META = {
       "The Deep": {}
     },
 
-    "Clover Valley": {
+    "Clover Festival": {
       "Mine 1": {},
       "Mine 2": {},
       "Mine 3": {},
