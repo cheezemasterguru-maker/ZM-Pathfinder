@@ -607,6 +607,7 @@ window.ZM_MAP_DATA = {
 
       "Graveyard": {
   title: "Moon Odyssey - Graveyard",
+  gateType: "standard",     
   grid: [
     [42,61,41,63,42,62,42],
     [59,56,59,52,60,59,50],
