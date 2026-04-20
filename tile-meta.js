@@ -286,6 +286,7 @@ window.ZM_TILE_META = {
           "1,6": { object: "badges" },
           "2,2": { object: "gems" },
           "2,4": { object: "essence" },
+          "3,3": { object: "chest", subtype: "iron" },
           "4,0": { object: "essence" },
           "4,2": { object: "badges" },
           "5,3": { object: "gems" },
