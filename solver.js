@@ -1233,32 +1233,33 @@
   }
 
   if (typeof getCellObjectType === "function") {
-    const seen = new Set();
+  const grouped = {};
 
-    for (let r = 0; r < grid.length; r++) {
-      for (let c = 0; c < grid[0].length; c++) {
-        if (!isWalkableCell(grid, r, c)) continue;
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < grid[0].length; c++) {
+      if (!isWalkableCell(grid, r, c)) continue;
 
-        const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
-        if (!type) continue;
-        if (type === "gate" || type === "shaft" || type === "bubble") continue;
-        if (normalizePrioritySetting(normalizedMap[type]) !== "priority") continue;
+      const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
+      if (!type) continue;
+      if (type === "gate" || type === "shaft" || type === "bubble") continue;
+      if (normalizePrioritySetting(normalizedMap[type]) !== "priority") continue;
 
-        const groupId = `${type}-${cellKey(r, c)}`;
-        if (seen.has(groupId)) continue;
-        seen.add(groupId);
-
-        groups.push({
-          id: groupId,
-          label: type,
-          kind: "object",
-          objectType: type,
-          goals: [[r, c]],
-          final: false,
-        });
-      }
+      if (!grouped[type]) grouped[type] = [];
+      grouped[type].push([r, c]);
     }
   }
+
+  for (const type in grouped) {
+    groups.push({
+      id: `group-${type}`,
+      label: type,
+      kind: "object",
+      objectType: type,
+      goals: grouped[type],
+      final: false,
+    });
+  }
+}
 
   const nonFinal = groups.filter((g) => !g.final);
   const finals = groups.filter((g) => g.final);
