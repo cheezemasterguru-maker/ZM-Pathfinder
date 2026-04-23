@@ -1448,31 +1448,45 @@ function buildCustomPaths({
   getCellObjectType,
 }) {
   const targetRoutes = [];
-  let unresolvedTargets = 0;
+let unresolvedTargets = 0;
 
-  for (const group of targetGroups) {
-    const route = dijkstra({
-      grid,
-      starts,
-      goals: group.goals,
-      freeCells: new Set(),
-      objectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-    });
+const reusable = new Set();
+let progressiveStarts = [...starts];
 
-    if (!route || !route.path || !route.path.length) {
-      unresolvedTargets++;
-      continue;
-    }
+for (const group of targetGroups) {
+  const route = dijkstra({
+    grid,
+    starts: progressiveStarts,
+    goals: group.goals,
+    freeCells: reusable,
+    objectPriorities,
+    objectPriorityMap,
+    getCellObjectType,
+  });
 
-    targetRoutes.push({
-      group,
-      goal: route.goal,
-      path: uniquePath(route.path),
-      cost: route.cost,
-    });
+  if (!route || !route.path || !route.path.length) {
+    unresolvedTargets++;
+    continue;
   }
+
+  const cleanPath = uniquePath(route.path);
+
+  targetRoutes.push({
+    group,
+    goal: route.goal,
+    path: cleanPath,
+    cost: route.cost,
+  });
+
+  // 🔥 KEY FIX — reuse path
+  for (const [r, c] of cleanPath) {
+    reusable.add(cellKey(r, c));
+  }
+
+  progressiveStarts = dedupeCells(
+    progressiveStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
+  );
+}
 
   if (!targetRoutes.length) {
     return {
