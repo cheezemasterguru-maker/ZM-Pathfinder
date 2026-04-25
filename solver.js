@@ -1440,365 +1440,280 @@
   }
 
   function buildCustomPaths({
+  grid,
+  starts,
+  targetGroups,
+  objectPriorities,
+  objectPriorityMap,
+  getCellObjectType,
+}) {
+  const redPath = [];
+  const bluePaths = [];
+
+  let redCost = 0;
+  let blueCost = 0;
+  let unresolvedTargets = 0;
+
+  const reusable = new Set();
+  let cumulativeStarts = dedupeCells(starts);
+
+  const attackPoints = [];
+  const shaftEntryDots = [];
+
+  let isFirstPath = true;
+
+  for (const group of targetGroups) {
+    const route = dijkstra({
+      grid,
+      starts: cumulativeStarts,
+      goals: group.goals,
+      freeCells: reusable,
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType,
+    });
+
+    if (!route || !route.path || !route.path.length) {
+      unresolvedTargets++;
+      continue;
+    }
+
+    const cleanPath = uniquePath(route.path);
+
+    // Track attack points
+    attackPoints.push(route.goal);
+
+    if (group.kind === "shaft" && group.entryMap) {
+      const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
+      if (entry) shaftEntryDots.push(entry);
+    }
+
+    // FIRST PATH = RED (same as standard behavior)
+    if (isFirstPath) {
+      redPath.push(...cleanPath);
+      redCost += route.cost;
+      isFirstPath = false;
+    } else {
+      bluePaths.push(cleanPath);
+      blueCost += route.cost;
+    }
+
+    // reuse path (same behavior as standard)
+    for (const [r, c] of cleanPath) {
+      reusable.add(cellKey(r, c));
+    }
+
+    cumulativeStarts = dedupeCells(
+      cumulativeStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
+    );
+  }
+
+  return {
+    redPath: uniquePath(redPath),
+    bluePaths,
+    redCost,
+    blueCost,
+    totalCost: redCost + blueCost,
+    unresolvedTargets,
+    attackPoints: dedupeCells(attackPoints),
+    shaftEntryDots: dedupeCells(shaftEntryDots),
+  };
+}
+
+function solveCustom({
+  grid,
+  gateType,
+  eventType,
+  objectPriorities,
+  objectPriorityMap,
+  getCellObjectType,
+}) {
+  const rows = grid.length;
+  const cols = grid[0].length;
+  const { startRow, starts } = getStartCells(grid);
+
+  if (!starts.length) {
+    return {
+      ok: false,
+      message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid start cells one row below the lowest used row.`,
+      startRow,
+    };
+  }
+
+  const requiredPriorityCells = getPriorityCells(grid, objectPriorityMap, getCellObjectType);
+  const avoidCells = getAvoidCells(grid, objectPriorityMap, getCellObjectType);
+  const bubbles = getBubbles(grid);
+  const shaftClustersOrdered = sortShaftClustersBottomToTop(getShaftClusters(grid));
+
+  const targetGroups = buildCustomTargetGroups({
+    grid,
+    gateType,
+    objectPriorityMap,
+    getCellObjectType,
+  });
+
+  if (!targetGroups.length) {
+    return {
+      ok: false,
+      message:
+        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
+        `solver_mode: custom\n` +
+        `No custom objectives selected.`,
+      startRow,
+    };
+  }
+
+  const customPaths = buildCustomPaths({
     grid,
     starts,
     targetGroups,
     objectPriorities,
     objectPriorityMap,
     getCellObjectType,
-  }) {
-    const targetRoutes = [];
-    let unresolvedTargets = 0;
+  });
 
-    for (const group of targetGroups) {
-      const route = dijkstra({
-        grid,
-        starts,
-        goals: group.goals,
-        freeCells: new Set(),
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
+  const redPath = customPaths.redPath || [];
+  const bluePaths = customPaths.bluePaths || [];
 
-      if (!route || !route.path || !route.path.length) {
-        unresolvedTargets++;
-        continue;
-      }
+  const redBubbleCount = countRedBubbles(redPath, grid);
+  const firstRedBubbleAt = firstBubbleStep(redPath, grid);
 
-      targetRoutes.push({
-        group,
-        goal: route.goal,
-        path: uniquePath(route.path),
-        cost: route.cost,
-      });
-    }
-
-    if (!targetRoutes.length) {
-      return {
-        trunkPath: [],
-        branchPaths: [],
-        redPath: [],
-        bluePaths: [],
-        redCost: 0,
-        blueCost: 0,
-        totalCost: 0,
-        unresolvedTargets,
-        attackPoints: [],
-        shaftEntryDots: [],
-        visitedTargets: [],
-      };
-    }
-
-    const usageMap = buildCustomUsageMap(targetRoutes);
-    const trunkPath = chooseBestCustomTrunk(targetRoutes, usageMap, starts, grid);
-    const trunkSet = pathSet(trunkPath);
-
-    const rawBranches = [];
-    const attackPoints = [];
-    const shaftEntryDots = [];
-    const visitedTargets = [];
-
-    for (const route of targetRoutes) {
-      visitedTargets.push(route.group.id);
-
-      if (route.group.kind === "gate") {
-        attackPoints.push(route.goal);
-      } else if (route.group.kind === "shaft" && route.group.entryMap) {
-        attackPoints.push(route.goal);
-        const entry = route.group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
-        if (entry) shaftEntryDots.push(entry);
-      } else if (
-        route.group.kind === "bubble" ||
-        route.group.kind === "object"
-      ) {
-        attackPoints.push(route.goal);
-      }
-
-      const joinIndex = findBestBranchJoinIndex(route.path, trunkSet, usageMap);
-
-      if (joinIndex < 0) {
-        if (!hasPathLoop(route.path)) {
-          rawBranches.push(uniquePath(route.path));
-        }
-        continue;
-      }
-
-      if (joinIndex >= route.path.length - 1) {
-        continue;
-      }
-
-      const branch = uniquePath(route.path.slice(joinIndex));
-      if (branch.length > 1 && !hasPathLoop(branch)) {
-        rawBranches.push(branch);
-      }
-    }
-
-    const branchSeen = new Set();
-    const branchPaths = rawBranches.filter((branch) => {
-      const key = branch.map(([r, c]) => cellKey(r, c)).join("|");
-      if (branchSeen.has(key)) return false;
-      branchSeen.add(key);
-      return true;
-    });
-
-    const redCost = computePathTraversalCost(
-      trunkPath,
-      grid,
-      objectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-      new Set(),
-      starts,
-      []
-    );
-
-    const usedForBlue = pathSet(trunkPath);
-    let blueCost = 0;
-
-    for (const branch of branchPaths) {
-      blueCost += computePathTraversalCost(
-        branch,
-        grid,
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-        usedForBlue,
-        starts,
-        []
-      );
-
-      for (const [r, c] of branch) {
-        usedForBlue.add(cellKey(r, c));
-      }
-    }
-
-    return {
-      trunkPath,
-      branchPaths,
-      redPath: trunkPath,
-      bluePaths: branchPaths,
-      redCost,
-      blueCost,
-      totalCost: redCost + blueCost,
-      unresolvedTargets,
-      attackPoints: dedupeCells(attackPoints),
-      shaftEntryDots: dedupeCells(shaftEntryDots),
-      visitedTargets,
-    };
-  }
-
-  function solveCustom({
+  const firstBubbleCost = firstBubbleTravelCost(
+    redPath,
     grid,
-    gateType,
-    eventType,
     objectPriorities,
     objectPriorityMap,
+    getCellObjectType
+  );
+
+  const redObjectPriorityScore = getPathObjectPriorityScore(
+    redPath,
+    objectPriorityMap,
     getCellObjectType,
-  }) {
-    const rows = grid.length;
-    const cols = grid[0].length;
-    const { startRow, starts } = getStartCells(grid);
+    objectPriorities
+  );
 
-    if (!starts.length) {
-      return {
-        ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid start cells one row below the lowest used row.`,
-        startRow,
-      };
-    }
-
-    const requiredPriorityCells = getPriorityCells(grid, objectPriorityMap, getCellObjectType);
-    const avoidCells = getAvoidCells(grid, objectPriorityMap, getCellObjectType);
-    const bubbles = getBubbles(grid);
-    const shaftClustersOrdered = sortShaftClustersBottomToTop(getShaftClusters(grid));
-
-    const targetGroups = buildCustomTargetGroups({
-      grid,
-      gateType,
-      objectPriorityMap,
-      getCellObjectType,
-    });
-
-    if (!targetGroups.length) {
-      return {
-        ok: false,
-        message:
-          `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
-          `solver_mode: custom\n` +
-          `No custom objectives selected.`,
-        startRow,
-      };
-    }
-
-    const customPaths = buildCustomPaths({
-      grid,
-      starts,
-      targetGroups,
-      objectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-    });
-
-    const redPath = customPaths.redPath || [];
-    const bluePaths = customPaths.bluePaths || [];
-    const redBubbleCount = countRedBubbles(redPath, grid);
-    const firstRedBubbleAt = firstBubbleStep(redPath, grid);
-    const firstBubbleCost = firstBubbleTravelCost(
-      redPath,
-      grid,
-      objectPriorities,
-      objectPriorityMap,
-      getCellObjectType
-    );
-
-    const redObjectPriorityScore = getPathObjectPriorityScore(
-      redPath,
+  let blueObjectPriorityScore = 0;
+  for (const bluePath of bluePaths) {
+    blueObjectPriorityScore += getPathObjectPriorityScore(
+      bluePath,
       objectPriorityMap,
       getCellObjectType,
       objectPriorities
     );
-
-    let blueObjectPriorityScore = 0;
-    for (const bluePath of bluePaths) {
-      blueObjectPriorityScore += getPathObjectPriorityScore(
-        bluePath,
-        objectPriorityMap,
-        getCellObjectType,
-        objectPriorities
-      );
-    }
-
-    const missingPriorityCount = countMissingPriorityCells(
-      requiredPriorityCells,
-      [redPath, ...bluePaths]
-    );
-    const redLoopPenalty = redBacktrackPenalty(redPath);
-    const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
-
-    const effectiveTotal =
-      customPaths.totalCost +
-      totalObjectPriorityScore +
-      redLoopPenalty +
-      missingPriorityCount * 1000000000 +
-      customPaths.unresolvedTargets * 1000000000;
-
-    const candidate = {
-      redMode: "custom",
-      redVariant: "shared-trunk-and-branches",
-      redBubble: null,
-      redBubbles: [],
-      redBubbleCount,
-      firstRedBubbleAt,
-      firstBubbleTravelCost: firstBubbleCost,
-      redPath,
-      redCost: customPaths.redCost,
-      gateGoal: customPaths.attackPoints.length
-        ? customPaths.attackPoints[customPaths.attackPoints.length - 1]
-        : null,
-      bluePaths,
-      blueCost: customPaths.blueCost,
-      shaftEntryDots: customPaths.shaftEntryDots,
-      attackPoints: customPaths.attackPoints,
-      unresolvedTargets: customPaths.unresolvedTargets,
-      dependencyCost: 0,
-      assistBonus: 0,
-      lowerShaftBonus: 0,
-      bubbleBonus: 0,
-      redLoopPenalty,
-      overAssistPenalty: 0,
-      redObjectPriorityScore,
-      blueObjectPriorityScore,
-      objectPriorityScore: totalObjectPriorityScore,
-      missingPriorityCount,
-      effectiveTotal,
-    };
-
-    const routeAnalysis = buildRouteAnalysis(grid, [candidate], candidate);
-
-    return {
-      ok: true,
-      rows,
-      cols,
-      gateType,
-      eventType,
-      solverMode: "custom",
-      legacyEndMode: false,
-      startRow,
-      solverVersion: SOLVER_VERSION,
-      objectPriorities: { ...objectPriorities },
-      objectPriorityMap: objectPriorityMap ? { ...objectPriorityMap } : null,
-      requiredPriorityCells,
-      avoidCells,
-      redMode: candidate.redMode,
-      redVariant: candidate.redVariant,
-      redBubble: null,
-      redBubbles: [],
-      redBubbleCount,
-      firstRedBubbleAt,
-      firstBubbleTravelCost:
-        firstBubbleCost === Infinity ? null : roundCost(firstBubbleCost),
-      redPath,
-      redCost: roundCost(candidate.redCost),
-      bluePaths,
-      blueCost: roundCost(candidate.blueCost),
-      totalCost: roundCost(candidate.redCost + candidate.blueCost),
-      redObjectPriorityScore: roundCost(redObjectPriorityScore),
-      blueObjectPriorityScore: roundCost(blueObjectPriorityScore),
-      objectPriorityScore: roundCost(totalObjectPriorityScore),
-      missingPriorityCount,
-      effectiveTotal: roundCost(effectiveTotal),
-      dependencyCost: 0,
-      assistBonus: 0,
-      lowerShaftBonus: 0,
-      bubbleBonus: 0,
-      redLoopPenalty: roundCost(redLoopPenalty),
-      overAssistPenalty: 0,
-      shaftClusters: shaftClustersOrdered,
-      shaftEntryDots: customPaths.shaftEntryDots,
-      attackPoints: customPaths.attackPoints,
-      bubbles,
-      unresolvedTargets: customPaths.unresolvedTargets,
-      redCandidateCount: 1,
-      routeAnalysis,
-      message:
-        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
-        `solver_mode: custom\n` +
-        `solver_status: solved\n` +
-        `missing_priority_count: ${missingPriorityCount}\n` +
-        `unresolved_targets: ${customPaths.unresolvedTargets}\n` +
-        `red_cost: ${roundCost(candidate.redCost)}\n` +
-        `blue_cost: ${roundCost(candidate.blueCost)}\n` +
-        `effective_total: ${roundCost(effectiveTotal)}`
-    };
   }
 
-  function solveGrid({
-    grid,
-    gateType = "standard",
-    eventType = null,
-    objectPriorities = null,
-    objectPriorityMap = null,
-    getCellObjectType = null,
-    solverMode = "standard",
-  }) {
-    const normalizedObjectPriorities = normalizeObjectPriorities(
-      objectPriorities || GLOBAL_OBJECT_PRIORITIES
-    );
-    const normalizedSolverMode = normalizeSolverMode(solverMode);
+  const missingPriorityCount = countMissingPriorityCells(
+    requiredPriorityCells,
+    [redPath, ...bluePaths]
+  );
 
-    if (normalizedSolverMode === "custom") {
-      return solveCustom({
-        grid,
-        gateType,
-        eventType,
-        objectPriorities: normalizedObjectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
-    }
+  const redLoopPenalty = redBacktrackPenalty(redPath);
+  const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
 
-    return solveStandard({
+  const effectiveTotal =
+    customPaths.totalCost +
+    totalObjectPriorityScore +
+    redLoopPenalty +
+    missingPriorityCount * 1000000000 +
+    customPaths.unresolvedTargets * 1000000000;
+
+  const candidate = {
+    redMode: "custom",
+    redVariant: "sequential-priority",
+    redPath,
+    redCost: customPaths.redCost,
+    bluePaths,
+    blueCost: customPaths.blueCost,
+    attackPoints: customPaths.attackPoints,
+    shaftEntryDots: customPaths.shaftEntryDots,
+    unresolvedTargets: customPaths.unresolvedTargets,
+    redBubbleCount,
+    firstRedBubbleAt,
+    firstBubbleTravelCost: firstBubbleCost,
+    redObjectPriorityScore,
+    blueObjectPriorityScore,
+    objectPriorityScore: totalObjectPriorityScore,
+    missingPriorityCount,
+    effectiveTotal,
+    redLoopPenalty,
+  };
+
+  const routeAnalysis = buildRouteAnalysis(grid, [candidate], candidate);
+
+  return {
+    ok: true,
+    rows,
+    cols,
+    gateType,
+    eventType,
+    solverMode: "custom",
+    legacyEndMode: false,
+    startRow,
+    solverVersion: SOLVER_VERSION,
+    objectPriorities: { ...objectPriorities },
+    objectPriorityMap: objectPriorityMap ? { ...objectPriorityMap } : null,
+    requiredPriorityCells,
+    avoidCells,
+    redMode: candidate.redMode,
+    redVariant: candidate.redVariant,
+    redBubble: null,
+    redBubbles: [],
+    redBubbleCount,
+    firstRedBubbleAt,
+    firstBubbleTravelCost:
+      firstBubbleCost === Infinity ? null : roundCost(firstBubbleCost),
+    redPath,
+    redCost: roundCost(candidate.redCost),
+    bluePaths,
+    blueCost: roundCost(candidate.blueCost),
+    totalCost: roundCost(candidate.redCost + candidate.blueCost),
+    redObjectPriorityScore: roundCost(redObjectPriorityScore),
+    blueObjectPriorityScore: roundCost(blueObjectPriorityScore),
+    objectPriorityScore: roundCost(totalObjectPriorityScore),
+    missingPriorityCount,
+    effectiveTotal: roundCost(effectiveTotal),
+    dependencyCost: 0,
+    assistBonus: 0,
+    lowerShaftBonus: 0,
+    bubbleBonus: 0,
+    redLoopPenalty: roundCost(redLoopPenalty),
+    overAssistPenalty: 0,
+    shaftClusters: shaftClustersOrdered,
+    shaftEntryDots: customPaths.shaftEntryDots,
+    attackPoints: customPaths.attackPoints,
+    bubbles,
+    unresolvedTargets: customPaths.unresolvedTargets,
+    redCandidateCount: 1,
+    routeAnalysis,
+    message:
+      `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
+      `solver_mode: custom\n` +
+      `solver_status: solved\n` +
+      `missing_priority_count: ${missingPriorityCount}\n` +
+      `unresolved_targets: ${customPaths.unresolvedTargets}\n` +
+      `red_cost: ${roundCost(candidate.redCost)}\n` +
+      `blue_cost: ${roundCost(candidate.blueCost)}\n` +
+      `effective_total: ${roundCost(effectiveTotal)}`
+  };
+}
+
+function solveGrid({
+  grid,
+  gateType = "standard",
+  eventType = null,
+  objectPriorities = null,
+  objectPriorityMap = null,
+  getCellObjectType = null,
+  solverMode = "standard",
+}) {
+  const normalizedObjectPriorities = normalizeObjectPriorities(
+    objectPriorities || GLOBAL_OBJECT_PRIORITIES
+  );
+  const normalizedSolverMode = normalizeSolverMode(solverMode);
+
+  if (normalizedSolverMode === "custom") {
+    return solveCustom({
       grid,
       gateType,
       eventType,
@@ -1808,12 +1723,21 @@
     });
   }
 
-  window.ZMPathfinderSolver = {
-    solverVersion: SOLVER_VERSION,
-    numberCost,
-    solveGrid,
-    setObjectPriorities,
-    getObjectPriorities,
-    defaultObjectPriorities: { ...DEFAULT_OBJECT_PRIORITIES },
-  };
-})();
+  return solveStandard({
+    grid,
+    gateType,
+    eventType,
+    objectPriorities: normalizedObjectPriorities,
+    objectPriorityMap,
+    getCellObjectType,
+  });
+}
+
+window.ZMPathfinderSolver = {
+  solverVersion: SOLVER_VERSION,
+  numberCost,
+  solveGrid,
+  setObjectPriorities,
+  getObjectPriorities,
+  defaultObjectPriorities: { ...DEFAULT_OBJECT_PRIORITIES },
+};
