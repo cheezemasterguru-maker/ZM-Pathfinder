@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V7.0 loaded");
+  console.log("ZM Solver V7.1 loaded");
 
-  const SOLVER_VERSION = "V7.0";
+  const SOLVER_VERSION = "V7.1";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -1181,629 +1181,624 @@
   }
 
   function buildCustomTargetGroups({
-  grid,
-  gateType,
-  objectPriorityMap,
-  getCellObjectType,
-}) {
-  const groups = [];
-  const normalizedMap = objectPriorityMap || {};
-
-  if (normalizePrioritySetting(normalizedMap.gate) === "priority") {
-    const gateGoals = getGateGoals(grid, gateType);
-    if (gateGoals.length) {
-      groups.push({
-        id: "gate",
-        label: "Gate",
-        kind: "gate",
-        goals: gateGoals,
-        final: true,
-      });
-    }
-  }
-
-  if (normalizePrioritySetting(normalizedMap.shaft) === "priority") {
-    const shaftClusters = sortShaftClustersBottomToTop(getShaftClusters(grid));
-    shaftClusters.forEach((cluster, index) => {
-      const info = getShaftAttackInfo(grid, cluster);
-      if (info.attacks.length) {
-        groups.push({
-          id: `shaft-${index}`,
-          label: `Shaft ${index + 1}`,
-          kind: "shaft",
-          goals: info.attacks,
-          cluster,
-          entryMap: info.entryMap,
-          final: false,
-        });
-      }
-    });
-  }
-
-  if (normalizePrioritySetting(normalizedMap.bubble) === "priority") {
-    getBubbles(grid).forEach((bubble, index) => {
-      groups.push({
-        id: `bubble-${index}`,
-        label: `Bubble ${index + 1}`,
-        kind: "bubble",
-        goals: [bubble],
-        final: false,
-      });
-    });
-  }
-
-  if (typeof getCellObjectType === "function") {
-  const grouped = {};
-
-  for (let r = 0; r < grid.length; r++) {
-    for (let c = 0; c < grid[0].length; c++) {
-      if (!isWalkableCell(grid, r, c)) continue;
-
-      const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
-      if (!type) continue;
-      if (type === "gate" || type === "shaft" || type === "bubble") continue;
-      if (normalizePrioritySetting(normalizedMap[type]) !== "priority") continue;
-
-      if (!grouped[type]) grouped[type] = [];
-      grouped[type].push([r, c]);
-    }
-  }
-
-  for (const type in grouped) {
-    groups.push({
-      id: `group-${type}`,
-      label: type,
-      kind: "object",
-      objectType: type,
-      goals: grouped[type],
-      final: false,
-    });
-  }
-}
-
-  const nonFinal = groups.filter((g) => !g.final);
-  const finals = groups.filter((g) => g.final);
-
-  nonFinal.sort((a, b) => {
-    const aRow = Math.max(...a.goals.map(([r]) => r));
-    const bRow = Math.max(...b.goals.map(([r]) => r));
-    return bRow - aRow;
-  });
-
-  return [...nonFinal, ...finals];
-}
-
-function computePathTraversalCost(
-  path,
-  grid,
-  objectPriorities,
-  objectPriorityMap,
-  getCellObjectType,
-  freeCells = new Set(),
-  starts = [],
-  goals = []
-) {
-  if (!path || !path.length) return 0;
-
-  let total = 0;
-  for (let i = 0; i < path.length; i++) {
-    const [r, c] = path[i];
-    total += cellWeight(grid, r, c, freeCells, {
-      objectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-      starts,
-      goals,
-    });
-  }
-  return total;
-}
-
-function countPathTurns(path) {
-  if (!path || path.length < 3) return 0;
-  let turns = 0;
-
-  for (let i = 1; i < path.length - 1; i++) {
-    const [r0, c0] = path[i - 1];
-    const [r1, c1] = path[i];
-    const [r2, c2] = path[i + 1];
-
-    const dr1 = r1 - r0;
-    const dc1 = c1 - c0;
-    const dr2 = r2 - r1;
-    const dc2 = c2 - c1;
-
-    if (dr1 !== dr2 || dc1 !== dc2) turns++;
-  }
-
-  return turns;
-}
-
-function countPathDownMoves(path) {
-  if (!path || path.length < 2) return 0;
-  let down = 0;
-
-  for (let i = 1; i < path.length; i++) {
-    if (path[i][0] > path[i - 1][0]) down++;
-  }
-
-  return down;
-}
-
-function buildCustomUsageMap(routes) {
-  const usage = new Map();
-
-  for (const route of routes || []) {
-    const seenInRoute = new Set();
-
-    for (const [r, c] of route.path || []) {
-      const key = cellKey(r, c);
-      if (seenInRoute.has(key)) continue;
-      seenInRoute.add(key);
-      usage.set(key, (usage.get(key) || 0) + 1);
-    }
-  }
-
-  return usage;
-}
-
-function scoreCustomTrunkPrefix(prefix, usageMap, grid) {
-  if (!prefix || !prefix.length) return -Infinity;
-
-  let sharedScore = 0;
-  let costPenalty = 0;
-
-  for (const [r, c] of prefix) {
-    const key = cellKey(r, c);
-    const usage = usageMap.get(key) || 0;
-    sharedScore += usage * usage * 1000;
-
-    const v = grid[r]?.[c];
-    if (typeof v === "number") {
-      costPenalty += numberCost(v) * 0.015;
-    }
-  }
-
-  const turns = countPathTurns(prefix);
-  const downMoves = countPathDownMoves(prefix);
-  const lengthBonus = prefix.length * 6;
-
-  return sharedScore + lengthBonus - costPenalty - turns * 18 - downMoves * 26;
-}
-
-function chooseBestCustomTrunk(routes, usageMap, starts, grid) {
-  if (!routes || !routes.length) return [];
-
-  const startSet = new Set((starts || []).map(([r, c]) => cellKey(r, c)));
-  const candidates = [];
-
-  for (const route of routes) {
-    const path = route.path || [];
-    if (!path.length) continue;
-
-    let sawStart = false;
-    for (let i = 0; i < path.length; i++) {
-      const key = cellKey(path[i][0], path[i][1]);
-      if (startSet.has(key)) sawStart = true;
-      if (!sawStart) continue;
-
-      const usage = usageMap.get(key) || 0;
-      const isLast = i === path.length - 1;
-
-      if (usage >= 2 || isLast) {
-        const prefix = uniquePath(path.slice(0, i + 1));
-        candidates.push({
-          prefix,
-          score: scoreCustomTrunkPrefix(prefix, usageMap, grid),
-          length: prefix.length,
-        });
-      }
-    }
-  }
-
-  if (!candidates.length) {
-    const fallback = routes
-      .map((route) => route.path || [])
-      .filter((path) => path.length)
-      .sort((a, b) => a.length - b.length)[0];
-
-    return fallback ? uniquePath(fallback) : [];
-  }
-
-  candidates.sort((a, b) => {
-    if (a.score !== b.score) return b.score - a.score;
-    return b.length - a.length;
-  });
-
-  return uniquePath(candidates[0].prefix);
-}
-
-function findBestBranchJoinIndex(path, trunkSet, usageMap) {
-  if (!path || !path.length) return -1;
-
-  let bestIndex = -1;
-  let bestScore = -Infinity;
-
-  for (let i = 0; i < path.length; i++) {
-    const key = cellKey(path[i][0], path[i][1]);
-    if (!trunkSet.has(key)) continue;
-
-    const usage = usageMap.get(key) || 0;
-    const score = usage * 1000 - i * 10;
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestIndex = i;
-    }
-  }
-
-  return bestIndex;
-}
-
-function buildCustomPaths({
-  grid,
-  starts,
-  targetGroups,
-  objectPriorities,
-  objectPriorityMap,
-  getCellObjectType,
-}) {
-  const targetRoutes = [];
-let unresolvedTargets = 0;
-
-const reusable = new Set();
-let progressiveStarts = [...starts];
-
-for (const group of targetGroups) {
-  const route = dijkstra({
-    grid,
-    starts: progressiveStarts,
-    goals: group.goals,
-    freeCells: reusable,
-    objectPriorities,
-    objectPriorityMap,
-    getCellObjectType,
-  });
-
-  if (!route || !route.path || !route.path.length) {
-    unresolvedTargets++;
-    continue;
-  }
-
-  const cleanPath = uniquePath(route.path);
-
-  targetRoutes.push({
-    group,
-    goal: route.goal,
-    path: cleanPath,
-    cost: route.cost,
-  });
-
-  // 🔥 KEY FIX — reuse path
-  for (const [r, c] of cleanPath) {
-    reusable.add(cellKey(r, c));
-  }
-
-  progressiveStarts = dedupeCells(
-    progressiveStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
-  );
-}
-
-  if (!targetRoutes.length) {
-    return {
-      trunkPath: [],
-      branchPaths: [],
-      redPath: [],
-      bluePaths: [],
-      redCost: 0,
-      blueCost: 0,
-      totalCost: 0,
-      unresolvedTargets,
-      attackPoints: [],
-      shaftEntryDots: [],
-      visitedTargets: [],
-    };
-  }
-
-  const usageMap = buildCustomUsageMap(targetRoutes);
-  const trunkPath = chooseBestCustomTrunk(targetRoutes, usageMap, starts, grid);
-  const trunkSet = pathSet(trunkPath);
-
-  const rawBranches = [];
-  const attackPoints = [];
-  const shaftEntryDots = [];
-  const visitedTargets = [];
-
-  for (const route of targetRoutes) {
-    visitedTargets.push(route.group.id);
-
-    if (route.group.kind === "gate") {
-      attackPoints.push(route.goal);
-    } else if (route.group.kind === "shaft" && route.group.entryMap) {
-      attackPoints.push(route.goal);
-      const entry = route.group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
-      if (entry) shaftEntryDots.push(entry);
-    } else if (
-      route.group.kind === "bubble" ||
-      route.group.kind === "object"
-    ) {
-      attackPoints.push(route.goal);
-    }
-
-    const joinIndex = findBestBranchJoinIndex(route.path, trunkSet, usageMap);
-
-    if (joinIndex < 0) {
-      if (!hasPathLoop(route.path)) {
-        rawBranches.push(uniquePath(route.path));
-      }
-      continue;
-    }
-
-    if (joinIndex >= route.path.length - 1) {
-      continue;
-    }
-
-    const branch = uniquePath(route.path.slice(joinIndex));
-    if (branch.length > 1 && !hasPathLoop(branch)) {
-      rawBranches.push(branch);
-    }
-  }
-
-  const branchSeen = new Set();
-  const branchPaths = rawBranches.filter((branch) => {
-    const key = branch.map(([r, c]) => cellKey(r, c)).join("|");
-    if (branchSeen.has(key)) return false;
-    branchSeen.add(key);
-    return true;
-  });
-
-  const redCost = computePathTraversalCost(
-    trunkPath,
-    grid,
-    objectPriorities,
-    objectPriorityMap,
-    getCellObjectType,
-    new Set(),
-    starts,
-    []
-  );
-
-  const usedForBlue = pathSet(trunkPath);
-  let blueCost = 0;
-
-  for (const branch of branchPaths) {
-    blueCost += computePathTraversalCost(
-      branch,
-      grid,
-      objectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-      usedForBlue,
-      starts,
-      []
-    );
-
-    for (const [r, c] of branch) {
-      usedForBlue.add(cellKey(r, c));
-    }
-  }
-
-  return {
-    trunkPath,
-    branchPaths,
-    redPath: trunkPath,
-    bluePaths: branchPaths,
-    redCost,
-    blueCost,
-    totalCost: redCost + blueCost,
-    unresolvedTargets,
-    attackPoints: dedupeCells(attackPoints),
-    shaftEntryDots: dedupeCells(shaftEntryDots),
-    visitedTargets,
-  };
-}
-
-function solveCustom({
-  grid,
-  gateType,
-  eventType,
-  objectPriorities,
-  objectPriorityMap,
-  getCellObjectType,
-}) {
-  const rows = grid.length;
-  const cols = grid[0].length;
-  const { startRow, starts } = getStartCells(grid);
-
-  if (!starts.length) {
-    return {
-      ok: false,
-      message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid start cells one row below the lowest used row.`,
-      startRow,
-    };
-  }
-
-  const requiredPriorityCells = getPriorityCells(grid, objectPriorityMap, getCellObjectType);
-  const avoidCells = getAvoidCells(grid, objectPriorityMap, getCellObjectType);
-  const bubbles = getBubbles(grid);
-  const shaftClustersOrdered = sortShaftClustersBottomToTop(getShaftClusters(grid));
-
-  const targetGroups = buildCustomTargetGroups({
     grid,
     gateType,
     objectPriorityMap,
     getCellObjectType,
-  });
+  }) {
+    const groups = [];
+    const normalizedMap = objectPriorityMap || {};
 
-  if (!targetGroups.length) {
-    return {
-      ok: false,
-      message:
-        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
-        `solver_mode: custom\n` +
-        `No custom objectives selected.`,
-      startRow,
-    };
+    if (normalizePrioritySetting(normalizedMap.gate) === "priority") {
+      const gateGoals = getGateGoals(grid, gateType);
+      if (gateGoals.length) {
+        groups.push({
+          id: "gate",
+          label: "Gate",
+          kind: "gate",
+          goals: gateGoals,
+          final: true,
+        });
+      }
+    }
+
+    if (normalizePrioritySetting(normalizedMap.shaft) === "priority") {
+      const shaftClusters = sortShaftClustersBottomToTop(getShaftClusters(grid));
+      shaftClusters.forEach((cluster, index) => {
+        const info = getShaftAttackInfo(grid, cluster);
+        if (info.attacks.length) {
+          groups.push({
+            id: `shaft-${index}`,
+            label: `Shaft ${index + 1}`,
+            kind: "shaft",
+            goals: info.attacks,
+            cluster,
+            entryMap: info.entryMap,
+            final: false,
+          });
+        }
+      });
+    }
+
+    if (normalizePrioritySetting(normalizedMap.bubble) === "priority") {
+      getBubbles(grid).forEach((bubble, index) => {
+        groups.push({
+          id: `bubble-${index}`,
+          label: `Bubble ${index + 1}`,
+          kind: "bubble",
+          goals: [bubble],
+          final: false,
+        });
+      });
+    }
+
+    if (typeof getCellObjectType === "function") {
+      const seen = new Set();
+
+      for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < grid[0].length; c++) {
+          if (!isWalkableCell(grid, r, c)) continue;
+
+          const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
+          if (!type) continue;
+          if (type === "gate" || type === "shaft" || type === "bubble") continue;
+          if (normalizePrioritySetting(normalizedMap[type]) !== "priority") continue;
+
+          const groupId = `${type}-${cellKey(r, c)}`;
+          if (seen.has(groupId)) continue;
+          seen.add(groupId);
+
+          groups.push({
+            id: groupId,
+            label: type,
+            kind: "object",
+            objectType: type,
+            goals: [[r, c]],
+            final: false,
+          });
+        }
+      }
+    }
+
+    const nonFinal = groups.filter((g) => !g.final);
+    const finals = groups.filter((g) => g.final);
+
+    nonFinal.sort((a, b) => {
+      const aRow = Math.max(...a.goals.map(([r]) => r));
+      const bRow = Math.max(...b.goals.map(([r]) => r));
+      return bRow - aRow;
+    });
+
+    return [...nonFinal, ...finals];
   }
 
-  const customPaths = buildCustomPaths({
+  function computePathTraversalCost(
+    path,
+    grid,
+    objectPriorities,
+    objectPriorityMap,
+    getCellObjectType,
+    freeCells = new Set(),
+    starts = [],
+    goals = []
+  ) {
+    if (!path || !path.length) return 0;
+
+    let total = 0;
+    for (let i = 0; i < path.length; i++) {
+      const [r, c] = path[i];
+      total += cellWeight(grid, r, c, freeCells, {
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+        starts,
+        goals,
+      });
+    }
+    return total;
+  }
+
+  function countPathTurns(path) {
+    if (!path || path.length < 3) return 0;
+    let turns = 0;
+
+    for (let i = 1; i < path.length - 1; i++) {
+      const [r0, c0] = path[i - 1];
+      const [r1, c1] = path[i];
+      const [r2, c2] = path[i + 1];
+
+      const dr1 = r1 - r0;
+      const dc1 = c1 - c0;
+      const dr2 = r2 - r1;
+      const dc2 = c2 - c1;
+
+      if (dr1 !== dr2 || dc1 !== dc2) turns++;
+    }
+
+    return turns;
+  }
+
+  function countPathDownMoves(path) {
+    if (!path || path.length < 2) return 0;
+    let down = 0;
+
+    for (let i = 1; i < path.length; i++) {
+      if (path[i][0] > path[i - 1][0]) down++;
+    }
+
+    return down;
+  }
+
+  function buildCustomUsageMap(routes) {
+    const usage = new Map();
+
+    for (const route of routes || []) {
+      const seenInRoute = new Set();
+
+      for (const [r, c] of route.path || []) {
+        const key = cellKey(r, c);
+        if (seenInRoute.has(key)) continue;
+        seenInRoute.add(key);
+        usage.set(key, (usage.get(key) || 0) + 1);
+      }
+    }
+
+    return usage;
+  }
+
+  function scoreCustomTrunkPrefix(prefix, usageMap, grid) {
+    if (!prefix || !prefix.length) return -Infinity;
+
+    let sharedScore = 0;
+    let costPenalty = 0;
+
+    for (const [r, c] of prefix) {
+      const key = cellKey(r, c);
+      const usage = usageMap.get(key) || 0;
+      sharedScore += usage * usage * 1000;
+
+      const v = grid[r]?.[c];
+      if (typeof v === "number") {
+        costPenalty += numberCost(v) * 0.015;
+      }
+    }
+
+    const turns = countPathTurns(prefix);
+    const downMoves = countPathDownMoves(prefix);
+    const lengthBonus = prefix.length * 6;
+
+    return sharedScore + lengthBonus - costPenalty - turns * 18 - downMoves * 26;
+  }
+
+  function chooseBestCustomTrunk(routes, usageMap, starts, grid) {
+    if (!routes || !routes.length) return [];
+
+    const startSet = new Set((starts || []).map(([r, c]) => cellKey(r, c)));
+    const candidates = [];
+
+    for (const route of routes) {
+      const path = route.path || [];
+      if (!path.length) continue;
+
+      let sawStart = false;
+      for (let i = 0; i < path.length; i++) {
+        const key = cellKey(path[i][0], path[i][1]);
+        if (startSet.has(key)) sawStart = true;
+        if (!sawStart) continue;
+
+        const usage = usageMap.get(key) || 0;
+        const isLast = i === path.length - 1;
+
+        if (usage >= 2 || isLast) {
+          const prefix = uniquePath(path.slice(0, i + 1));
+          candidates.push({
+            prefix,
+            score: scoreCustomTrunkPrefix(prefix, usageMap, grid),
+            length: prefix.length,
+          });
+        }
+      }
+    }
+
+    if (!candidates.length) {
+      const fallback = routes
+        .map((route) => route.path || [])
+        .filter((path) => path.length)
+        .sort((a, b) => a.length - b.length)[0];
+
+      return fallback ? uniquePath(fallback) : [];
+    }
+
+    candidates.sort((a, b) => {
+      if (a.score !== b.score) return b.score - a.score;
+      return b.length - a.length;
+    });
+
+    return uniquePath(candidates[0].prefix);
+  }
+
+  function findBestBranchJoinIndex(path, trunkSet, usageMap) {
+    if (!path || !path.length) return -1;
+
+    let bestIndex = -1;
+    let bestScore = -Infinity;
+
+    for (let i = 0; i < path.length; i++) {
+      const key = cellKey(path[i][0], path[i][1]);
+      if (!trunkSet.has(key)) continue;
+
+      const usage = usageMap.get(key) || 0;
+      const score = usage * 1000 - i * 10;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = i;
+      }
+    }
+
+    return bestIndex;
+  }
+
+  function buildCustomPaths({
     grid,
     starts,
     targetGroups,
     objectPriorities,
     objectPriorityMap,
     getCellObjectType,
-  });
+  }) {
+    const targetRoutes = [];
+    let unresolvedTargets = 0;
 
-  const redPath = customPaths.redPath || [];
-  const bluePaths = customPaths.bluePaths || [];
-  const redBubbleCount = countRedBubbles(redPath, grid);
-  const firstRedBubbleAt = firstBubbleStep(redPath, grid);
-  const firstBubbleCost = firstBubbleTravelCost(
-    redPath,
+    for (const group of targetGroups) {
+      const route = dijkstra({
+        grid,
+        starts,
+        goals: group.goals,
+        freeCells: new Set(),
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+
+      if (!route || !route.path || !route.path.length) {
+        unresolvedTargets++;
+        continue;
+      }
+
+      targetRoutes.push({
+        group,
+        goal: route.goal,
+        path: uniquePath(route.path),
+        cost: route.cost,
+      });
+    }
+
+    if (!targetRoutes.length) {
+      return {
+        trunkPath: [],
+        branchPaths: [],
+        redPath: [],
+        bluePaths: [],
+        redCost: 0,
+        blueCost: 0,
+        totalCost: 0,
+        unresolvedTargets,
+        attackPoints: [],
+        shaftEntryDots: [],
+        visitedTargets: [],
+      };
+    }
+
+    const usageMap = buildCustomUsageMap(targetRoutes);
+    const trunkPath = chooseBestCustomTrunk(targetRoutes, usageMap, starts, grid);
+    const trunkSet = pathSet(trunkPath);
+
+    const rawBranches = [];
+    const attackPoints = [];
+    const shaftEntryDots = [];
+    const visitedTargets = [];
+
+    for (const route of targetRoutes) {
+      visitedTargets.push(route.group.id);
+
+      if (route.group.kind === "gate") {
+        attackPoints.push(route.goal);
+      } else if (route.group.kind === "shaft" && route.group.entryMap) {
+        attackPoints.push(route.goal);
+        const entry = route.group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
+        if (entry) shaftEntryDots.push(entry);
+      } else if (
+        route.group.kind === "bubble" ||
+        route.group.kind === "object"
+      ) {
+        attackPoints.push(route.goal);
+      }
+
+      const joinIndex = findBestBranchJoinIndex(route.path, trunkSet, usageMap);
+
+      if (joinIndex < 0) {
+        if (!hasPathLoop(route.path)) {
+          rawBranches.push(uniquePath(route.path));
+        }
+        continue;
+      }
+
+      if (joinIndex >= route.path.length - 1) {
+        continue;
+      }
+
+      const branch = uniquePath(route.path.slice(joinIndex));
+      if (branch.length > 1 && !hasPathLoop(branch)) {
+        rawBranches.push(branch);
+      }
+    }
+
+    const branchSeen = new Set();
+    const branchPaths = rawBranches.filter((branch) => {
+      const key = branch.map(([r, c]) => cellKey(r, c)).join("|");
+      if (branchSeen.has(key)) return false;
+      branchSeen.add(key);
+      return true;
+    });
+
+    const redCost = computePathTraversalCost(
+      trunkPath,
+      grid,
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType,
+      new Set(),
+      starts,
+      []
+    );
+
+    const usedForBlue = pathSet(trunkPath);
+    let blueCost = 0;
+
+    for (const branch of branchPaths) {
+      blueCost += computePathTraversalCost(
+        branch,
+        grid,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+        usedForBlue,
+        starts,
+        []
+      );
+
+      for (const [r, c] of branch) {
+        usedForBlue.add(cellKey(r, c));
+      }
+    }
+
+    return {
+      trunkPath,
+      branchPaths,
+      redPath: trunkPath,
+      bluePaths: branchPaths,
+      redCost,
+      blueCost,
+      totalCost: redCost + blueCost,
+      unresolvedTargets,
+      attackPoints: dedupeCells(attackPoints),
+      shaftEntryDots: dedupeCells(shaftEntryDots),
+      visitedTargets,
+    };
+  }
+
+  function solveCustom({
     grid,
+    gateType,
+    eventType,
     objectPriorities,
     objectPriorityMap,
-    getCellObjectType
-  );
-
-  const redObjectPriorityScore = getPathObjectPriorityScore(
-    redPath,
-    objectPriorityMap,
     getCellObjectType,
-    objectPriorities
-  );
+  }) {
+    const rows = grid.length;
+    const cols = grid[0].length;
+    const { startRow, starts } = getStartCells(grid);
 
-  let blueObjectPriorityScore = 0;
-  for (const bluePath of bluePaths) {
-    blueObjectPriorityScore += getPathObjectPriorityScore(
-      bluePath,
+    if (!starts.length) {
+      return {
+        ok: false,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid start cells one row below the lowest used row.`,
+        startRow,
+      };
+    }
+
+    const requiredPriorityCells = getPriorityCells(grid, objectPriorityMap, getCellObjectType);
+    const avoidCells = getAvoidCells(grid, objectPriorityMap, getCellObjectType);
+    const bubbles = getBubbles(grid);
+    const shaftClustersOrdered = sortShaftClustersBottomToTop(getShaftClusters(grid));
+
+    const targetGroups = buildCustomTargetGroups({
+      grid,
+      gateType,
+      objectPriorityMap,
+      getCellObjectType,
+    });
+
+    if (!targetGroups.length) {
+      return {
+        ok: false,
+        message:
+          `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
+          `solver_mode: custom\n` +
+          `No custom objectives selected.`,
+        startRow,
+      };
+    }
+
+    const customPaths = buildCustomPaths({
+      grid,
+      starts,
+      targetGroups,
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType,
+    });
+
+    const redPath = customPaths.redPath || [];
+    const bluePaths = customPaths.bluePaths || [];
+    const redBubbleCount = countRedBubbles(redPath, grid);
+    const firstRedBubbleAt = firstBubbleStep(redPath, grid);
+    const firstBubbleCost = firstBubbleTravelCost(
+      redPath,
+      grid,
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType
+    );
+
+    const redObjectPriorityScore = getPathObjectPriorityScore(
+      redPath,
       objectPriorityMap,
       getCellObjectType,
       objectPriorities
     );
+
+    let blueObjectPriorityScore = 0;
+    for (const bluePath of bluePaths) {
+      blueObjectPriorityScore += getPathObjectPriorityScore(
+        bluePath,
+        objectPriorityMap,
+        getCellObjectType,
+        objectPriorities
+      );
+    }
+
+    const missingPriorityCount = countMissingPriorityCells(
+      requiredPriorityCells,
+      [redPath, ...bluePaths]
+    );
+    const redLoopPenalty = redBacktrackPenalty(redPath);
+    const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
+
+    const effectiveTotal =
+      customPaths.totalCost +
+      totalObjectPriorityScore +
+      redLoopPenalty +
+      missingPriorityCount * 1000000000 +
+      customPaths.unresolvedTargets * 1000000000;
+
+    const candidate = {
+      redMode: "custom",
+      redVariant: "shared-trunk-and-branches",
+      redBubble: null,
+      redBubbles: [],
+      redBubbleCount,
+      firstRedBubbleAt,
+      firstBubbleTravelCost: firstBubbleCost,
+      redPath,
+      redCost: customPaths.redCost,
+      gateGoal: customPaths.attackPoints.length
+        ? customPaths.attackPoints[customPaths.attackPoints.length - 1]
+        : null,
+      bluePaths,
+      blueCost: customPaths.blueCost,
+      shaftEntryDots: customPaths.shaftEntryDots,
+      attackPoints: customPaths.attackPoints,
+      unresolvedTargets: customPaths.unresolvedTargets,
+      dependencyCost: 0,
+      assistBonus: 0,
+      lowerShaftBonus: 0,
+      bubbleBonus: 0,
+      redLoopPenalty,
+      overAssistPenalty: 0,
+      redObjectPriorityScore,
+      blueObjectPriorityScore,
+      objectPriorityScore: totalObjectPriorityScore,
+      missingPriorityCount,
+      effectiveTotal,
+    };
+
+    const routeAnalysis = buildRouteAnalysis(grid, [candidate], candidate);
+
+    return {
+      ok: true,
+      rows,
+      cols,
+      gateType,
+      eventType,
+      solverMode: "custom",
+      legacyEndMode: false,
+      startRow,
+      solverVersion: SOLVER_VERSION,
+      objectPriorities: { ...objectPriorities },
+      objectPriorityMap: objectPriorityMap ? { ...objectPriorityMap } : null,
+      requiredPriorityCells,
+      avoidCells,
+      redMode: candidate.redMode,
+      redVariant: candidate.redVariant,
+      redBubble: null,
+      redBubbles: [],
+      redBubbleCount,
+      firstRedBubbleAt,
+      firstBubbleTravelCost:
+        firstBubbleCost === Infinity ? null : roundCost(firstBubbleCost),
+      redPath,
+      redCost: roundCost(candidate.redCost),
+      bluePaths,
+      blueCost: roundCost(candidate.blueCost),
+      totalCost: roundCost(candidate.redCost + candidate.blueCost),
+      redObjectPriorityScore: roundCost(redObjectPriorityScore),
+      blueObjectPriorityScore: roundCost(blueObjectPriorityScore),
+      objectPriorityScore: roundCost(totalObjectPriorityScore),
+      missingPriorityCount,
+      effectiveTotal: roundCost(effectiveTotal),
+      dependencyCost: 0,
+      assistBonus: 0,
+      lowerShaftBonus: 0,
+      bubbleBonus: 0,
+      redLoopPenalty: roundCost(redLoopPenalty),
+      overAssistPenalty: 0,
+      shaftClusters: shaftClustersOrdered,
+      shaftEntryDots: customPaths.shaftEntryDots,
+      attackPoints: customPaths.attackPoints,
+      bubbles,
+      unresolvedTargets: customPaths.unresolvedTargets,
+      redCandidateCount: 1,
+      routeAnalysis,
+      message:
+        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
+        `solver_mode: custom\n` +
+        `solver_status: solved\n` +
+        `missing_priority_count: ${missingPriorityCount}\n` +
+        `unresolved_targets: ${customPaths.unresolvedTargets}\n` +
+        `red_cost: ${roundCost(candidate.redCost)}\n` +
+        `blue_cost: ${roundCost(candidate.blueCost)}\n` +
+        `effective_total: ${roundCost(effectiveTotal)}`
+    };
   }
 
-  const missingPriorityCount = countMissingPriorityCells(
-    requiredPriorityCells,
-    [redPath, ...bluePaths]
-  );
-  const redLoopPenalty = redBacktrackPenalty(redPath);
-  const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
+  function solveGrid({
+    grid,
+    gateType = "standard",
+    eventType = null,
+    objectPriorities = null,
+    objectPriorityMap = null,
+    getCellObjectType = null,
+    solverMode = "standard",
+  }) {
+    const normalizedObjectPriorities = normalizeObjectPriorities(
+      objectPriorities || GLOBAL_OBJECT_PRIORITIES
+    );
+    const normalizedSolverMode = normalizeSolverMode(solverMode);
 
-  const effectiveTotal =
-    customPaths.totalCost +
-    totalObjectPriorityScore +
-    redLoopPenalty +
-    missingPriorityCount * 1000000000 +
-    customPaths.unresolvedTargets * 1000000000;
+    if (normalizedSolverMode === "custom") {
+      return solveCustom({
+        grid,
+        gateType,
+        eventType,
+        objectPriorities: normalizedObjectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+    }
 
-  const candidate = {
-    redMode: "custom",
-    redVariant: "shared-trunk-and-branches",
-    redBubble: null,
-    redBubbles: [],
-    redBubbleCount,
-    firstRedBubbleAt,
-    firstBubbleTravelCost: firstBubbleCost,
-    redPath,
-    redCost: customPaths.redCost,
-    gateGoal: customPaths.attackPoints.length
-      ? customPaths.attackPoints[customPaths.attackPoints.length - 1]
-      : null,
-    bluePaths,
-    blueCost: customPaths.blueCost,
-    shaftEntryDots: customPaths.shaftEntryDots,
-    attackPoints: customPaths.attackPoints,
-    unresolvedTargets: customPaths.unresolvedTargets,
-    dependencyCost: 0,
-    assistBonus: 0,
-    lowerShaftBonus: 0,
-    bubbleBonus: 0,
-    redLoopPenalty,
-    overAssistPenalty: 0,
-    redObjectPriorityScore,
-    blueObjectPriorityScore,
-    objectPriorityScore: totalObjectPriorityScore,
-    missingPriorityCount,
-    effectiveTotal,
-  };
-
-  const routeAnalysis = buildRouteAnalysis(grid, [candidate], candidate);
-
-  return {
-    ok: true,
-    rows,
-    cols,
-    gateType,
-    eventType,
-    solverMode: "custom",
-    legacyEndMode: false,
-    startRow,
-    solverVersion: SOLVER_VERSION,
-    objectPriorities: { ...objectPriorities },
-    objectPriorityMap: objectPriorityMap ? { ...objectPriorityMap } : null,
-    requiredPriorityCells,
-    avoidCells,
-    redMode: candidate.redMode,
-    redVariant: candidate.redVariant,
-    redBubble: null,
-    redBubbles: [],
-    redBubbleCount,
-    firstRedBubbleAt,
-    firstBubbleTravelCost:
-      firstBubbleCost === Infinity ? null : roundCost(firstBubbleCost),
-    redPath,
-    redCost: roundCost(candidate.redCost),
-    bluePaths,
-    blueCost: roundCost(candidate.blueCost),
-    totalCost: roundCost(candidate.redCost + candidate.blueCost),
-    redObjectPriorityScore: roundCost(redObjectPriorityScore),
-    blueObjectPriorityScore: roundCost(blueObjectPriorityScore),
-    objectPriorityScore: roundCost(totalObjectPriorityScore),
-    missingPriorityCount,
-    effectiveTotal: roundCost(effectiveTotal),
-    dependencyCost: 0,
-    assistBonus: 0,
-    lowerShaftBonus: 0,
-    bubbleBonus: 0,
-    redLoopPenalty: roundCost(redLoopPenalty),
-    overAssistPenalty: 0,
-    shaftClusters: shaftClustersOrdered,
-    shaftEntryDots: customPaths.shaftEntryDots,
-    attackPoints: customPaths.attackPoints,
-    bubbles,
-    unresolvedTargets: customPaths.unresolvedTargets,
-    redCandidateCount: 1,
-    routeAnalysis,
-    message:
-      `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
-      `solver_mode: custom\n` +
-      `solver_status: solved\n` +
-      `missing_priority_count: ${missingPriorityCount}\n` +
-      `unresolved_targets: ${customPaths.unresolvedTargets}\n` +
-      `red_cost: ${roundCost(candidate.redCost)}\n` +
-      `blue_cost: ${roundCost(candidate.blueCost)}\n` +
-      `effective_total: ${roundCost(effectiveTotal)}`
-  };
-}
-
-function solveGrid({
-  grid,
-  gateType = "standard",
-  eventType = null,
-  objectPriorities = null,
-  objectPriorityMap = null,
-  getCellObjectType = null,
-  solverMode = "standard",
-}) {
-  const normalizedObjectPriorities = normalizeObjectPriorities(
-    objectPriorities || GLOBAL_OBJECT_PRIORITIES
-  );
-  const normalizedSolverMode = normalizeSolverMode(solverMode);
-
-  if (normalizedSolverMode === "custom") {
-    return solveCustom({
+    return solveStandard({
       grid,
       gateType,
       eventType,
@@ -1813,22 +1808,12 @@ function solveGrid({
     });
   }
 
-  return solveStandard({
-    grid,
-    gateType,
-    eventType,
-    objectPriorities: normalizedObjectPriorities,
-    objectPriorityMap,
-    getCellObjectType,
-  });
-}
-
-window.ZMPathfinderSolver = {
-  solverVersion: SOLVER_VERSION,
-  numberCost,
-  solveGrid,
-  setObjectPriorities,
-  getObjectPriorities,
-  defaultObjectPriorities: { ...DEFAULT_OBJECT_PRIORITIES },
-};
+  window.ZMPathfinderSolver = {
+    solverVersion: SOLVER_VERSION,
+    numberCost,
+    solveGrid,
+    setObjectPriorities,
+    getObjectPriorities,
+    defaultObjectPriorities: { ...DEFAULT_OBJECT_PRIORITIES },
+  };
 })();
