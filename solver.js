@@ -1447,6 +1447,8 @@
   objectPriorityMap,
   getCellObjectType,
 }) {
+  let remaining = [...targetGroups];
+
   const redPath = [];
   const bluePaths = [];
 
@@ -1460,45 +1462,56 @@
   const attackPoints = [];
   const shaftEntryDots = [];
 
-  let isFirstPath = true;
+  let isFirst = true;
 
-  for (const group of targetGroups) {
-    const route = dijkstra({
-      grid,
-      starts: cumulativeStarts,
-      goals: group.goals,
-      freeCells: reusable,
-      objectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-    });
+  while (remaining.length) {
+    let best = null;
 
-    if (!route || !route.path || !route.path.length) {
-      unresolvedTargets++;
-      continue;
+    for (const group of remaining) {
+      const route = dijkstra({
+        grid,
+        starts: cumulativeStarts,
+        goals: group.goals,
+        freeCells: reusable,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+
+      if (!route || !route.path || !route.path.length) continue;
+
+      if (!best || route.cost < best.cost) {
+        best = {
+          group,
+          route,
+        };
+      }
     }
 
-    const cleanPath = uniquePath(route.path);
+    if (!best) {
+      unresolvedTargets += remaining.length;
+      break;
+    }
+
+    const cleanPath = uniquePath(best.route.path);
 
     // Track attack points
-    attackPoints.push(route.goal);
+    attackPoints.push(best.route.goal);
 
-    if (group.kind === "shaft" && group.entryMap) {
-      const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
+    if (best.group.kind === "shaft" && best.group.entryMap) {
+      const entry = best.group.entryMap.get(cellKey(best.route.goal[0], best.route.goal[1]));
       if (entry) shaftEntryDots.push(entry);
     }
 
-    // FIRST PATH = RED (same as standard behavior)
-    if (isFirstPath) {
+    if (isFirst) {
       redPath.push(...cleanPath);
-      redCost += route.cost;
-      isFirstPath = false;
+      redCost += best.route.cost;
+      isFirst = false;
     } else {
       bluePaths.push(cleanPath);
-      blueCost += route.cost;
+      blueCost += best.route.cost;
     }
 
-    // reuse path (same behavior as standard)
     for (const [r, c] of cleanPath) {
       reusable.add(cellKey(r, c));
     }
@@ -1506,6 +1519,8 @@
     cumulativeStarts = dedupeCells(
       cumulativeStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
     );
+
+    remaining = remaining.filter((g) => g !== best.group);
   }
 
   return {
@@ -1620,7 +1635,7 @@ function solveCustom({
 
   const candidate = {
     redMode: "custom",
-    redVariant: "sequential-priority",
+    redVariant: "greedy-priority",
     redPath,
     redCost: customPaths.redCost,
     bluePaths,
@@ -1741,3 +1756,5 @@ window.ZMPathfinderSolver = {
   getObjectPriorities,
   defaultObjectPriorities: { ...DEFAULT_OBJECT_PRIORITIES },
 };
+
+})();
