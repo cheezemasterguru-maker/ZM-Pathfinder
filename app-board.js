@@ -26,6 +26,49 @@
     }
   }
 
+  function isPrebuiltMapLoaded() {
+    return !!(
+      currentMapContext &&
+      currentMapContext.eventType &&
+      currentMapContext.eventName &&
+      currentMapContext.chamberName
+    );
+  }
+
+  function getPreviewMaxRow() {
+    if (!isPrebuiltMapLoaded()) {
+      return Math.max(0, currentRowCount - 1);
+    }
+
+    let maxDataRow = -1;
+
+    for (let r = 0; r < currentRowCount; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (grid[r][c] !== "") {
+          maxDataRow = Math.max(maxDataRow, r);
+          break;
+        }
+      }
+    }
+
+    const allPaths = [
+      ...(Array.isArray(solveState?.redPath) ? solveState.redPath : []),
+      ...((Array.isArray(solveState?.bluePaths) ? solveState.bluePaths : []).flat())
+    ];
+
+    for (const pt of allPaths) {
+      if (Array.isArray(pt) && Number.isFinite(pt[0])) {
+        maxDataRow = Math.max(maxDataRow, pt[0]);
+      }
+    }
+
+    if (maxDataRow < 0) {
+      return Math.max(0, currentRowCount - 1);
+    }
+
+    return Math.min(currentRowCount - 1, maxDataRow + 1);
+  }
+
   function getPainterButtons() {
     return Array.from(document.querySelectorAll(".btn-object"));
   }
@@ -1065,19 +1108,8 @@
       ((solveState && solveState.solverMode) ||
         (typeof getSolverMode === "function" ? getSolverMode() : "standard")) === "custom";
 
-    const usedRows = [];
-    for (let r = 0; r < currentRowCount; r++) {
-      for (let c = 0; c < COLS; c++) {
-        if (grid[r][c] !== "") {
-          usedRows.push(r);
-          break;
-        }
-      }
-    }
-
     const minRow = 0;
-    const maxFilled = usedRows.length ? Math.max(...usedRows) : Math.max(4, currentRowCount - 1);
-    const maxRow = Math.max(currentRowCount - 1, maxFilled);
+    const maxRow = getPreviewMaxRow();
     const visibleRows = maxRow - minRow + 1;
 
     const legendHeight = customMode
@@ -1298,14 +1330,14 @@
 
     if (customMode) {
       for (const path of solveState.bluePaths) {
-        drawPath(ctx, path, customColor, 10, cell, pad, topPad, rowOffset);
+        drawPath(ctx, path, customColor, 10, cell, pad, topPad, rowOffset, minRow, maxRow, false);
       }
-      drawPath(ctx, solveState.redPath, customColor, 12, cell, pad, topPad, rowOffset);
+      drawPath(ctx, solveState.redPath, customColor, 12, cell, pad, topPad, rowOffset, minRow, maxRow, true);
     } else {
       for (const path of solveState.bluePaths) {
-        drawPath(ctx, path, "#2563eb", 10, cell, pad, topPad, rowOffset);
+        drawPath(ctx, path, "#2563eb", 10, cell, pad, topPad, rowOffset, minRow, maxRow, false);
       }
-      drawPath(ctx, solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset);
+      drawPath(ctx, solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset, minRow, maxRow, true);
     }
 
     const legendTop = ctx.canvas.height - legendHeight + 18;
@@ -1405,15 +1437,15 @@
     }
   }
 
-  function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset) {
+  function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset, minRow, maxRow, isMainRedPath) {
     if (!path || path.length < 1) return;
 
     const customMode =
       ((solveState && solveState.solverMode) ||
         (typeof getSolverMode === "function" ? getSolverMode() : "standard")) === "custom";
 
-    const isRed = color === "#ef4444" || (customMode && color === "#a855f7");
-    const isBlue = color === "#2563eb";
+    const isRed = !!isMainRedPath;
+    const isBlue = !isMainRedPath;
 
     function center(pt) {
       return {
@@ -1428,6 +1460,10 @@
 
     function isInBounds(r, c) {
       return r >= 0 && c >= 0 && r < currentRowCount && c < COLS;
+    }
+
+    function isVisible(r) {
+      return r >= minRow && r <= maxRow;
     }
 
     function getCellValue(r, c) {
@@ -1457,10 +1493,8 @@
     }
 
     function getBlueEndpointPoint() {
-      if (path.length === 1) return center(path[0]);
-
       const last = path[path.length - 1];
-      const prev = path[path.length - 2];
+      const prev = path.length > 1 ? path[path.length - 2] : null;
 
       const dirs = [
         [0, 1],
@@ -1518,44 +1552,128 @@
       return firstCenter;
     }
 
-    const points = path.map(center);
+    function strokeSegment(from, to) {
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
 
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.beginPath();
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = width + 6;
+      ctx.stroke();
 
-    if (isRed) {
-      const startStub = getStartStubPoint();
-      ctx.moveTo(startStub.x, startStub.y);
-      ctx.lineTo(points[0].x, points[0].y);
-    } else {
-      ctx.moveTo(points[0].x, points[0].y);
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.stroke();
     }
 
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i].x, points[i].y);
-    }
+    function drawShaftTouchStubs() {
+      const touchedClusters = new Set();
+      const shaftClusters = getOrderedPhysicalShaftClusters();
 
-    if (isBlue) {
-      const endPoint = getBlueEndpointPoint();
-      ctx.lineTo(endPoint.x, endPoint.y);
-    } else if (isRed) {
-      const endPoint = getRedEndpointPoint();
-      if (
-        endPoint.x !== points[points.length - 1].x ||
-        endPoint.y !== points[points.length - 1].y
-      ) {
-        ctx.lineTo(endPoint.x, endPoint.y);
+      function clusterIndexForCell(r, c) {
+        for (let i = 0; i < shaftClusters.length; i++) {
+          if (shaftClusters[i].some(([sr, sc]) => sr === r && sc === c)) {
+            return i;
+          }
+        }
+        return -1;
+      }
+
+      for (const pt of path) {
+        if (!Array.isArray(pt) || !isVisible(pt[0])) continue;
+
+        const dirs = [
+          [0, 1],
+          [1, 0],
+          [0, -1],
+          [-1, 0]
+        ];
+
+        for (const [dr, dc] of dirs) {
+          const nr = pt[0] + dr;
+          const nc = pt[1] + dc;
+
+          if (getCellValue(nr, nc) !== "S") continue;
+
+          const clusterIndex = clusterIndexForCell(nr, nc);
+          const clusterKey = clusterIndex >= 0 ? `cluster-${clusterIndex}` : `${nr},${nc}`;
+
+          if (touchedClusters.has(clusterKey)) continue;
+          touchedClusters.add(clusterKey);
+
+          const from = center(pt);
+          const to = getBoundaryTouchPoint(pt, [nr, nc]);
+
+          if (to) {
+            strokeSegment(from, to);
+          }
+        }
       }
     }
 
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = width + 6;
-    ctx.stroke();
+    const visiblePath = path.filter((pt) => Array.isArray(pt) && isVisible(pt[0]));
+    if (!visiblePath.length) return;
 
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    ctx.stroke();
+    const points = visiblePath.map(center);
+
+    if (visiblePath.length >= 2) {
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+
+      if (isRed) {
+        const startStub = getStartStubPoint();
+        if (isVisible(path[0][0])) {
+          ctx.moveTo(startStub.x, startStub.y);
+          ctx.lineTo(points[0].x, points[0].y);
+        } else {
+          ctx.moveTo(points[0].x, points[0].y);
+        }
+      } else {
+        ctx.moveTo(points[0].x, points[0].y);
+      }
+
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+
+      if (isBlue && isVisible(path[path.length - 1][0])) {
+        const endPoint = getBlueEndpointPoint();
+        ctx.lineTo(endPoint.x, endPoint.y);
+      } else if (isRed && isVisible(path[path.length - 1][0])) {
+        const endPoint = getRedEndpointPoint();
+        if (
+          endPoint.x !== points[points.length - 1].x ||
+          endPoint.y !== points[points.length - 1].y
+        ) {
+          ctx.lineTo(endPoint.x, endPoint.y);
+        }
+      }
+
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = width + 6;
+      ctx.stroke();
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.stroke();
+    }
+
+    if (isBlue && path.length === 1) {
+      const start = center(path[0]);
+      const end = getBlueEndpointPoint();
+
+      if (start.x !== end.x || start.y !== end.y) {
+        strokeSegment(start, end);
+      }
+    }
+
+    drawShaftTouchStubs();
   }
 
   function downloadPNG() {
