@@ -51,10 +51,9 @@
       }
     }
 
-    const allPaths = [
-      ...(Array.isArray(solveState?.redPath) ? solveState.redPath : []),
-      ...((Array.isArray(solveState?.bluePaths) ? solveState.bluePaths : []).flat())
-    ];
+    const redPath = Array.isArray(solveState?.redPath) ? solveState.redPath : [];
+    const bluePaths = Array.isArray(solveState?.bluePaths) ? solveState.bluePaths : [];
+    const allPaths = [...redPath, ...bluePaths.flat()];
 
     for (const pt of allPaths) {
       if (Array.isArray(pt) && Number.isFinite(pt[0])) {
@@ -1327,6 +1326,8 @@
     }
 
     const customColor = "#a855f7";
+    const redColor = customMode ? customColor : "#ef4444";
+    const blueColor = customMode ? customColor : "#2563eb";
 
     if (customMode) {
       for (const path of solveState.bluePaths) {
@@ -1339,6 +1340,8 @@
       }
       drawPath(ctx, solveState.redPath, "#ef4444", 12, cell, pad, topPad, rowOffset, minRow, maxRow, true);
     }
+
+    drawOwnedShaftTouches(ctx, shafts, cell, pad, topPad, rowOffset, minRow, maxRow, redColor, blueColor);
 
     const legendTop = ctx.canvas.height - legendHeight + 18;
 
@@ -1437,12 +1440,180 @@
     }
   }
 
+  function drawOwnedShaftTouches(ctx, shaftClusters, cell, pad, topPad, rowOffset, minRow, maxRow, redColor, blueColor) {
+    if (!Array.isArray(shaftClusters) || !shaftClusters.length) return;
+
+    const redPath = Array.isArray(solveState.redPath) ? solveState.redPath : [];
+    const bluePaths = Array.isArray(solveState.bluePaths) ? solveState.bluePaths : [];
+
+    function center(pt) {
+      return {
+        x: pad + pt[1] * cell + cell / 2,
+        y: topPad + (pt[0] - rowOffset) * cell + cell / 2
+      };
+    }
+
+    function isInBounds(r, c) {
+      return r >= 0 && c >= 0 && r < currentRowCount && c < COLS;
+    }
+
+    function isVisible(r) {
+      return r >= minRow && r <= maxRow;
+    }
+
+    function getCellValue(r, c) {
+      if (!isInBounds(r, c)) return null;
+      return grid[r]?.[c];
+    }
+
+    function getBoundaryTouchPoint(fromPt, toPt) {
+      if (!fromPt || !toPt) return null;
+
+      const [fr, fc] = fromPt;
+      const [tr, tc] = toPt;
+
+      const dx = tc - fc;
+      const dy = tr - fr;
+
+      if (Math.abs(dx) + Math.abs(dy) !== 1) return null;
+
+      const fromCenter = center(fromPt);
+
+      if (dx === 1) return { x: fromCenter.x + cell / 2, y: fromCenter.y };
+      if (dx === -1) return { x: fromCenter.x - cell / 2, y: fromCenter.y };
+      if (dy === 1) return { x: fromCenter.x, y: fromCenter.y + cell / 2 };
+      if (dy === -1) return { x: fromCenter.x, y: fromCenter.y - cell / 2 };
+
+      return null;
+    }
+
+    function clusterHasCell(cluster, r, c) {
+      return cluster.some(([sr, sc]) => sr === r && sc === c);
+    }
+
+    function getPathTouchCandidates(path, color, width, routeType, routeIndex, cluster, clusterIndex) {
+      const candidates = [];
+      if (!Array.isArray(path) || !path.length) return candidates;
+
+      const pathKeySet = new Set(path.map((pt) => `${pt[0]},${pt[1]}`));
+      const lastIndex = path.length - 1;
+
+      for (let i = 0; i < path.length; i++) {
+        const pt = path[i];
+        if (!Array.isArray(pt)) continue;
+        if (!isVisible(pt[0])) continue;
+
+        const dirs = [
+          [0, 1],
+          [1, 0],
+          [0, -1],
+          [-1, 0]
+        ];
+
+        for (const [dr, dc] of dirs) {
+          const nr = pt[0] + dr;
+          const nc = pt[1] + dc;
+
+          if (getCellValue(nr, nc) !== "S") continue;
+          if (!clusterHasCell(cluster, nr, nc)) continue;
+
+          const to = getBoundaryTouchPoint(pt, [nr, nc]);
+          if (!to) continue;
+
+          const from = center(pt);
+
+          let score = 10000;
+
+          if (routeType === "blue" && i === lastIndex) score -= 7000;
+          if (routeType === "red" && i === lastIndex) score -= 5000;
+          if (routeType === "blue") score -= 800;
+          if (routeType === "red") score -= 500;
+
+          score += i;
+          score += Math.abs(pt[0] - nr) + Math.abs(pt[1] - nc);
+
+          const neighbors = [
+            `${pt[0] - 1},${pt[1]}`,
+            `${pt[0] + 1},${pt[1]}`,
+            `${pt[0]},${pt[1] - 1}`,
+            `${pt[0]},${pt[1] + 1}`
+          ];
+          const routeContinuity = neighbors.filter((k) => pathKeySet.has(k)).length;
+          score -= routeContinuity * 8;
+
+          candidates.push({
+            clusterIndex,
+            routeType,
+            routeIndex,
+            pathIndex: i,
+            color,
+            width,
+            from,
+            to,
+            score
+          });
+        }
+      }
+
+      return candidates;
+    }
+
+    function strokeTouch(candidate) {
+      if (!candidate) return;
+
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      ctx.beginPath();
+      ctx.moveTo(candidate.from.x, candidate.from.y);
+      ctx.lineTo(candidate.to.x, candidate.to.y);
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = candidate.width + 6;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(candidate.from.x, candidate.from.y);
+      ctx.lineTo(candidate.to.x, candidate.to.y);
+      ctx.strokeStyle = candidate.color;
+      ctx.lineWidth = candidate.width;
+      ctx.stroke();
+    }
+
+    for (let clusterIndex = 0; clusterIndex < shaftClusters.length; clusterIndex++) {
+      const cluster = shaftClusters[clusterIndex];
+
+      const rows = cluster.map(([r]) => r);
+      const minR = Math.min(...rows);
+      const maxR = Math.max(...rows);
+      if (maxR < minRow || minR > maxRow) continue;
+
+      let candidates = [];
+
+      candidates = candidates.concat(
+        getPathTouchCandidates(redPath, redColor, 12, "red", 0, cluster, clusterIndex)
+      );
+
+      bluePaths.forEach((path, index) => {
+        candidates = candidates.concat(
+          getPathTouchCandidates(path, blueColor, 10, "blue", index, cluster, clusterIndex)
+        );
+      });
+
+      if (!candidates.length) continue;
+
+      candidates.sort((a, b) => {
+        if (a.score !== b.score) return a.score - b.score;
+        if (a.routeType !== b.routeType) return a.routeType === "blue" ? -1 : 1;
+        if (a.routeIndex !== b.routeIndex) return a.routeIndex - b.routeIndex;
+        return a.pathIndex - b.pathIndex;
+      });
+
+      strokeTouch(candidates[0]);
+    }
+  }
+
   function drawPath(ctx, path, color, width, cell, pad, topPad, rowOffset, minRow, maxRow, isMainRedPath) {
     if (!path || path.length < 1) return;
-
-    const customMode =
-      ((solveState && solveState.solverMode) ||
-        (typeof getSolverMode === "function" ? getSolverMode() : "standard")) === "custom";
 
     const isRed = !!isMainRedPath;
     const isBlue = !isMainRedPath;
@@ -1571,51 +1742,6 @@
       ctx.stroke();
     }
 
-    function drawShaftTouchStubs() {
-      const touchedClusters = new Set();
-      const shaftClusters = getOrderedPhysicalShaftClusters();
-
-      function clusterIndexForCell(r, c) {
-        for (let i = 0; i < shaftClusters.length; i++) {
-          if (shaftClusters[i].some(([sr, sc]) => sr === r && sc === c)) {
-            return i;
-          }
-        }
-        return -1;
-      }
-
-      for (const pt of path) {
-        if (!Array.isArray(pt) || !isVisible(pt[0])) continue;
-
-        const dirs = [
-          [0, 1],
-          [1, 0],
-          [0, -1],
-          [-1, 0]
-        ];
-
-        for (const [dr, dc] of dirs) {
-          const nr = pt[0] + dr;
-          const nc = pt[1] + dc;
-
-          if (getCellValue(nr, nc) !== "S") continue;
-
-          const clusterIndex = clusterIndexForCell(nr, nc);
-          const clusterKey = clusterIndex >= 0 ? `cluster-${clusterIndex}` : `${nr},${nc}`;
-
-          if (touchedClusters.has(clusterKey)) continue;
-          touchedClusters.add(clusterKey);
-
-          const from = center(pt);
-          const to = getBoundaryTouchPoint(pt, [nr, nc]);
-
-          if (to) {
-            strokeSegment(from, to);
-          }
-        }
-      }
-    }
-
     const visiblePath = path.filter((pt) => Array.isArray(pt) && isVisible(pt[0]));
     if (!visiblePath.length) return;
 
@@ -1672,8 +1798,6 @@
         strokeSegment(start, end);
       }
     }
-
-    drawShaftTouchStubs();
   }
 
   function downloadPNG() {
