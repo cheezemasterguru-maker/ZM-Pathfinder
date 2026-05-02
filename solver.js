@@ -1926,51 +1926,14 @@
       objectPriorities || GLOBAL_OBJECT_PRIORITIES
     );
     const normalizedSolverMode = normalizeSolverMode(solverMode);
-    const normalizedGateType = String(gateType || "standard").trim().toLowerCase();
-    const normalizedEventType = String(eventType || "").trim().toLowerCase();
-    const normalizedSolverModeRaw = String(solverMode || "standard").trim().toLowerCase();
-    const isLegacyEvent = normalizedEventType.includes("legacy");
-    const isExplicitMainGraveyard =
-      normalizedGateType === "none" &&
-      !isLegacyEvent &&
-      (
-        normalizedEventType.includes("graveyard") ||
-        normalizedSolverModeRaw.includes("graveyard") ||
-        normalizedSolverModeRaw === "main_graveyard"
-      );
+    const rawSolverMode = String(solverMode || "standard").trim().toLowerCase();
 
-    // CRITICAL SAFETY SPLIT:
-    // Normal chambers must stay on the original stable V7.3 behavior.
-    // The main-graveyard badge logic is allowed ONLY when the caller explicitly says there is no gate.
-    if (normalizedGateType !== "none") {
-      if (normalizedSolverMode === "custom") {
-        return solveCustom({
-          grid,
-          gateType,
-          eventType,
-          objectPriorities: normalizedObjectPriorities,
-          objectPriorityMap,
-          getCellObjectType,
-        });
-      }
-
-      return solveStandard({
-        grid,
-        gateType,
-        eventType,
-        objectPriorities: normalizedObjectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
-    }
-
-    // Main-event graveyards have no gate, but this branch must only run when the caller
-    // explicitly identifies the board as a graveyard. Some normal chambers can accidentally
-    // arrive with gateType "none" from the UI, and those must not trigger badge-graveyard solving.
-    if (isExplicitMainGraveyard) {
+    // NORMAL CHAMBERS: exact original V7.3 behavior unless solverMode explicitly asks for graveyard.
+    // Do NOT auto-detect from gateType. That was causing normal chambers to get routed wrong.
+    if (rawSolverMode === "main_graveyard" || rawSolverMode === "graveyard") {
       return solveMainGraveyardNoGate({
         grid,
-        gateType,
+        gateType: "none",
         eventType,
         objectPriorities: normalizedObjectPriorities,
         objectPriorityMap,
@@ -1978,8 +1941,6 @@
       });
     }
 
-    // If this was not explicitly a graveyard, do NOT run the no-gate graveyard solver.
-    // Fall back to normal standard gate behavior to preserve the stable V7.3 chamber solver.
     if (normalizedSolverMode === "custom") {
       return solveCustom({
         grid,
@@ -1993,7 +1954,7 @@
 
     return solveStandard({
       grid,
-      gateType: "standard",
+      gateType,
       eventType,
       objectPriorities: normalizedObjectPriorities,
       objectPriorityMap,
