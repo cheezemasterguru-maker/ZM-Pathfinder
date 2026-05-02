@@ -1,9 +1,9 @@
 (function () {
   "use strict";
 
-  console.log("ZM Solver V7.5.1 loaded");
+  console.log("ZM Solver V7.5.2 loaded");
 
-  const SOLVER_VERSION = "V7.5.1";
+  const SOLVER_VERSION = "V7.5.2";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -228,6 +228,9 @@
     }
 
     cost += getPerObjectPriorityAdjustment(r, c, options);
+
+    if (cost < 0) cost = 0;
+
     return cost;
   }
 
