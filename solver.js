@@ -474,9 +474,9 @@
     return false;
   }
 
-  function isMainGraveyardDefaultBadgeType(type) {
+  function isMainGraveyardDefaultEmblemType(type) {
     const t = String(type || "").trim().toLowerCase();
-    return t === "badge" || t === "badges";
+    return t === "emblem" || t === "emblems";
   }
 
   function buildMainGraveyardTargetGroups({
@@ -520,7 +520,7 @@
 
         const shouldTarget = hasCustomPriority
           ? normalizePrioritySetting(normalizedMap[type]) === "priority"
-          : isMainGraveyardDefaultBadgeType(type);
+          : isMainGraveyardDefaultEmblemType(type);
 
         if (!shouldTarget) continue;
 
@@ -559,7 +559,7 @@
 
         const shouldTarget = hasCustomPriority
           ? normalizePrioritySetting(normalizedMap[type]) === "priority"
-          : isMainGraveyardDefaultBadgeType(type);
+          : isMainGraveyardDefaultEmblemType(type);
 
         if (shouldTarget) out.push([r, c]);
       }
@@ -572,12 +572,12 @@
     const map = { ...(objectPriorityMap || {}) };
 
     // Main Graveyard defaults:
-    // - Badges are priority.
+    // - Emblems are priority.
     // - Shaft stays priority if app-solver sent shaft priority.
     // - Essence is NOT priority in graveyard.
     // - Gate is NOT priority in graveyard.
-    map.badge = "priority";
-    map.badges = "priority";
+    map.emblem = "priority";
+    map.emblems = "priority";
     map.essence = "normal";
     map.gate = "normal";
 
@@ -631,7 +631,7 @@ No valid start cells one row below the lowest used row.`,
 ` +
           `gate_type: none
 ` +
-          `No badge or shaft objectives found.`,
+          `No emblem or shaft objectives found.`,
         startRow,
       };
     }
@@ -690,7 +690,7 @@ No valid start cells one row below the lowest used row.`,
 
     const candidate = {
       redMode: "main_graveyard",
-      redVariant: "badge-and-shaft-priority-no-gate",
+      redVariant: "emblem-and-shaft-priority-no-gate",
       redBubble: null,
       redBubbles: [],
       redBubbleCount,
