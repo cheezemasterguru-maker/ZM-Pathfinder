@@ -1,9 +1,9 @@
 (function () {
   "use strict";
 
-  console.log("ZM Solver V7.5 loaded");
+  console.log("ZM Solver V7.5.1 loaded");
 
-  const SOLVER_VERSION = "V7.5";
+  const SOLVER_VERSION = "V7.5.1";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -52,17 +52,6 @@
     return { ...GLOBAL_OBJECT_PRIORITIES };
   }
 
-  function numberCost(n) {
-    if (!Number.isFinite(n) || n <= 0) return 0;
-    if (n <= 10) return Math.pow(2, n);
-    return Math.pow(2, 10) * Math.pow(1.6, n - 10);
-  }
-
-  function roundCost(n) {
-    if (!Number.isFinite(n)) return n;
-    return Math.round(n * 100) / 100;
-  }
-
   function normalizeSolverMode(value) {
     return String(value || "standard").trim().toLowerCase() === "custom"
       ? "custom"
@@ -73,6 +62,17 @@
     const v = String(value || "").trim().toLowerCase();
     if (v === "priority" || v === "avoid" || v === "normal") return v;
     return "normal";
+  }
+
+  function numberCost(n) {
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    if (n <= 10) return Math.pow(2, n);
+    return Math.pow(2, 10) * Math.pow(1.6, n - 10);
+  }
+
+  function roundCost(n) {
+    if (!Number.isFinite(n)) return n;
+    return Math.round(n * 100) / 100;
   }
 
   function cellKey(r, c) {
@@ -105,6 +105,7 @@
     for (const cell of path || []) {
       if (!Array.isArray(cell)) continue;
       const [r, c] = cell;
+
       if (!out.length || out[out.length - 1][0] !== r || out[out.length - 1][1] !== c) {
         out.push([r, c]);
       }
@@ -126,19 +127,11 @@
 
   function pathSet(path) {
     const set = new Set();
+
     for (const [r, c] of path || []) {
       set.add(cellKey(r, c));
     }
-    return set;
-  }
 
-  function pathsToSet(paths) {
-    const set = new Set();
-    for (const path of paths || []) {
-      for (const [r, c] of path || []) {
-        set.add(cellKey(r, c));
-      }
-    }
     return set;
   }
 
@@ -398,6 +391,31 @@
     return out;
   }
 
+  function countBubbleCells(path, grid) {
+    let n = 0;
+
+    for (const [r, c] of path || []) {
+      if (grid[r]?.[c] === "B") n++;
+    }
+
+    return n;
+  }
+
+  function countRedBubbles(path, grid) {
+    return countBubbleCells(path, grid);
+  }
+
+  function firstBubbleStep(path, grid) {
+    if (!path || !path.length) return Infinity;
+
+    for (let i = 0; i < path.length; i++) {
+      const [r, c] = path[i];
+      if (grid[r]?.[c] === "B") return i;
+    }
+
+    return Infinity;
+  }
+
   function getEssenceCells(grid, getCellObjectType) {
     const out = [];
     if (typeof getCellObjectType !== "function") return out;
@@ -408,11 +426,7 @@
 
         const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
 
-        if (
-          type === "essence" ||
-          type === "ess" ||
-          type === "essences"
-        ) {
+        if (type === "essence" || type === "ess" || type === "essences") {
           out.push([r, c]);
         }
       }
@@ -728,38 +742,20 @@
 
   function buildRouteAnalysis(grid, allCandidates, best) {
     const sorted = [...allCandidates].sort((a, b) => {
-      if (a.unresolvedTargets !== b.unresolvedTargets) {
-        return a.unresolvedTargets - b.unresolvedTargets;
-      }
-
+      if (a.unresolvedTargets !== b.unresolvedTargets) return a.unresolvedTargets - b.unresolvedTargets;
       if ((a.missingPriorityCount ?? 0) !== (b.missingPriorityCount ?? 0)) {
         return (a.missingPriorityCount ?? 0) - (b.missingPriorityCount ?? 0);
       }
-
-      if (a.redBubbleCount !== b.redBubbleCount) {
-        return b.redBubbleCount - a.redBubbleCount;
-      }
-
-      if (a.firstBubbleTravelCost !== b.firstBubbleTravelCost) {
-        return a.firstBubbleTravelCost - b.firstBubbleTravelCost;
-      }
-
-      if (a.redCost !== b.redCost) {
-        return a.redCost - b.redCost;
-      }
-
-      if (a.objectPriorityScore !== b.objectPriorityScore) {
-        return a.objectPriorityScore - b.objectPriorityScore;
-      }
+      if (a.redBubbleCount !== b.redBubbleCount) return b.redBubbleCount - a.redBubbleCount;
+      if (a.firstBubbleTravelCost !== b.firstBubbleTravelCost) return a.firstBubbleTravelCost - b.firstBubbleTravelCost;
+      if (a.redCost !== b.redCost) return a.redCost - b.redCost;
+      if (a.objectPriorityScore !== b.objectPriorityScore) return a.objectPriorityScore - b.objectPriorityScore;
 
       const aRaw = pathRawNumberSum(a.redPath, grid);
       const bRaw = pathRawNumberSum(b.redPath, grid);
       if (aRaw !== bRaw) return aRaw - bRaw;
 
-      if (a.effectiveTotal !== b.effectiveTotal) {
-        return a.effectiveTotal - b.effectiveTotal;
-      }
-
+      if (a.effectiveTotal !== b.effectiveTotal) return a.effectiveTotal - b.effectiveTotal;
       return 0;
     });
 
@@ -923,7 +919,6 @@
 
       bluePaths.push(finalPath);
       attackPoints.push(route.goal);
-
       if (entry) shaftEntryDots.push(entry);
 
       blueCost += route.cost;
@@ -931,9 +926,7 @@
       lowerShaftBonus += getLowestShaftPreferenceBonus(route, entry, cluster, "base", i === 0);
       bubbleBonus += bubblePathBonus(finalPath, entry, grid);
 
-      for (const [r, c] of finalPath) {
-        reusable.add(cellKey(r, c));
-      }
+      for (const [r, c] of finalPath) reusable.add(cellKey(r, c));
 
       cumulativeStarts = dedupeCells(
         cumulativeStarts.concat(finalPath).concat(getPathEndpoints(finalPath))
@@ -962,14 +955,11 @@
       }
 
       const finalPath = uniquePath(route.path);
-
       bluePaths.push(finalPath);
       blueCost += route.cost;
       bubbleBonus += bubblePathBonus(finalPath, route.goal, grid);
 
-      for (const [r, c] of finalPath) {
-        reusable.add(cellKey(r, c));
-      }
+      for (const [r, c] of finalPath) reusable.add(cellKey(r, c));
 
       cumulativeStarts = dedupeCells(
         cumulativeStarts.concat(finalPath).concat(getPathEndpoints(finalPath))
@@ -1059,12 +1049,7 @@
       if (!route || !route.path || !route.path.length) continue;
 
       const rawSum = pathRawNumberSum(route.path, grid, reusable);
-
-      const candidate = {
-        group,
-        route,
-        rawSum
-      };
+      const candidate = { group, route, rawSum };
 
       if (!best) {
         best = candidate;
@@ -1109,10 +1094,7 @@
       };
     }
 
-    let remaining = buildGraveyardTargetGroups({
-      grid,
-      getCellObjectType
-    });
+    let remaining = buildGraveyardTargetGroups({ grid, getCellObjectType });
 
     const shaftClustersOrdered = sortShaftClustersBottomToTop(getShaftClusters(grid));
     const bubbles = getBubbles(grid);
@@ -1141,7 +1123,6 @@
 
     const attackPoints = [];
     const shaftEntryDots = [];
-    const visitedTargets = [];
 
     while (remaining.length) {
       const best = chooseBestGraveyardTarget({
@@ -1166,7 +1147,6 @@
       const route = best.route;
       const cleanPath = uniquePath(route.path);
 
-      visitedTargets.push(group.id);
       attackPoints.push(route.goal);
 
       if (group.kind === "shaft" && group.entryMap) {
@@ -1676,7 +1656,6 @@
       if (!route || !route.path || !route.path.length) continue;
 
       const rawSum = pathRawNumberSum(route.path, grid, reusable);
-
       const turns = route.path.length >= 3
         ? (() => {
             let n = 0;
@@ -1693,12 +1672,7 @@
           })()
         : 0;
 
-      const candidate = {
-        group,
-        route,
-        rawSum,
-        turns
-      };
+      const candidate = { group, route, rawSum, turns };
 
       if (!best) {
         best = candidate;
@@ -1876,7 +1850,6 @@
 
     const redPath = customPaths.redPath || [];
     const bluePaths = customPaths.bluePaths || [];
-
     const redBubbleCount = countRedBubbles(redPath, grid);
     const firstRedBubbleAt = firstBubbleStep(redPath, grid);
 
