@@ -453,7 +453,7 @@ window.ZM_MAP_DATA = {
 
       "Graveyard": {
         title: "Excavations in the Sand - Graveyard",
-        gateType: "standard",
+        gateType: "none",
         grid: [
           [56,39,54,39,55,54,"X"],
           [39,52,53,55,53,57,"X"],
@@ -630,7 +630,7 @@ window.ZM_MAP_DATA = {
 
       "Graveyard": {
   title: "Moon Odyssey - Graveyard",
-  gateType: "standard",     
+  gateType: "none",     
   grid: [
     [42,61,41,63,42,62,42],
     [59,56,59,52,60,59,50],
@@ -729,7 +729,7 @@ window.ZM_MAP_DATA = {
 
       "Graveyard": {
         title: "Volcano Awakening - Graveyard",
-        gateType: "standard",
+        gateType: "none",
         grid: [
           [65,57,60,51,58,55,61],
           [56,63,58,57,50,57,56],
@@ -884,7 +884,7 @@ window.ZM_MAP_DATA = {
 
       "Graveyard": {
         title: "Essence Cave - Graveyard",
-        gateType: "standard",
+        gateType: "none",
         grid: [
           ["X",35,37,22,34,36,"X"],
           ["X",38,22,33,35,"X","X"],
@@ -959,7 +959,7 @@ window.ZM_MAP_DATA = {
 
       "Graveyard": {
         title: "Treasure Trove of Gems - Graveyard",
-        gateType: "standard",
+        gateType: "none",
         grid: [
           ["X","X",14,27,17,26,25],
           ["X","X",17,20,29,27,28],
