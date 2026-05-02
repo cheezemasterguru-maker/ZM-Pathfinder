@@ -24,7 +24,7 @@ window.ZM_SHAFT_DATA = {
     "DEEP 2": {
       "Chamber 1": [
         { shaftType: "Cobalt", level: 32, auto: "C-14" },
-        { shaftType: "Elindir", level: 34, auto: "U-12" }
+        { shaftType: "Elendir", level: 34, auto: "U-12" }
       ],
 
       "Chamber 2": [
@@ -76,7 +76,7 @@ window.ZM_SHAFT_DATA = {
       "Chamber 1": [
         { shaftType: "Beryl", level: 32, auto: "U-13" },
         { shaftType: "Cobalt", level: 40, auto: "U-13" },
-        { shaftType: "Elindir", level: 42, auto: "C-14" }
+        { shaftType: "Elendir", level: 42, auto: "C-14" }
       ],
 
       "Chamber 2": [
@@ -105,7 +105,7 @@ window.ZM_SHAFT_DATA = {
       ],
       "Chamber 3": [
         { shaftType: "Barite", level: 21, auto: 5 },
-        { shaftType: "Elindir", level: 25, auto: 6 },
+        { shaftType: "Elendir", level: 25, auto: 6 },
         { shaftType: "Lapis Lazuli", level: 27, auto: 7 }
       ],
       "Chamber 4": [
@@ -158,7 +158,7 @@ window.ZM_SHAFT_DATA = {
         { shaftType: "Barite", level: 16, auto: 6 }
       ],
       "Chamber 3": [
-        { shaftType: "Elindir", level: 18, auto: 5 },
+        { shaftType: "Elendir", level: 18, auto: 5 },
         { shaftType: "Lapis Lazuli", level: 24, auto: 6 },
         { shaftType: "Aventurine", level: 26, auto: 6 }
       ],
@@ -180,7 +180,7 @@ window.ZM_SHAFT_DATA = {
     { shaftType: "Barite", level: 18, auto: 6 }
   ],
   "Chamber 3": [
-    { shaftType: "Elindir", level: 12, auto: 6 },
+    { shaftType: "Elendir", level: 12, auto: 6 },
     { shaftType: "Lapis Lazuli", level: 21, auto: 7 },
     { shaftType: "Aventurine", level: 23, auto: 7 }
   ],
@@ -204,7 +204,7 @@ window.ZM_SHAFT_DATA = {
   ],
 
   "Chamber 3": [
-    { shaftType: "Elindir", level: 18, auto: 5 },
+    { shaftType: "Elendir", level: 18, auto: 5 },
     { shaftType: "Lapis Lazuli", level: 26, auto: 6 },
     { shaftType: "Aventurine", level: 26, auto: 6 }
   ],
@@ -230,7 +230,7 @@ window.ZM_SHAFT_DATA = {
 
   "Chamber 3": [
     { shaftType: "Barite", level: 23, auto: 5 },
-    { shaftType: "Elindir", level: 26, auto: 6 },
+    { shaftType: "Elendir", level: 26, auto: 6 },
     { shaftType: "Lapis Lazuli", level: 28, auto: 7 }
   ],
 
@@ -255,7 +255,7 @@ window.ZM_SHAFT_DATA = {
 
   "Chamber 3": [
     { shaftType: "Barite", level: 25, auto: 5 },
-    { shaftType: "Elindir", level: 27, auto: 6 },
+    { shaftType: "Elendir", level: 27, auto: 6 },
     { shaftType: "Lapis Lazuli", level: 29, auto: 7 }
   ],
 
@@ -325,7 +325,7 @@ window.ZM_SHAFT_DATA = {
           { shaftType: "Barite", level: 15, auto: 8 }
         ],
         "Chamber 3": [
-          { shaftType: "Elindir", level: 13, auto: 7 },
+          { shaftType: "Elendir", level: 13, auto: 7 },
           { shaftType: "Lapis Lazuli", level: 18, auto: 6 }
         ]
       },
@@ -342,7 +342,7 @@ window.ZM_SHAFT_DATA = {
         ],
         "Chamber 3": [
           { shaftType: "Barite", level: 17, auto: 9 },
-          { shaftType: "Elindir", level: 21, auto: 9 },
+          { shaftType: "Elendir", level: 21, auto: 9 },
           { shaftType: "Lapis Lazuli", level: 23, auto: 9 }
         ],
         "Chamber 4": [
@@ -363,7 +363,7 @@ window.ZM_SHAFT_DATA = {
           { shaftType: "Barite", level: 25, auto: 10 }
         ],
         "Chamber 3": [
-          { shaftType: "Elindir", level: 23, auto: 10 },
+          { shaftType: "Elendir", level: 23, auto: 10 },
           { shaftType: "Lapis Lazuli", level: 26, auto: 10 },
           { shaftType: "Aventurine", level: 30, auto: 10 }
         ],
@@ -385,7 +385,7 @@ window.ZM_SHAFT_DATA = {
         ],
         "Chamber 3": [
           { shaftType: "Barite", level: 33, auto: 12 },
-          { shaftType: "Elindir", level: 35, auto: 12 },
+          { shaftType: "Elendir", level: 35, auto: 12 },
           { shaftType: "Lapis Lazuli", level: 37, auto: 12 }
         ],
         "Chamber 4": [
@@ -408,7 +408,7 @@ window.ZM_SHAFT_DATA = {
         ],
         "Chamber 3": [
           { shaftType: "Barite", level: 32, auto: 13 },
-          { shaftType: "Elindir", level: 34, auto: 13 },
+          { shaftType: "Elendir", level: 34, auto: 13 },
           { shaftType: "Lapis Lazuli", level: 37, auto: 13 }
         ],
         "Chamber 4": [
