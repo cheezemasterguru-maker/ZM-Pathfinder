@@ -212,8 +212,16 @@
       options.getCellObjectType
     );
 
-    if (setting === "priority") return priorities.priorityObjectBonus;
+    // IMPORTANT:
+    // Do NOT apply negative priority bonus inside Dijkstra movement cost.
+    // Dijkstra cannot safely run with negative-weight cells; negative priority cells
+    // can create endless cheaper loops and freeze normal chambers.
+    // Priority is still handled later by objectPriorityScore / route ranking.
+    if (setting === "priority") return 0;
+
+    // Avoid is safe here because it is a positive penalty.
     if (setting === "avoid") return priorities.avoidObjectPenalty;
+
     return 0;
   }
 
