@@ -1928,7 +1928,16 @@
     const normalizedSolverMode = normalizeSolverMode(solverMode);
     const normalizedGateType = String(gateType || "standard").trim().toLowerCase();
     const normalizedEventType = String(eventType || "").trim().toLowerCase();
+    const normalizedSolverModeRaw = String(solverMode || "standard").trim().toLowerCase();
     const isLegacyEvent = normalizedEventType.includes("legacy");
+    const isExplicitMainGraveyard =
+      normalizedGateType === "none" &&
+      !isLegacyEvent &&
+      (
+        normalizedEventType.includes("graveyard") ||
+        normalizedSolverModeRaw.includes("graveyard") ||
+        normalizedSolverModeRaw === "main_graveyard"
+      );
 
     // CRITICAL SAFETY SPLIT:
     // Normal chambers must stay on the original stable V7.3 behavior.
@@ -1955,8 +1964,10 @@
       });
     }
 
-    // Main-event graveyards have no gate. Legacy should not use this branch.
-    if (!isLegacyEvent) {
+    // Main-event graveyards have no gate, but this branch must only run when the caller
+    // explicitly identifies the board as a graveyard. Some normal chambers can accidentally
+    // arrive with gateType "none" from the UI, and those must not trigger badge-graveyard solving.
+    if (isExplicitMainGraveyard) {
       return solveMainGraveyardNoGate({
         grid,
         gateType,
@@ -1967,7 +1978,8 @@
       });
     }
 
-    // Legacy no-gate fallback: preserve original mode behavior as much as possible.
+    // If this was not explicitly a graveyard, do NOT run the no-gate graveyard solver.
+    // Fall back to normal standard gate behavior to preserve the stable V7.3 chamber solver.
     if (normalizedSolverMode === "custom") {
       return solveCustom({
         grid,
@@ -1981,7 +1993,7 @@
 
     return solveStandard({
       grid,
-      gateType,
+      gateType: "standard",
       eventType,
       objectPriorities: normalizedObjectPriorities,
       objectPriorityMap,
