@@ -604,16 +604,16 @@ function solveBoard() {
     : (gateTypeEl?.value || "standard");
 
   const result = window.ZMPathfinderSolver.solveGrid({
-    grid: getVisibleGridSlice(),
-    gateType: forcedGateType,
-    eventType: currentMapContext.eventType,
-    eventName: currentMapContext.eventName,
-    eventMine: currentMapContext.eventMine,
-    chamberName: currentMapContext.chamberName,
-    solverMode,
-    objectPriorityMap: getObjectPriorityMapForSolver(),
-    getCellObjectType
-  });
+  grid: getVisibleGridSlice(),
+  gateType: forcedGateType,
+  eventType: currentMapContext.eventType,
+  eventName: currentMapContext.eventName,
+  eventMine: currentMapContext.eventMine,
+  chamberName: currentMapContext.chamberName,
+  solverMode: isMainEventGraveyard() ? "main_graveyard" : solverMode,
+  objectPriorityMap: getObjectPriorityMapForSolver(),
+  getCellObjectType
+});
 
   if (!result || !result.ok) {
     resetSolve();
