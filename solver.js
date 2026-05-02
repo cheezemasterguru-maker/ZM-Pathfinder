@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V7.4 loaded");
+  console.log("ZM Solver V7.3 loaded");
 
-  const SOLVER_VERSION = "V7.4";
+  const SOLVER_VERSION = "V7.3";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -25,22 +25,32 @@
     };
 
     return {
-      mineralMultiplier: Number.isFinite(merged.mineralMultiplier) ? merged.mineralMultiplier : 1,
-      mineralFlat: Number.isFinite(merged.mineralFlat) ? merged.mineralFlat : 0,
-      bubbleFlat: Number.isFinite(merged.bubbleFlat) ? merged.bubbleFlat : 0,
-      blankFlat: Number.isFinite(merged.blankFlat) ? merged.blankFlat : 0,
-      gateFlat: Number.isFinite(merged.gateFlat) ? merged.gateFlat : 0,
-      startFlat: Number.isFinite(merged.startFlat) ? merged.startFlat : 0,
-      highMineralThreshold: Number.isFinite(merged.highMineralThreshold)
-        ? merged.highMineralThreshold
-        : 28,
-      highMineralFlat: Number.isFinite(merged.highMineralFlat) ? merged.highMineralFlat : 0,
-      priorityObjectBonus: Number.isFinite(merged.priorityObjectBonus)
-        ? merged.priorityObjectBonus
-        : -250000,
-      avoidObjectPenalty: Number.isFinite(merged.avoidObjectPenalty)
-        ? merged.avoidObjectPenalty
-        : 250000,
+      mineralMultiplier:
+        Number.isFinite(merged.mineralMultiplier) ? merged.mineralMultiplier : 1,
+      mineralFlat:
+        Number.isFinite(merged.mineralFlat) ? merged.mineralFlat : 0,
+      bubbleFlat:
+        Number.isFinite(merged.bubbleFlat) ? merged.bubbleFlat : 0,
+      blankFlat:
+        Number.isFinite(merged.blankFlat) ? merged.blankFlat : 0,
+      gateFlat:
+        Number.isFinite(merged.gateFlat) ? merged.gateFlat : 0,
+      startFlat:
+        Number.isFinite(merged.startFlat) ? merged.startFlat : 0,
+      highMineralThreshold:
+        Number.isFinite(merged.highMineralThreshold)
+          ? merged.highMineralThreshold
+          : 28,
+      highMineralFlat:
+        Number.isFinite(merged.highMineralFlat) ? merged.highMineralFlat : 0,
+      priorityObjectBonus:
+        Number.isFinite(merged.priorityObjectBonus)
+          ? merged.priorityObjectBonus
+          : -250000,
+      avoidObjectPenalty:
+        Number.isFinite(merged.avoidObjectPenalty)
+          ? merged.avoidObjectPenalty
+          : 250000,
     };
   }
 
@@ -388,7 +398,6 @@
   }
 
   function getGateGoals(grid, gateType) {
-    if (String(gateType || "").trim().toLowerCase() === "none") return [];
     const cols = gateType === "end" ? [2, 3, 4] : [1, 2, 3, 4, 5];
     return cols.map((c) => [0, c]).filter(([r, c]) => isWalkableCell(grid, r, c));
   }
@@ -400,21 +409,6 @@
         if (grid[r][c] === "B") out.push([r, c]);
       }
     }
-    return out;
-  }
-
-  function getEssenceCells(grid, getCellObjectType) {
-    const out = [];
-    if (typeof getCellObjectType !== "function") return out;
-
-    for (let r = 0; r < grid.length; r++) {
-      for (let c = 0; c < grid[0].length; c++) {
-        if (!isWalkableCell(grid, r, c)) continue;
-        const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
-        if (type === "essence") out.push([r, c]);
-      }
-    }
-
     return out;
   }
 
@@ -598,6 +592,12 @@
       bonus += 4.0;
     }
     return bonus;
+  }
+
+  function getEntryBottomDepth(entry, cluster) {
+    if (!entry || !cluster || !cluster.length) return 0;
+    const bottom = Math.max(...cluster.map(([r]) => r));
+    return entry[0] / Math.max(1, bottom);
   }
 
   function getLowestShaftPreferenceBonus(route, entry, cluster, routeKind, isLowestShaft) {
@@ -844,7 +844,7 @@
     objectPriorities,
     objectPriorityMap,
     getCellObjectType,
-  }) {
+    }) {
     const bluePaths = [];
     const shaftEntryDots = [];
     const attackPoints = [];
@@ -953,342 +953,6 @@
     };
   }
 
-  function buildGraveyardTargetGroups({
-    grid,
-    getCellObjectType,
-  }) {
-    const groups = [];
-    const shaftClusters = sortShaftClustersBottomToTop(getShaftClusters(grid));
-
-    shaftClusters.forEach((cluster, index) => {
-      const info = getShaftAttackInfo(grid, cluster);
-      if (info.attacks.length) {
-        groups.push({
-          id: `graveyard-shaft-${index}`,
-          label: `Shaft ${index + 1}`,
-          kind: "shaft",
-          goals: info.attacks,
-          cluster,
-          entryMap: info.entryMap,
-          sortBucket: 1,
-        });
-      }
-    });
-
-    const essenceCells = getEssenceCells(grid, getCellObjectType);
-
-    essenceCells.forEach((cell, index) => {
-      groups.push({
-        id: `graveyard-essence-${index}`,
-        label: `Essence ${index + 1}`,
-        kind: "essence",
-        goals: [cell],
-        sortBucket: 2,
-      });
-    });
-
-    return groups;
-  }
-
-  function chooseBestGraveyardTarget({
-    grid,
-    starts,
-    reusable,
-    targetGroups,
-    objectPriorities,
-    objectPriorityMap,
-    getCellObjectType,
-  }) {
-    let best = null;
-
-    const orderedGroups = [...targetGroups].sort((a, b) => {
-      if (a.sortBucket !== b.sortBucket) return a.sortBucket - b.sortBucket;
-      return 0;
-    });
-
-    const firstBucket = orderedGroups.length ? orderedGroups[0].sortBucket : null;
-    const eligibleGroups = orderedGroups.filter((group) => group.sortBucket === firstBucket);
-
-    for (const group of eligibleGroups) {
-      const route = dijkstra({
-        grid,
-        starts,
-        goals: group.goals,
-        freeCells: reusable,
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
-
-      if (!route || !route.path || !route.path.length) continue;
-
-      const rawSum = pathRawNumberSum(route.path, grid, reusable);
-
-      const candidate = {
-        group,
-        route,
-        rawSum,
-      };
-
-      if (!best) {
-        best = candidate;
-        continue;
-      }
-
-      if (route.cost < best.route.cost) {
-        best = candidate;
-        continue;
-      }
-
-      if (route.cost === best.route.cost && route.len < best.route.len) {
-        best = candidate;
-        continue;
-      }
-
-      if (route.cost === best.route.cost && route.len === best.route.len && rawSum < best.rawSum) {
-        best = candidate;
-      }
-    }
-
-    return best;
-  }
-
-  function solveGraveyardNoGate({
-    grid,
-    gateType,
-    eventType,
-    objectPriorities,
-    objectPriorityMap,
-    getCellObjectType,
-  }) {
-    const rows = grid.length;
-    const cols = grid[0].length;
-    const { startRow, starts } = getStartCells(grid);
-
-    if (!starts.length) {
-      return {
-        ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid start cells one row below the lowest used row.`,
-        startRow,
-      };
-    }
-
-    let remaining = buildGraveyardTargetGroups({
-      grid,
-      getCellObjectType,
-    });
-
-    const shaftClustersOrdered = sortShaftClustersBottomToTop(getShaftClusters(grid));
-    const bubbles = getBubbles(grid);
-    const essenceCells = getEssenceCells(grid, getCellObjectType);
-
-    if (!remaining.length) {
-      return {
-        ok: false,
-        message:
-          `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
-          `solver_mode: graveyard\n` +
-          `No shafts or essence targets found.`,
-        startRow,
-      };
-    }
-
-    const redPath = [];
-    const bluePaths = [];
-
-    let redCost = 0;
-    let blueCost = 0;
-    let unresolvedTargets = 0;
-
-    const reusable = new Set();
-    let cumulativeStarts = dedupeCells(starts);
-
-    const attackPoints = [];
-    const shaftEntryDots = [];
-    const visitedTargets = [];
-
-    let isFirstPath = true;
-
-    while (remaining.length) {
-      const best = chooseBestGraveyardTarget({
-        grid,
-        starts: cumulativeStarts,
-        reusable,
-        targetGroups: remaining,
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
-
-      if (!best) {
-        const firstBucket = Math.min(...remaining.map((group) => group.sortBucket));
-        const failedGroups = remaining.filter((group) => group.sortBucket === firstBucket);
-        unresolvedTargets += failedGroups.length;
-        remaining = remaining.filter((group) => group.sortBucket !== firstBucket);
-        continue;
-      }
-
-      const group = best.group;
-      const route = best.route;
-      const cleanPath = uniquePath(route.path);
-
-      visitedTargets.push(group.id);
-      attackPoints.push(route.goal);
-
-      if (group.kind === "shaft" && group.entryMap) {
-        const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
-        if (entry) shaftEntryDots.push(entry);
-      }
-
-      if (isFirstPath) {
-        redPath.push(...cleanPath);
-        redCost += route.cost;
-        isFirstPath = false;
-      } else {
-        bluePaths.push(cleanPath);
-        blueCost += route.cost;
-      }
-
-      for (const [r, c] of cleanPath) {
-        reusable.add(cellKey(r, c));
-      }
-
-      cumulativeStarts = dedupeCells(
-        cumulativeStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
-      );
-
-      remaining = remaining.filter((g) => g !== group);
-    }
-
-    const finalRedPath = uniquePath(redPath);
-    const redBubbleCount = countRedBubbles(finalRedPath, grid);
-    const firstRedBubbleAt = firstBubbleStep(finalRedPath, grid);
-    const firstBubbleCost = firstBubbleTravelCost(
-      finalRedPath,
-      grid,
-      objectPriorities,
-      objectPriorityMap,
-      getCellObjectType
-    );
-
-    const redObjectPriorityScore = getPathObjectPriorityScore(
-      finalRedPath,
-      objectPriorityMap,
-      getCellObjectType,
-      objectPriorities
-    );
-
-    let blueObjectPriorityScore = 0;
-    for (const bluePath of bluePaths) {
-      blueObjectPriorityScore += getPathObjectPriorityScore(
-        bluePath,
-        objectPriorityMap,
-        getCellObjectType,
-        objectPriorities
-      );
-    }
-
-    const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
-    const redLoopPenalty = redBacktrackPenalty(finalRedPath);
-
-    const effectiveTotal =
-      redCost +
-      blueCost +
-      totalObjectPriorityScore +
-      redLoopPenalty +
-      unresolvedTargets * 1000000000;
-
-    const candidate = {
-      redMode: "graveyard",
-      redVariant: "shaft-first-then-essence",
-      redBubble: null,
-      redBubbles: [],
-      redBubbleCount,
-      firstRedBubbleAt,
-      firstBubbleTravelCost: firstBubbleCost,
-      redPath: finalRedPath,
-      redCost,
-      gateGoal: null,
-      bluePaths,
-      blueCost,
-      shaftEntryDots: dedupeCells(shaftEntryDots),
-      attackPoints: dedupeCells(attackPoints),
-      unresolvedTargets,
-      dependencyCost: 0,
-      assistBonus: 0,
-      lowerShaftBonus: 0,
-      bubbleBonus: 0,
-      redLoopPenalty,
-      overAssistPenalty: 0,
-      redObjectPriorityScore,
-      blueObjectPriorityScore,
-      objectPriorityScore: totalObjectPriorityScore,
-      missingPriorityCount: 0,
-      effectiveTotal,
-    };
-
-    const routeAnalysis = buildRouteAnalysis(grid, [candidate], candidate);
-
-    return {
-      ok: true,
-      rows,
-      cols,
-      gateType,
-      eventType,
-      solverMode: "graveyard",
-      legacyEndMode: false,
-      startRow,
-      solverVersion: SOLVER_VERSION,
-      objectPriorities: { ...objectPriorities },
-      objectPriorityMap: objectPriorityMap ? { ...objectPriorityMap } : null,
-      requiredPriorityCells: essenceCells,
-      avoidCells: [],
-      redMode: candidate.redMode,
-      redVariant: candidate.redVariant,
-      redBubble: null,
-      redBubbles: [],
-      redBubbleCount,
-      firstRedBubbleAt,
-      firstBubbleTravelCost:
-        firstBubbleCost === Infinity ? null : roundCost(firstBubbleCost),
-      redPath: finalRedPath,
-      redCost: roundCost(redCost),
-      bluePaths,
-      blueCost: roundCost(blueCost),
-      totalCost: roundCost(redCost + blueCost),
-      redObjectPriorityScore: roundCost(redObjectPriorityScore),
-      blueObjectPriorityScore: roundCost(blueObjectPriorityScore),
-      objectPriorityScore: roundCost(totalObjectPriorityScore),
-      missingPriorityCount: 0,
-      effectiveTotal: roundCost(effectiveTotal),
-      dependencyCost: 0,
-      assistBonus: 0,
-      lowerShaftBonus: 0,
-      bubbleBonus: 0,
-      redLoopPenalty: roundCost(redLoopPenalty),
-      overAssistPenalty: 0,
-      shaftClusters: shaftClustersOrdered,
-      shaftEntryDots: dedupeCells(shaftEntryDots),
-      attackPoints: dedupeCells(attackPoints),
-      bubbles,
-      essenceCells,
-      unresolvedTargets,
-      redCandidateCount: 1,
-      routeAnalysis,
-      message:
-        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
-        `solver_mode: graveyard\n` +
-        `solver_status: solved\n` +
-        `gate_type: none\n` +
-        `shaft_targets: ${shaftClustersOrdered.length}\n` +
-        `essence_targets: ${essenceCells.length}\n` +
-        `unresolved_targets: ${unresolvedTargets}\n` +
-        `red_cost: ${roundCost(redCost)}\n` +
-        `blue_cost: ${roundCost(blueCost)}\n` +
-        `effective_total: ${roundCost(effectiveTotal)}`
-    };
-  }
-
   function solveStandard({
     grid,
     gateType,
@@ -1297,19 +961,6 @@
     objectPriorityMap,
     getCellObjectType,
   }) {
-    const normalizedGateType = String(gateType || "standard").trim().toLowerCase();
-
-    if (normalizedGateType === "none") {
-      return solveGraveyardNoGate({
-        grid,
-        gateType,
-        eventType,
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
-    }
-
     const rows = grid.length;
     const cols = grid[0].length;
     const { startRow, starts } = getStartCells(grid);
@@ -1597,10 +1248,7 @@
       }
     }
 
-    if (
-      String(gateType || "").trim().toLowerCase() !== "none" &&
-      normalizePrioritySetting(normalizedMap.gate) === "priority"
-    ) {
+    if (normalizePrioritySetting(normalizedMap.gate) === "priority") {
       const gateGoals = getGateGoals(grid, gateType);
       if (gateGoals.length) {
         groups.push({
@@ -1979,18 +1627,6 @@
       objectPriorities || GLOBAL_OBJECT_PRIORITIES
     );
     const normalizedSolverMode = normalizeSolverMode(solverMode);
-    const normalizedGateType = String(gateType || "standard").trim().toLowerCase();
-
-    if (normalizedGateType === "none") {
-      return solveGraveyardNoGate({
-        grid,
-        gateType,
-        eventType,
-        objectPriorities: normalizedObjectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
-    }
 
     if (normalizedSolverMode === "custom") {
       return solveCustom({
