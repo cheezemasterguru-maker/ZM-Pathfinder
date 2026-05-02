@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V7.3 loaded");
+  console.log("ZM Solver V7.3-main-graveyard loaded");
 
-  const SOLVER_VERSION = "V7.3";
+  const SOLVER_VERSION = "V7.3-main-graveyard";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -398,7 +398,10 @@
   }
 
   function getGateGoals(grid, gateType) {
-    const cols = gateType === "end" ? [2, 3, 4] : [1, 2, 3, 4, 5];
+    const normalizedGateType = String(gateType || "standard").trim().toLowerCase();
+    if (normalizedGateType === "none") return [];
+
+    const cols = normalizedGateType === "end" ? [2, 3, 4] : [1, 2, 3, 4, 5];
     return cols.map((c) => [0, c]).filter(([r, c]) => isWalkableCell(grid, r, c));
   }
 
@@ -442,6 +445,224 @@
     }
 
     return out;
+  }
+
+
+  function hasAnyCustomPriorityObject(objectPriorityMap) {
+    if (!objectPriorityMap) return false;
+
+    for (const key of Object.keys(objectPriorityMap)) {
+      if (normalizePrioritySetting(objectPriorityMap[key]) === "priority") {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function getMainGraveyardPriorityMap(objectPriorityMap) {
+    const map = { ...(objectPriorityMap || {}) };
+
+    if (!hasAnyCustomPriorityObject(map)) {
+      map.emblem = "priority";
+      map.emblems = "priority";
+    }
+
+    return map;
+  }
+
+  function solveMainGraveyardNoGate({
+    grid,
+    gateType,
+    eventType,
+    objectPriorities,
+    objectPriorityMap,
+    getCellObjectType,
+  }) {
+    const rows = grid.length;
+    const cols = grid[0].length;
+    const { startRow, starts } = getStartCells(grid);
+
+    if (!starts.length) {
+      return {
+        ok: false,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid start cells one row below the lowest used row.`,
+        startRow,
+      };
+    }
+
+    const effectiveObjectPriorityMap = getMainGraveyardPriorityMap(objectPriorityMap);
+    const requiredPriorityCells = getPriorityCells(
+      grid,
+      effectiveObjectPriorityMap,
+      getCellObjectType
+    );
+    const avoidCells = getAvoidCells(grid, effectiveObjectPriorityMap, getCellObjectType);
+    const bubbles = getBubbles(grid);
+    const shaftClustersOrdered = sortShaftClustersBottomToTop(getShaftClusters(grid));
+
+    const targetGroups = buildCustomTargetGroups({
+      grid,
+      gateType: "none",
+      objectPriorityMap: effectiveObjectPriorityMap,
+      getCellObjectType,
+    });
+
+    if (!targetGroups.length) {
+      return {
+        ok: false,
+        message:
+          `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
+          `solver_mode: main_graveyard\n` +
+          `gate_type: none\n` +
+          `No emblem or custom priority objectives found.`,
+        startRow,
+      };
+    }
+
+    const customPaths = buildCustomPaths({
+      grid,
+      starts,
+      targetGroups,
+      objectPriorities,
+      objectPriorityMap: effectiveObjectPriorityMap,
+      getCellObjectType,
+    });
+
+    const redPath = customPaths.redPath || [];
+    const bluePaths = customPaths.bluePaths || [];
+    const redBubbleCount = countRedBubbles(redPath, grid);
+    const firstRedBubbleAt = firstBubbleStep(redPath, grid);
+    const firstBubbleCost = firstBubbleTravelCost(
+      redPath,
+      grid,
+      objectPriorities,
+      effectiveObjectPriorityMap,
+      getCellObjectType
+    );
+
+    const redObjectPriorityScore = getPathObjectPriorityScore(
+      redPath,
+      effectiveObjectPriorityMap,
+      getCellObjectType,
+      objectPriorities
+    );
+
+    let blueObjectPriorityScore = 0;
+    for (const bluePath of bluePaths) {
+      blueObjectPriorityScore += getPathObjectPriorityScore(
+        bluePath,
+        effectiveObjectPriorityMap,
+        getCellObjectType,
+        objectPriorities
+      );
+    }
+
+    const missingPriorityCount = countMissingPriorityCells(
+      requiredPriorityCells,
+      [redPath, ...bluePaths]
+    );
+    const redLoopPenalty = redBacktrackPenalty(redPath);
+    const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
+
+    const effectiveTotal =
+      customPaths.totalCost +
+      totalObjectPriorityScore +
+      redLoopPenalty +
+      missingPriorityCount * 1000000000 +
+      customPaths.unresolvedTargets * 1000000000;
+
+    const candidate = {
+      redMode: "main_graveyard",
+      redVariant: hasAnyCustomPriorityObject(objectPriorityMap)
+        ? "custom-priority-no-gate"
+        : "emblem-priority-no-gate",
+      redBubble: null,
+      redBubbles: [],
+      redBubbleCount,
+      firstRedBubbleAt,
+      firstBubbleTravelCost: firstBubbleCost,
+      redPath,
+      redCost: customPaths.redCost,
+      gateGoal: null,
+      bluePaths,
+      blueCost: customPaths.blueCost,
+      shaftEntryDots: customPaths.shaftEntryDots,
+      attackPoints: customPaths.attackPoints,
+      unresolvedTargets: customPaths.unresolvedTargets,
+      dependencyCost: 0,
+      assistBonus: 0,
+      lowerShaftBonus: 0,
+      bubbleBonus: 0,
+      redLoopPenalty,
+      overAssistPenalty: 0,
+      redObjectPriorityScore,
+      blueObjectPriorityScore,
+      objectPriorityScore: totalObjectPriorityScore,
+      missingPriorityCount,
+      effectiveTotal,
+    };
+
+    const routeAnalysis = buildRouteAnalysis(grid, [candidate], candidate);
+
+    return {
+      ok: true,
+      rows,
+      cols,
+      gateType,
+      eventType,
+      solverMode: "main_graveyard",
+      legacyEndMode: false,
+      startRow,
+      solverVersion: SOLVER_VERSION,
+      objectPriorities: { ...objectPriorities },
+      objectPriorityMap: effectiveObjectPriorityMap ? { ...effectiveObjectPriorityMap } : null,
+      requiredPriorityCells,
+      avoidCells,
+      redMode: candidate.redMode,
+      redVariant: candidate.redVariant,
+      redBubble: null,
+      redBubbles: [],
+      redBubbleCount,
+      firstRedBubbleAt,
+      firstBubbleTravelCost:
+        firstBubbleCost === Infinity ? null : roundCost(firstBubbleCost),
+      redPath,
+      redCost: roundCost(candidate.redCost),
+      bluePaths,
+      blueCost: roundCost(candidate.blueCost),
+      totalCost: roundCost(candidate.redCost + candidate.blueCost),
+      redObjectPriorityScore: roundCost(redObjectPriorityScore),
+      blueObjectPriorityScore: roundCost(blueObjectPriorityScore),
+      objectPriorityScore: roundCost(totalObjectPriorityScore),
+      missingPriorityCount,
+      effectiveTotal: roundCost(effectiveTotal),
+      dependencyCost: 0,
+      assistBonus: 0,
+      lowerShaftBonus: 0,
+      bubbleBonus: 0,
+      redLoopPenalty: roundCost(redLoopPenalty),
+      overAssistPenalty: 0,
+      shaftClusters: shaftClustersOrdered,
+      shaftEntryDots: customPaths.shaftEntryDots,
+      attackPoints: customPaths.attackPoints,
+      bubbles,
+      unresolvedTargets: customPaths.unresolvedTargets,
+      redCandidateCount: 1,
+      routeAnalysis,
+      message:
+        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
+        `solver_mode: main_graveyard\n` +
+        `solver_status: solved\n` +
+        `gate_type: none\n` +
+        `red_variant: ${candidate.redVariant}\n` +
+        `priority_targets: ${requiredPriorityCells.length}\n` +
+        `missing_priority_count: ${missingPriorityCount}\n` +
+        `unresolved_targets: ${customPaths.unresolvedTargets}\n` +
+        `red_cost: ${roundCost(candidate.redCost)}\n` +
+        `blue_cost: ${roundCost(candidate.blueCost)}\n` +
+        `effective_total: ${roundCost(effectiveTotal)}`
+    };
   }
 
   function getPathObjectPriorityScore(path, objectPriorityMap, getCellObjectType, priorities) {
@@ -1627,6 +1848,20 @@
       objectPriorities || GLOBAL_OBJECT_PRIORITIES
     );
     const normalizedSolverMode = normalizeSolverMode(solverMode);
+    const normalizedGateType = String(gateType || "standard").trim().toLowerCase();
+    const normalizedEventType = String(eventType || "").trim().toLowerCase();
+    const isLegacyEvent = normalizedEventType.includes("legacy");
+
+    if (normalizedGateType === "none" && !isLegacyEvent) {
+      return solveMainGraveyardNoGate({
+        grid,
+        gateType,
+        eventType,
+        objectPriorities: normalizedObjectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+    }
 
     if (normalizedSolverMode === "custom") {
       return solveCustom({
