@@ -447,13 +447,17 @@
     return out;
   }
 
-
   function hasAnyCustomPriorityObject(objectPriorityMap) {
     if (!objectPriorityMap) return false;
 
     for (const key of Object.keys(objectPriorityMap)) {
       const normalizedKey = String(key || "").trim().toLowerCase();
+
+      // Main Graveyard ignores gate and essence as custom priority.
+      // Shaft is allowed because Main Graveyard should target shafts if they exist.
       if (normalizedKey === "gate") continue;
+      if (normalizedKey === "essence") continue;
+
       if (normalizePrioritySetting(objectPriorityMap[key]) === "priority") {
         return true;
       }
@@ -479,13 +483,32 @@
     const normalizedMap = objectPriorityMap || {};
     const seen = new Set();
 
+    if (normalizePrioritySetting(normalizedMap.shaft) === "priority") {
+      const shaftClusters = sortShaftClustersBottomToTop(getShaftClusters(grid));
+
+      shaftClusters.forEach((cluster, index) => {
+        const info = getShaftAttackInfo(grid, cluster);
+        if (info.attacks.length) {
+          groups.push({
+            id: `graveyard-shaft-${index}`,
+            label: `Shaft ${index + 1}`,
+            kind: "shaft",
+            goals: info.attacks,
+            cluster,
+            entryMap: info.entryMap,
+            final: false,
+          });
+        }
+      });
+    }
+
     for (let r = 0; r < grid.length; r++) {
       for (let c = 0; c < grid[0].length; c++) {
         if (!isWalkableCell(grid, r, c)) continue;
 
         const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
         if (!type) continue;
-        if (type === "gate" || type === "shaft" || type === "bubble") continue;
+        if (type === "gate" || type === "shaft" || type === "bubble" || type === "essence") continue;
 
         const shouldTarget = hasCustomPriority
           ? normalizePrioritySetting(normalizedMap[type]) === "priority"
@@ -524,7 +547,7 @@
 
         const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
         if (!type) continue;
-        if (type === "gate" || type === "shaft" || type === "bubble") continue;
+        if (type === "gate" || type === "shaft" || type === "bubble" || type === "essence") continue;
 
         const shouldTarget = hasCustomPriority
           ? normalizePrioritySetting(normalizedMap[type]) === "priority"
@@ -540,11 +563,14 @@
   function getMainGraveyardPriorityMap(objectPriorityMap) {
     const map = { ...(objectPriorityMap || {}) };
 
-    if (!hasAnyCustomPriorityObject(map)) {
-      map.badge = "priority";
-      map.badges = "priority";
-    }
-
+    // Main Graveyard defaults:
+    // - Badges are priority.
+    // - Shaft stays priority if app-solver sent shaft priority.
+    // - Essence is NOT priority in graveyard.
+    // - Gate is NOT priority in graveyard.
+    map.badge = "priority";
+    map.badges = "priority";
+    map.essence = "normal";
     map.gate = "normal";
 
     return map;
@@ -565,7 +591,8 @@
     if (!starts.length) {
       return {
         ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid start cells one row below the lowest used row.`,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}
+No valid start cells one row below the lowest used row.`,
         startRow,
       };
     }
@@ -573,7 +600,7 @@
     const effectiveObjectPriorityMap = getMainGraveyardPriorityMap(objectPriorityMap);
     const requiredPriorityCells = getMainGraveyardRequiredCells(
       grid,
-      objectPriorityMap,
+      effectiveObjectPriorityMap,
       getCellObjectType
     );
     const avoidCells = getAvoidCells(grid, effectiveObjectPriorityMap, getCellObjectType);
@@ -582,7 +609,7 @@
 
     const targetGroups = buildMainGraveyardTargetGroups({
       grid,
-      objectPriorityMap,
+      objectPriorityMap: effectiveObjectPriorityMap,
       getCellObjectType,
     });
 
@@ -590,10 +617,13 @@
       return {
         ok: false,
         message:
-          `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
-          `solver_mode: main_graveyard\n` +
-          `gate_type: none\n` +
-          `No badge or custom priority objectives found.`,
+          `SOLVER_VERSION: ${SOLVER_VERSION}
+` +
+          `solver_mode: main_graveyard
+` +
+          `gate_type: none
+` +
+          `No badge or shaft objectives found.`,
         startRow,
       };
     }
@@ -652,9 +682,7 @@
 
     const candidate = {
       redMode: "main_graveyard",
-      redVariant: hasAnyCustomPriorityObject(objectPriorityMap)
-        ? "custom-priority-no-gate"
-        : "badge-priority-no-gate",
+      redVariant: "badge-and-shaft-priority-no-gate",
       redBubble: null,
       redBubbles: [],
       redBubbleCount,
@@ -729,16 +757,28 @@
       redCandidateCount: 1,
       routeAnalysis,
       message:
-        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
-        `solver_mode: main_graveyard\n` +
-        `solver_status: solved\n` +
-        `gate_type: none\n` +
-        `red_variant: ${candidate.redVariant}\n` +
-        `priority_targets: ${requiredPriorityCells.length}\n` +
-        `missing_priority_count: ${missingPriorityCount}\n` +
-        `unresolved_targets: ${customPaths.unresolvedTargets}\n` +
-        `red_cost: ${roundCost(candidate.redCost)}\n` +
-        `blue_cost: ${roundCost(candidate.blueCost)}\n` +
+        `SOLVER_VERSION: ${SOLVER_VERSION}
+` +
+        `solver_mode: main_graveyard
+` +
+        `solver_status: solved
+` +
+        `gate_type: none
+` +
+        `red_variant: ${candidate.redVariant}
+` +
+        `priority_targets: ${requiredPriorityCells.length}
+` +
+        `shaft_targets: ${shaftClustersOrdered.length}
+` +
+        `missing_priority_count: ${missingPriorityCount}
+` +
+        `unresolved_targets: ${customPaths.unresolvedTargets}
+` +
+        `red_cost: ${roundCost(candidate.redCost)}
+` +
+        `blue_cost: ${roundCost(candidate.blueCost)}
+` +
         `effective_total: ${roundCost(effectiveTotal)}`
     };
   }
@@ -1267,7 +1307,8 @@
     if (!starts.length) {
       return {
         ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid start cells one row below the lowest used row.`,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}
+No valid start cells one row below the lowest used row.`,
         startRow,
       };
     }
@@ -1276,7 +1317,8 @@
     if (!gateGoals.length) {
       return {
         ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid gate attack cells.`,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}
+No valid gate attack cells.`,
         startRow,
       };
     }
@@ -1298,7 +1340,8 @@
     if (!redCandidates.length) {
       return {
         ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid red path to gate.`,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}
+No valid red path to gate.`,
         startRow,
       };
     }
@@ -1417,7 +1460,8 @@
     if (!best) {
       return {
         ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid non-loop red path to gate.`,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}
+No valid non-loop red path to gate.`,
         startRow,
       };
     }
@@ -1470,11 +1514,16 @@
       redCandidateCount: redCandidates.length,
       routeAnalysis,
       message:
-        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
-        `solver_mode: standard\n` +
-        `solver_status: solved\n` +
-        `red_cost: ${roundCost(best.redCost)}\n` +
-        `blue_cost: ${roundCost(best.blueCost)}\n` +
+        `SOLVER_VERSION: ${SOLVER_VERSION}
+` +
+        `solver_mode: standard
+` +
+        `solver_status: solved
+` +
+        `red_cost: ${roundCost(best.redCost)}
+` +
+        `blue_cost: ${roundCost(best.blueCost)}
+` +
         `effective_total: ${roundCost(best.effectiveTotal)}`
     };
   }
@@ -1528,7 +1577,7 @@
 
           const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
           if (!type) continue;
-          if (type === "gate" || type === "shaft" || type === "bubble") continue;
+          if (type === "gate" || type === "shaft" || type === "bubble" || type === "essence") continue;
           if (normalizePrioritySetting(normalizedMap[type]) !== "priority") continue;
 
           const groupId = `${type}-${cellKey(r, c)}`;
@@ -1743,7 +1792,8 @@
     if (!starts.length) {
       return {
         ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid start cells one row below the lowest used row.`,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}
+No valid start cells one row below the lowest used row.`,
         startRow,
       };
     }
@@ -1764,8 +1814,10 @@
       return {
         ok: false,
         message:
-          `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
-          `solver_mode: custom\n` +
+          `SOLVER_VERSION: ${SOLVER_VERSION}
+` +
+          `solver_mode: custom
+` +
           `No custom objectives selected.`,
         startRow,
       };
@@ -1902,13 +1954,20 @@
       redCandidateCount: 1,
       routeAnalysis,
       message:
-        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
-        `solver_mode: custom\n` +
-        `solver_status: solved\n` +
-        `missing_priority_count: ${missingPriorityCount}\n` +
-        `unresolved_targets: ${customPaths.unresolvedTargets}\n` +
-        `red_cost: ${roundCost(candidate.redCost)}\n` +
-        `blue_cost: ${roundCost(candidate.blueCost)}\n` +
+        `SOLVER_VERSION: ${SOLVER_VERSION}
+` +
+        `solver_mode: custom
+` +
+        `solver_status: solved
+` +
+        `missing_priority_count: ${missingPriorityCount}
+` +
+        `unresolved_targets: ${customPaths.unresolvedTargets}
+` +
+        `red_cost: ${roundCost(candidate.redCost)}
+` +
+        `blue_cost: ${roundCost(candidate.blueCost)}
+` +
         `effective_total: ${roundCost(effectiveTotal)}`
     };
   }
@@ -1928,8 +1987,6 @@
     const normalizedSolverMode = normalizeSolverMode(solverMode);
     const rawSolverMode = String(solverMode || "standard").trim().toLowerCase();
 
-    // NORMAL CHAMBERS: exact original V7.3 behavior unless solverMode explicitly asks for graveyard.
-    // Do NOT auto-detect from gateType. That was causing normal chambers to get routed wrong.
     if (rawSolverMode === "main_graveyard" || rawSolverMode === "graveyard") {
       return solveMainGraveyardNoGate({
         grid,
