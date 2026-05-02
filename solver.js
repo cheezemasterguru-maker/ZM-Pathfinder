@@ -452,6 +452,8 @@
     if (!objectPriorityMap) return false;
 
     for (const key of Object.keys(objectPriorityMap)) {
+      const normalizedKey = String(key || "").trim().toLowerCase();
+      if (normalizedKey === "gate") continue;
       if (normalizePrioritySetting(objectPriorityMap[key]) === "priority") {
         return true;
       }
@@ -460,13 +462,90 @@
     return false;
   }
 
+  function isMainGraveyardDefaultBadgeType(type) {
+    const t = String(type || "").trim().toLowerCase();
+    return t === "badge" || t === "badges";
+  }
+
+  function buildMainGraveyardTargetGroups({
+    grid,
+    objectPriorityMap,
+    getCellObjectType,
+  }) {
+    const groups = [];
+    if (typeof getCellObjectType !== "function") return groups;
+
+    const hasCustomPriority = hasAnyCustomPriorityObject(objectPriorityMap);
+    const normalizedMap = objectPriorityMap || {};
+    const seen = new Set();
+
+    for (let r = 0; r < grid.length; r++) {
+      for (let c = 0; c < grid[0].length; c++) {
+        if (!isWalkableCell(grid, r, c)) continue;
+
+        const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
+        if (!type) continue;
+        if (type === "gate" || type === "shaft" || type === "bubble") continue;
+
+        const shouldTarget = hasCustomPriority
+          ? normalizePrioritySetting(normalizedMap[type]) === "priority"
+          : isMainGraveyardDefaultBadgeType(type);
+
+        if (!shouldTarget) continue;
+
+        const groupId = `${type}-${cellKey(r, c)}`;
+        if (seen.has(groupId)) continue;
+        seen.add(groupId);
+
+        groups.push({
+          id: groupId,
+          label: type,
+          kind: "object",
+          objectType: type,
+          goals: [[r, c]],
+          final: false,
+        });
+      }
+    }
+
+    return groups;
+  }
+
+  function getMainGraveyardRequiredCells(grid, objectPriorityMap, getCellObjectType) {
+    const out = [];
+    if (typeof getCellObjectType !== "function") return out;
+
+    const hasCustomPriority = hasAnyCustomPriorityObject(objectPriorityMap);
+    const normalizedMap = objectPriorityMap || {};
+
+    for (let r = 0; r < grid.length; r++) {
+      for (let c = 0; c < grid[0].length; c++) {
+        if (!isWalkableCell(grid, r, c)) continue;
+
+        const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
+        if (!type) continue;
+        if (type === "gate" || type === "shaft" || type === "bubble") continue;
+
+        const shouldTarget = hasCustomPriority
+          ? normalizePrioritySetting(normalizedMap[type]) === "priority"
+          : isMainGraveyardDefaultBadgeType(type);
+
+        if (shouldTarget) out.push([r, c]);
+      }
+    }
+
+    return out;
+  }
+
   function getMainGraveyardPriorityMap(objectPriorityMap) {
     const map = { ...(objectPriorityMap || {}) };
 
     if (!hasAnyCustomPriorityObject(map)) {
-      map.emblem = "priority";
-      map.emblems = "priority";
+      map.badge = "priority";
+      map.badges = "priority";
     }
+
+    map.gate = "normal";
 
     return map;
   }
@@ -492,19 +571,18 @@
     }
 
     const effectiveObjectPriorityMap = getMainGraveyardPriorityMap(objectPriorityMap);
-    const requiredPriorityCells = getPriorityCells(
+    const requiredPriorityCells = getMainGraveyardRequiredCells(
       grid,
-      effectiveObjectPriorityMap,
+      objectPriorityMap,
       getCellObjectType
     );
     const avoidCells = getAvoidCells(grid, effectiveObjectPriorityMap, getCellObjectType);
     const bubbles = getBubbles(grid);
     const shaftClustersOrdered = sortShaftClustersBottomToTop(getShaftClusters(grid));
 
-    const targetGroups = buildCustomTargetGroups({
+    const targetGroups = buildMainGraveyardTargetGroups({
       grid,
-      gateType: "none",
-      objectPriorityMap: effectiveObjectPriorityMap,
+      objectPriorityMap,
       getCellObjectType,
     });
 
@@ -515,7 +593,7 @@
           `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
           `solver_mode: main_graveyard\n` +
           `gate_type: none\n` +
-          `No emblem or custom priority objectives found.`,
+          `No badge or custom priority objectives found.`,
         startRow,
       };
     }
@@ -576,7 +654,7 @@
       redMode: "main_graveyard",
       redVariant: hasAnyCustomPriorityObject(objectPriorityMap)
         ? "custom-priority-no-gate"
-        : "emblem-priority-no-gate",
+        : "badge-priority-no-gate",
       redBubble: null,
       redBubbles: [],
       redBubbleCount,
