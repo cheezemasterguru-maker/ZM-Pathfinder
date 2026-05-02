@@ -594,9 +594,23 @@
     }
 
     return score;
+}
+
+function countBubbleCells(path, grid) {
+  let n = 0;
+
+  for (const [r, c] of path || []) {
+    if (grid[r]?.[c] === "B") n++;
   }
 
-  function bubblePathBonus(path, entry, grid) {
+  return n;
+}
+
+function countRedBubbles(path, grid) {
+  return countBubbleCells(path, grid);
+}
+
+function bubblePathBonus(path, entry, grid) {
     let bonus = countBubbleCells(path, grid) * 0.4;
 
     if (entry && grid[entry[0]]?.[entry[1]] === "B") {
