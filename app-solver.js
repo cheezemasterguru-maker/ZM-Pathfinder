@@ -253,10 +253,6 @@ function scanActiveObjectTypes() {
 function getObjectPriorityValue(objectType) {
   const normalized = normalizeObjectTypeName(objectType);
 
-  if (isMainEvent() && normalized === "essence") {
-    return "priority";
-  }
-
   if (isMainEvent() && normalized === "shaft" && gridHasShaft()) {
     return "priority";
   }
@@ -273,7 +269,6 @@ function setObjectPriorityValue(objectType, value) {
   if (!normalized) return;
   if (!["avoid", "normal", "priority"].includes(value)) return;
 
-  if (isMainEvent() && normalized === "essence") return;
   if (isMainEvent() && normalized === "shaft" && gridHasShaft()) return;
   if (isMainEventGraveyard() && normalized === "gate") return;
 
@@ -291,8 +286,6 @@ function getObjectPriorityMapForSolver() {
     if (gridHasShaft()) {
       map.shaft = "priority";
     }
-
-    map.essence = "priority";
   }
 
   if (isMainEventGraveyard()) {
@@ -314,7 +307,6 @@ function rerunSolveAfterPriorityChange() {
 function applyObjectPriorityChange(objectType, value) {
   const normalized = normalizeObjectTypeName(objectType);
 
-  if (isMainEvent() && normalized === "essence") return;
   if (isMainEvent() && normalized === "shaft" && gridHasShaft()) return;
   if (isMainEventGraveyard() && normalized === "gate") return;
 
@@ -406,13 +398,13 @@ function renderObjectPrioritiesModal() {
     if (isMainEventGraveyard()) {
       note.textContent =
         solverMode === "standard"
-          ? "Graveyard rules are active. Gates are disabled. Shafts and Essence are prioritized automatically."
-          : "Custom rules are active. Graveyard gates are disabled. Shafts and Essence remain forced priority.";
+          ? "Graveyard rules are active. Gates are disabled. Shafts are prioritized automatically when present."
+          : "Custom rules are active. Graveyard gates are disabled. Shafts remain forced priority when present.";
     } else if (isMainEvent()) {
       note.textContent =
         solverMode === "standard"
-          ? "Standard rules are active. Shafts and Essence are prioritized automatically for Main events."
-          : "Custom rules are active. Shafts and Essence remain forced priority for Main events.";
+          ? "Standard rules are active. Shafts are prioritized automatically for Main events when present."
+          : "Custom rules are active. Shafts remain forced priority for Main events when present.";
     } else {
       note.textContent =
         solverMode === "standard"
@@ -443,7 +435,6 @@ function renderObjectPrioritiesModal() {
     if (isMainEventGraveyard() && objectType === "gate") return;
 
     const forcedPriority =
-      (isMainEvent() && objectType === "essence") ||
       (isMainEvent() && objectType === "shaft" && gridHasShaft());
 
     const row = document.createElement("div");
@@ -604,16 +595,16 @@ function solveBoard() {
     : (gateTypeEl?.value || "standard");
 
   const result = window.ZMPathfinderSolver.solveGrid({
-  grid: getVisibleGridSlice(),
-  gateType: forcedGateType,
-  eventType: currentMapContext.eventType,
-  eventName: currentMapContext.eventName,
-  eventMine: currentMapContext.eventMine,
-  chamberName: currentMapContext.chamberName,
-  solverMode: isMainEventGraveyard() ? "main_graveyard" : solverMode,
-  objectPriorityMap: getObjectPriorityMapForSolver(),
-  getCellObjectType
-});
+    grid: getVisibleGridSlice(),
+    gateType: forcedGateType,
+    eventType: currentMapContext.eventType,
+    eventName: currentMapContext.eventName,
+    eventMine: currentMapContext.eventMine,
+    chamberName: currentMapContext.chamberName,
+    solverMode: isMainEventGraveyard() ? "main_graveyard" : solverMode,
+    objectPriorityMap: getObjectPriorityMapForSolver(),
+    getCellObjectType
+  });
 
   if (!result || !result.ok) {
     resetSolve();
