@@ -130,30 +130,7 @@ function getTileMeta(eventType, eventName, chamberName, r, c) {
 }
 
 function getObjectVisual(meta) {
-  if (!meta || !meta.object || meta.object === "plain") {
-    return { code: "", fill: null };
-  }
-
-  const objectName = String(meta.object || "").trim().toLowerCase();
-
-  if (objectName === "emblems") {
-    return {
-      code: "EMB",
-      fill: "#d8b4fe"
-    };
-  }
-
-  if (objectName === "badges") {
-    return {
-      code: "Badge",
-      fill: {
-        type: "dual",
-        colors: ["#ef4444", "#fde047"]
-      }
-    };
-  }
-
-  if (!window.ZM_OBJECT_TYPES) {
+  if (!meta || !meta.object || meta.object === "plain" || !window.ZM_OBJECT_TYPES) {
     return { code: "", fill: null };
   }
 
