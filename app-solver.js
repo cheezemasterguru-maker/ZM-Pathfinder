@@ -130,7 +130,30 @@ function getTileMeta(eventType, eventName, chamberName, r, c) {
 }
 
 function getObjectVisual(meta) {
-  if (!meta || !meta.object || meta.object === "plain" || !window.ZM_OBJECT_TYPES) {
+  if (!meta || !meta.object || meta.object === "plain") {
+    return { code: "", fill: null };
+  }
+
+  const objectName = String(meta.object || "").trim().toLowerCase();
+
+  if (objectName === "emblems") {
+    return {
+      code: "EMB",
+      fill: "#d8b4fe"
+    };
+  }
+
+  if (objectName === "badges") {
+    return {
+      code: "Badge",
+      fill: {
+        type: "dual",
+        colors: ["#ef4444", "#fde047"]
+      }
+    };
+  }
+
+  if (!window.ZM_OBJECT_TYPES) {
     return { code: "", fill: null };
   }
 
@@ -253,10 +276,6 @@ function scanActiveObjectTypes() {
 function getObjectPriorityValue(objectType) {
   const normalized = normalizeObjectTypeName(objectType);
 
-  if (isMainEvent() && normalized === "shaft" && gridHasShaft()) {
-    return "priority";
-  }
-
   if (isMainEventGraveyard() && normalized === "gate") {
     return "normal";
   }
@@ -269,7 +288,6 @@ function setObjectPriorityValue(objectType, value) {
   if (!normalized) return;
   if (!["avoid", "normal", "priority"].includes(value)) return;
 
-  if (isMainEvent() && normalized === "shaft" && gridHasShaft()) return;
   if (isMainEventGraveyard() && normalized === "gate") return;
 
   objectPriorities[normalized] = value;
@@ -281,12 +299,6 @@ function getObjectPriorityMapForSolver() {
   OBJECT_PRIORITY_REGISTRY.forEach((type) => {
     map[type] = objectPriorities[type] || "normal";
   });
-
-  if (isMainEvent()) {
-    if (gridHasShaft()) {
-      map.shaft = "priority";
-    }
-  }
 
   if (isMainEventGraveyard()) {
     delete map.gate;
@@ -307,9 +319,7 @@ function rerunSolveAfterPriorityChange() {
 function applyObjectPriorityChange(objectType, value) {
   const normalized = normalizeObjectTypeName(objectType);
 
-  if (isMainEvent() && normalized === "shaft" && gridHasShaft()) return;
   if (isMainEventGraveyard() && normalized === "gate") return;
-
   if (solverMode !== "custom") return;
 
   setObjectPriorityValue(objectType, value);
@@ -398,18 +408,13 @@ function renderObjectPrioritiesModal() {
     if (isMainEventGraveyard()) {
       note.textContent =
         solverMode === "standard"
-          ? "Graveyard rules are active. Gates are disabled. Shafts are prioritized automatically when present."
-          : "Custom rules are active. Graveyard gates are disabled. Shafts remain forced priority when present.";
-    } else if (isMainEvent()) {
-      note.textContent =
-        solverMode === "standard"
-          ? "Standard rules are active. Shafts are prioritized automatically for Main events when present."
-          : "Custom rules are active. Shafts remain forced priority for Main events when present.";
+          ? "Graveyard rules are active. Gates are disabled."
+          : "Custom rules are active. You can change any available object priority on this board.";
     } else {
       note.textContent =
         solverMode === "standard"
           ? "Standard rules are active. Custom objective toggles are disabled."
-          : "Custom rules are active. Gate, Shaft, Bubble, and objects now use the same priority toggles.";
+          : "Custom rules are active. You can change any available object priority on this board.";
     }
 
     intro.appendChild(modeWrap);
@@ -434,9 +439,6 @@ function renderObjectPrioritiesModal() {
   activeObjectTypes.forEach((objectType) => {
     if (isMainEventGraveyard() && objectType === "gate") return;
 
-    const forcedPriority =
-      (isMainEvent() && objectType === "shaft" && gridHasShaft());
-
     const row = document.createElement("div");
     row.style.display = "flex";
     row.style.alignItems = "center";
@@ -447,7 +449,7 @@ function renderObjectPrioritiesModal() {
     row.style.boxSizing = "border-box";
     row.style.maxWidth = "100%";
     row.style.flexWrap = "wrap";
-    row.style.opacity = disabled && !forcedPriority ? "0.55" : "1";
+    row.style.opacity = disabled ? "0.55" : "1";
 
     const left = document.createElement("div");
     left.style.display = "flex";
@@ -513,16 +515,11 @@ function renderObjectPrioritiesModal() {
     title.style.wordBreak = "break-word";
 
     const subtitle = document.createElement("div");
-
-    if (forcedPriority) {
-      subtitle.textContent = "Forced priority for Main event routing";
-    } else {
-      subtitle.textContent =
-        objectType === "gate" ? "Gate objective" :
-        objectType === "shaft" ? "Shaft objective" :
-        objectType === "bubble" ? "Bubble objective" :
-        (getObjectVisual(getPriorityVisualMeta(objectType)).code || objectType);
-    }
+    subtitle.textContent =
+      objectType === "gate" ? "Gate objective" :
+      objectType === "shaft" ? "Shaft objective" :
+      objectType === "bubble" ? "Bubble objective" :
+      (getObjectVisual(getPriorityVisualMeta(objectType)).code || objectType);
 
     subtitle.style.fontSize = "12px";
     subtitle.style.opacity = "0.75";
@@ -546,7 +543,7 @@ function renderObjectPrioritiesModal() {
     right.style.maxWidth = "100%";
 
     const current = getObjectPriorityValue(objectType);
-    const rowDisabled = disabled || forcedPriority;
+    const rowDisabled = disabled;
 
     right.appendChild(
       buildObjectPriorityButton(
