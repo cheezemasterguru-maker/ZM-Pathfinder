@@ -1616,7 +1616,6 @@
     if (!path || path.length < 1) return;
 
     const isRed = !!isMainRedPath;
-    const isBlue = !isMainRedPath;
 
     function center(pt) {
       return {
@@ -1635,11 +1634,6 @@
 
     function isVisible(r) {
       return r >= minRow && r <= maxRow;
-    }
-
-    function getCellValue(r, c) {
-      if (!isInBounds(r, c)) return null;
-      return grid[r]?.[c];
     }
 
     function getBoundaryTouchPoint(fromPt, toPt) {
@@ -1661,31 +1655,6 @@
       if (dy === -1) return { x: fromCenter.x, y: fromCenter.y - cell / 2 };
 
       return null;
-    }
-
-    function getBlueEndpointPoint() {
-      const last = path[path.length - 1];
-      const prev = path.length > 1 ? path[path.length - 2] : null;
-
-      const dirs = [
-        [0, 1],
-        [1, 0],
-        [0, -1],
-        [-1, 0]
-      ];
-
-      for (const [dr, dc] of dirs) {
-        const nr = last[0] + dr;
-        const nc = last[1] + dc;
-
-        if (prev && nr === prev[0] && nc === prev[1]) continue;
-        if (getCellValue(nr, nc) !== "S") continue;
-
-        const touch = getBoundaryTouchPoint(last, [nr, nc]);
-        if (touch) return touch;
-      }
-
-      return center(last);
     }
 
     function getRedEndpointPoint() {
@@ -1723,25 +1692,6 @@
       return firstCenter;
     }
 
-    function strokeSegment(from, to) {
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-
-      ctx.beginPath();
-      ctx.moveTo(from.x, from.y);
-      ctx.lineTo(to.x, to.y);
-      ctx.strokeStyle = "#000";
-      ctx.lineWidth = width + 6;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(from.x, from.y);
-      ctx.lineTo(to.x, to.y);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = width;
-      ctx.stroke();
-    }
-
     const visiblePath = path.filter((pt) => Array.isArray(pt) && isVisible(pt[0]));
     if (!visiblePath.length) return;
 
@@ -1768,10 +1718,7 @@
         ctx.lineTo(points[i].x, points[i].y);
       }
 
-      if (isBlue && isVisible(path[path.length - 1][0])) {
-        const endPoint = getBlueEndpointPoint();
-        ctx.lineTo(endPoint.x, endPoint.y);
-      } else if (isRed && isVisible(path[path.length - 1][0])) {
+      if (isRed && isVisible(path[path.length - 1][0])) {
         const endPoint = getRedEndpointPoint();
         if (
           endPoint.x !== points[points.length - 1].x ||
@@ -1788,15 +1735,6 @@
       ctx.strokeStyle = color;
       ctx.lineWidth = width;
       ctx.stroke();
-    }
-
-    if (isBlue && path.length === 1) {
-      const start = center(path[0]);
-      const end = getBlueEndpointPoint();
-
-      if (start.x !== end.x || start.y !== end.y) {
-        strokeSegment(start, end);
-      }
     }
   }
 
