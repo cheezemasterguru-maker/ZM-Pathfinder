@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V7.4-route-quality loaded");
+  console.log("ZM Solver V7.5-efficiency-first loaded");
 
-  const SOLVER_VERSION = "V7.4-route-quality";
+  const SOLVER_VERSION = "V7.5-efficiency-first";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -1005,8 +1005,17 @@ No valid start cells one row below the lowest used row.`,
       return a.unresolvedTargets - b.unresolvedTargets;
     }
 
-    // Standard chambers must keep red focused on the cheapest gate route first.
-    // Blue cost, bubbles, shaft-sharing, and object bonuses are only tie-breakers after red cost.
+    // Standard requirement set:
+    // - Gate must be reached.
+    // - Shafts must be opened when attackable.
+    // - Bubbles must be collected when reachable.
+    // Winner is cheapest COMPLETE route first. Red can assist blue only when the whole route cost improves or ties.
+    const aTotal = a.totalCost ?? (a.redCost + a.blueCost);
+    const bTotal = b.totalCost ?? (b.redCost + b.blueCost);
+    if (aTotal !== bTotal) {
+      return aTotal - bTotal;
+    }
+
     if (a.redCost !== b.redCost) {
       return a.redCost - b.redCost;
     }
@@ -1015,13 +1024,13 @@ No valid start cells one row below the lowest used row.`,
       return a.blueCost - b.blueCost;
     }
 
-    const aLen = a.redPath?.length || 0;
-    const bLen = b.redPath?.length || 0;
+    const aLen =
+      (a.redPath?.length || 0) +
+      (a.bluePaths || []).reduce((sum, path) => sum + path.length, 0);
+    const bLen =
+      (b.redPath?.length || 0) +
+      (b.bluePaths || []).reduce((sum, path) => sum + path.length, 0);
     if (aLen !== bLen) return aLen - bLen;
-
-    if (a.effectiveTotal !== b.effectiveTotal) {
-      return a.effectiveTotal - b.effectiveTotal;
-    }
 
     return 0;
   }
@@ -1390,13 +1399,9 @@ No valid red path to gate.`,
       const effectiveTotal =
         redCandidate.redCost +
         blueEval.blueCost +
-        blueEval.dependencyCost -
-        blueEval.assistBonus -
-        blueEval.lowerShaftBonus -
-        blueEval.bubbleBonus +
+        blueEval.dependencyCost +
         blueEval.redLoopPenalty +
-        blueEval.overAssistPenalty +
-        totalObjectPriorityScore;
+        blueEval.overAssistPenalty;
 
       const candidate = {
         redMode: redCandidate.mode,
@@ -1498,7 +1503,7 @@ No valid non-loop red path to gate.`,
 ` +
         `solver_status: solved
 ` +
-        `selection_order: unresolved > red_cost > blue_cost > red_length > effective_total
+        `selection_order: unresolved > total_cost > red_cost > blue_cost > total_length
 ` +
         `red_cost: ${roundCost(best.redCost)}
 ` +
@@ -1584,7 +1589,7 @@ No valid non-loop red path to gate.`,
           label: "Gate",
           kind: "gate",
           goals: gateGoals,
-          final: true,
+          final: false,
         });
       }
     }
@@ -1934,7 +1939,6 @@ No valid non-loop red path to gate.`,
 
     const effectiveTotal =
       customPaths.totalCost +
-      totalObjectPriorityScore +
       redLoopPenalty +
       missingPriorityCount * 1000000000 +
       customPaths.unresolvedTargets * 1000000000;
