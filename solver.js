@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V7.5-efficiency-first loaded");
+  console.log("ZM Solver V7.6-efficiency-required loaded");
 
-  const SOLVER_VERSION = "V7.5-efficiency-first";
+  const SOLVER_VERSION = "V7.6-efficiency-required";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -18,8 +18,8 @@
 
   // Beam search controls for Custom / Main Graveyard routing.
   // This prevents custom priority routes from locking onto the first greedy path only.
-  const CUSTOM_BEAM_WIDTH = 18;
-  const CUSTOM_MAX_CANDIDATES = 250;
+  const CUSTOM_BEAM_WIDTH = 64;
+  const CUSTOM_MAX_CANDIDATES = 5000;
 
   let GLOBAL_OBJECT_PRIORITIES = { ...DEFAULT_OBJECT_PRIORITIES };
 
@@ -221,7 +221,7 @@
     // Do NOT apply negative priority bonus inside Dijkstra movement cost.
     // Dijkstra cannot safely run with negative-weight cells; negative priority cells
     // can create endless cheaper loops and freeze normal chambers.
-    // Priority is still handled later by objectPriorityScore / route ranking.
+    // Priority is still handled later by hard objective completion / route ranking.
     if (setting === "priority") return 0;
 
     // Avoid is safe here because it is a positive penalty.
@@ -1005,24 +1005,16 @@ No valid start cells one row below the lowest used row.`,
       return a.unresolvedTargets - b.unresolvedTargets;
     }
 
-    // Standard requirement set:
-    // - Gate must be reached.
-    // - Shafts must be opened when attackable.
-    // - Bubbles must be collected when reachable.
-    // Winner is cheapest COMPLETE route first. Red can assist blue only when the whole route cost improves or ties.
+    // Efficiency-first standard rule:
+    // Required overall: Gate + attackable Shafts + reachable Bubbles.
+    // Winner is the cheapest COMPLETE total route. Red assist is only allowed
+    // when the whole red+blue route cost improves or ties.
     const aTotal = a.totalCost ?? (a.redCost + a.blueCost);
     const bTotal = b.totalCost ?? (b.redCost + b.blueCost);
-    if (aTotal !== bTotal) {
-      return aTotal - bTotal;
-    }
+    if (aTotal !== bTotal) return aTotal - bTotal;
 
-    if (a.redCost !== b.redCost) {
-      return a.redCost - b.redCost;
-    }
-
-    if (a.blueCost !== b.blueCost) {
-      return a.blueCost - b.blueCost;
-    }
+    if (a.redCost !== b.redCost) return a.redCost - b.redCost;
+    if (a.blueCost !== b.blueCost) return a.blueCost - b.blueCost;
 
     const aLen =
       (a.redPath?.length || 0) +
@@ -1180,7 +1172,39 @@ No valid start cells one row below the lowest used row.`,
       .slice(0, 40);
   }
 
-  function evaluateOrderedBlueForStandard({
+  function buildStandardBlueTargetGroups(grid, redCandidate, shaftClustersOrdered, bubbles) {
+    const groups = [];
+
+    shaftClustersOrdered.forEach((cluster, index) => {
+      const info = getShaftAttackInfo(grid, cluster);
+      if (info.attacks.length) {
+        groups.push({
+          id: `standard-shaft-${index}`,
+          label: `Shaft ${index + 1}`,
+          kind: "shaft",
+          goals: info.attacks,
+          cluster,
+          entryMap: info.entryMap,
+        });
+      }
+    });
+
+    const redSet = pathSet(redCandidate.path);
+    for (const bubble of bubbles) {
+      const key = cellKey(bubble[0], bubble[1]);
+      if (redSet.has(key)) continue;
+      groups.push({
+        id: `standard-bubble-${key}`,
+        label: "Bubble",
+        kind: "bubble",
+        goals: [bubble],
+      });
+    }
+
+    return groups;
+  }
+
+  function evaluateBlueBeamForStandard({
     grid,
     starts,
     redCandidate,
@@ -1189,113 +1213,190 @@ No valid start cells one row below the lowest used row.`,
     objectPriorities,
     objectPriorityMap,
     getCellObjectType,
-    }) {
-    const bluePaths = [];
-    const shaftEntryDots = [];
-    const attackPoints = [];
-    let blueCost = 0;
-    let unresolved = 0;
-    let dependencyCost = 0;
+  }) {
+    const targetGroups = buildStandardBlueTargetGroups(
+      grid,
+      redCandidate,
+      shaftClustersOrdered,
+      bubbles
+    );
+
+    const initialReusable = new Set([...pathSet(redCandidate.path)]);
+    const initialStarts = dedupeCells(starts.concat(redCandidate.path));
+
+    if (!targetGroups.length) {
+      return {
+        bluePaths: [],
+        shaftEntryDots: [],
+        attackPoints: [],
+        blueCost: 0,
+        unresolved: 0,
+        dependencyCost: 0,
+        assistBonus: 0,
+        lowerShaftBonus: 0,
+        bubbleBonus: 0,
+        redLoopPenalty: redBacktrackPenalty(redCandidate.path),
+        overAssistPenalty: redLoopAssistPenalty(),
+      };
+    }
+
+    const initial = {
+      remaining: [...targetGroups],
+      currentStarts: initialStarts,
+      reusable: initialReusable,
+      bluePaths: [],
+      blueCost: 0,
+      attackPoints: [],
+      shaftEntryDots: [],
+      visitedTargets: [],
+      unresolvedTargets: 0,
+    };
+
+    let beam = [initial];
+    const completeStates = [];
+    let expansions = 0;
+
+    function blueStateScore(state) {
+      const len = state.bluePaths.reduce((sum, path) => sum + path.length, 0);
+      return state.blueCost + len * 0.001 + state.remaining.length * 100000000;
+    }
+
+    function blueStateKey(state) {
+      return (
+        state.remaining.map((group) => group.id).sort().join("|") +
+        "::" +
+        state.currentStarts.map(([r, c]) => cellKey(r, c)).sort().join("|")
+      );
+    }
+
+    while (beam.length && expansions < CUSTOM_MAX_CANDIDATES) {
+      const nextBeam = [];
+
+      for (const state of beam) {
+        if (!state.remaining.length) {
+          completeStates.push(state);
+          continue;
+        }
+
+        for (const group of state.remaining) {
+          const route = dijkstra({
+            grid,
+            starts: state.currentStarts,
+            goals: group.goals,
+            freeCells: state.reusable,
+            objectPriorities,
+            objectPriorityMap,
+            getCellObjectType,
+          });
+
+          if (!route || !route.path || !route.path.length) continue;
+
+          const cleanPath = uniquePath(route.path);
+          const nextReusable = new Set(state.reusable);
+          for (const [r, c] of cleanPath) {
+            nextReusable.add(cellKey(r, c));
+          }
+
+          const nextStarts = dedupeCells(
+            state.currentStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
+          );
+
+          const nextAttackPoints = state.attackPoints.concat([route.goal]);
+          const nextShaftEntryDots = [...state.shaftEntryDots];
+
+          if (group.kind === "shaft" && group.entryMap) {
+            const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
+            if (entry) nextShaftEntryDots.push(entry);
+          }
+
+          nextBeam.push({
+            remaining: state.remaining.filter((g) => g !== group),
+            currentStarts: nextStarts,
+            reusable: nextReusable,
+            bluePaths: state.bluePaths.concat([cleanPath]),
+            blueCost: state.blueCost + route.cost,
+            attackPoints: nextAttackPoints,
+            shaftEntryDots: nextShaftEntryDots,
+            visitedTargets: state.visitedTargets.concat([group.id]),
+            unresolvedTargets: state.unresolvedTargets,
+          });
+
+          expansions++;
+        }
+      }
+
+      if (!nextBeam.length) {
+        for (const state of beam) {
+          completeStates.push({
+            ...state,
+            unresolvedTargets: state.unresolvedTargets + state.remaining.length,
+            remaining: [],
+          });
+        }
+        break;
+      }
+
+      const seen = new Map();
+      nextBeam.sort((a, b) => blueStateScore(a) - blueStateScore(b));
+
+      for (const state of nextBeam) {
+        const key = blueStateKey(state);
+        if (!seen.has(key)) seen.set(key, state);
+      }
+
+      beam = Array.from(seen.values())
+        .sort((a, b) => blueStateScore(a) - blueStateScore(b))
+        .slice(0, CUSTOM_BEAM_WIDTH);
+    }
+
+    if (!completeStates.length && beam.length) {
+      completeStates.push(
+        ...beam.map((state) => ({
+          ...state,
+          unresolvedTargets: state.unresolvedTargets + state.remaining.length,
+          remaining: [],
+        }))
+      );
+    }
+
+    completeStates.sort((a, b) => {
+      if (a.unresolvedTargets !== b.unresolvedTargets) {
+        return a.unresolvedTargets - b.unresolvedTargets;
+      }
+      if (a.blueCost !== b.blueCost) return a.blueCost - b.blueCost;
+      const aLen = a.bluePaths.reduce((sum, path) => sum + path.length, 0);
+      const bLen = b.bluePaths.reduce((sum, path) => sum + path.length, 0);
+      return aLen - bLen;
+    });
+
+    const best = completeStates[0] || initial;
+
     let assistBonus = 0;
     let lowerShaftBonus = 0;
     let bubbleBonus = 0;
 
-    const reusable = new Set([...pathSet(redCandidate.path)]);
-    let cumulativeStarts = dedupeCells(starts.concat(redCandidate.path));
-
-    for (let i = 0; i < shaftClustersOrdered.length; i++) {
-      const cluster = shaftClustersOrdered[i];
-      const info = getShaftAttackInfo(grid, cluster);
-
-      if (!info.attacks.length) {
-        unresolved++;
-        continue;
-      }
-
-      const route = dijkstra({
-        grid,
-        starts: cumulativeStarts,
-        goals: info.attacks,
-        freeCells: reusable,
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
-
-      if (!route) {
-        unresolved++;
-        continue;
-      }
-
-      const finalPath = uniquePath(route.path);
-      const entry = info.entryMap.get(cellKey(route.goal[0], route.goal[1]));
-
-      bluePaths.push(finalPath);
-      attackPoints.push(route.goal);
-      if (entry) shaftEntryDots.push(entry);
-
-      blueCost += route.cost;
-      assistBonus += Math.min(1.25, countAdjacentSharedOpens(redCandidate.path, finalPath) * 0.03);
-      lowerShaftBonus += getLowestShaftPreferenceBonus(route, entry, cluster, "base", i === 0);
-      bubbleBonus += bubblePathBonus(finalPath, entry, grid);
-
-      for (const [r, c] of finalPath) {
-        reusable.add(cellKey(r, c));
-      }
-
-      cumulativeStarts = dedupeCells(
-        cumulativeStarts.concat(finalPath).concat(getPathEndpoints(finalPath))
-      );
-    }
-
-    const redBubbleKeys = new Set((redCandidate.redBubbles || []).map(([r, c]) => cellKey(r, c)));
-
-    for (const bubble of bubbles) {
-      const key = cellKey(bubble[0], bubble[1]);
-      if (redBubbleKeys.has(key)) continue;
-
-      const route = dijkstra({
-        grid,
-        starts: cumulativeStarts,
-        goals: [bubble],
-        freeCells: reusable,
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
-
-      if (!route) {
-        unresolved++;
-        continue;
-      }
-
-      const finalPath = uniquePath(route.path);
-      bluePaths.push(finalPath);
-      blueCost += route.cost;
-      bubbleBonus += bubblePathBonus(finalPath, route.goal, grid);
-
-      for (const [r, c] of finalPath) {
-        reusable.add(cellKey(r, c));
-      }
-
-      cumulativeStarts = dedupeCells(
-        cumulativeStarts.concat(finalPath).concat(getPathEndpoints(finalPath))
-      );
-    }
+    best.bluePaths.forEach((path) => {
+      assistBonus += Math.min(1.25, countAdjacentSharedOpens(redCandidate.path, path) * 0.03);
+      bubbleBonus += bubblePathBonus(path, path[path.length - 1], grid);
+    });
 
     return {
-      bluePaths,
-      shaftEntryDots,
-      attackPoints,
-      blueCost,
-      unresolved,
-      dependencyCost,
+      bluePaths: best.bluePaths.map(uniquePath),
+      shaftEntryDots: dedupeCells(best.shaftEntryDots),
+      attackPoints: dedupeCells(best.attackPoints),
+      blueCost: best.blueCost,
+      unresolved: best.unresolvedTargets,
+      dependencyCost: 0,
       assistBonus,
       lowerShaftBonus,
       bubbleBonus,
       redLoopPenalty: redBacktrackPenalty(redCandidate.path),
       overAssistPenalty: redLoopAssistPenalty(),
     };
+  }
+
+  function evaluateOrderedBlueForStandard(args) {
+    return evaluateBlueBeamForStandard(args);
   }
 
   function solveStandard({
@@ -1822,7 +1923,7 @@ No valid non-loop red path to gate.`,
         .slice(0, CUSTOM_BEAM_WIDTH);
     }
 
-    if (beam.length) {
+    if (!completeStates.length && beam.length) {
       completeStates.push(
         ...beam.map((state) => ({
           ...state,
