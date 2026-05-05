@@ -32,7 +32,8 @@
 
   const STANDARD_RED_MAX_CANDIDATES = 160;
   const STANDARD_RED_ALTERNATES_PER_GATE = 8;
-  const STANDARD_RED_ALT_PATH_PENALTY = 5000;
+  const STANDARD_RED_ALT_PATH_PENALTY = 20000;
+  const STANDARD_RED_ALT_EARLY_STEPS = 6;
 
   const CUSTOM_BEAM_WIDTH = 18;
   const CUSTOM_MAX_CANDIDATES = 250;
@@ -1127,10 +1128,14 @@ No valid start cells one row below the lowest used row.`,
   }) {
     const candidates = [];
 
-    // STANDARD FIX:
+    // STANDARD RED RULE:
     // Red chooses the cheapest route to the gate only.
-    // To avoid Dijkstra locking into one corridor, test every valid start cell,
-    // every gate cell, and several penalized alternate paths per gate.
+    // Blue handles remaining bubbles and shafts after red is locked.
+    //
+    // FIX:
+    // Test every valid start cell and every valid gate cell.
+    // Re-run Dijkstra with early-path penalties to force alternate first corridors.
+    // This prevents Dijkstra from collapsing into one preferred corridor shape.
     for (const start of starts) {
       for (const gateGoal of gateGoals) {
         const penaltyCells = new Map();
@@ -1152,13 +1157,18 @@ No valid start cells one row below the lowest used row.`,
             grid,
             route,
             gateGoal,
-            runIndex === 0 ? "cheapest-direct-gate-only" : "alternate-direct-gate",
+            runIndex === 0 ? "cheapest-direct-gate-only" : "alternate-early-corridor-gate",
             runIndex
           );
 
           if (candidate) candidates.push(candidate);
 
-          for (const [r, c] of route.path || []) {
+          // IMPORTANT:
+          // Penalize only the early corridor, not the whole path.
+          // This forces different first-direction choices without corrupting the full route ranking.
+          const maxEarly = Math.min(STANDARD_RED_ALT_EARLY_STEPS, route.path.length);
+          for (let i = 1; i < maxEarly; i++) {
+            const [r, c] = route.path[i];
             const key = cellKey(r, c);
 
             if (sameCell([r, c], start)) continue;
@@ -1173,8 +1183,7 @@ No valid start cells one row below the lowest used row.`,
       }
     }
 
-    // Also run all starts together once per gate because multi-source Dijkstra can find
-    // a cheaper shared route when the best start cell is not obvious.
+    // Also run all starts together once per gate as a fallback.
     for (const gateGoal of gateGoals) {
       const direct = dijkstra({
         grid,
@@ -1533,9 +1542,11 @@ No valid non-loop red path to gate.`,
 ` +
         `selection_order: red_cost > red_length > unresolved > blue_cost > effective_total
 ` +
-        `standard_red_search: every_start_every_gate_with_alternates
+        `standard_red_search: every_start_every_gate_with_early_corridor_alternates
 ` +
         `standard_red_alternates_per_gate: ${STANDARD_RED_ALTERNATES_PER_GATE}
+` +
+        `standard_red_early_penalty_steps: ${STANDARD_RED_ALT_EARLY_STEPS}
 ` +
         `red_candidate_count: ${redCandidates.length}
 ` +
