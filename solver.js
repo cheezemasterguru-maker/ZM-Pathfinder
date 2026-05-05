@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V7.3-main-graveyard loaded");
+  console.log("ZM Solver V7.4-route-quality loaded");
 
-  const SOLVER_VERSION = "V7.3-main-graveyard";
+  const SOLVER_VERSION = "V7.4-route-quality";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -15,6 +15,11 @@
     priorityObjectBonus: -250000,
     avoidObjectPenalty: 250000,
   };
+
+  // Beam search controls for Custom / Main Graveyard routing.
+  // This prevents custom priority routes from locking onto the first greedy path only.
+  const CUSTOM_BEAM_WIDTH = 18;
+  const CUSTOM_MAX_CANDIDATES = 250;
 
   let GLOBAL_OBJECT_PRIORITIES = { ...DEFAULT_OBJECT_PRIORITIES };
 
@@ -645,79 +650,22 @@ No valid start cells one row below the lowest used row.`,
       getCellObjectType,
     });
 
-    const redPath = customPaths.redPath || [];
-    const bluePaths = customPaths.bluePaths || [];
-    const redBubbleCount = countRedBubbles(redPath, grid);
-    const firstRedBubbleAt = firstBubbleStep(redPath, grid);
-    const firstBubbleCost = firstBubbleTravelCost(
-      redPath,
-      grid,
-      objectPriorities,
-      effectiveObjectPriorityMap,
-      getCellObjectType
-    );
-
-    const redObjectPriorityScore = getPathObjectPriorityScore(
-      redPath,
-      effectiveObjectPriorityMap,
-      getCellObjectType,
-      objectPriorities
-    );
-
-    let blueObjectPriorityScore = 0;
-    for (const bluePath of bluePaths) {
-      blueObjectPriorityScore += getPathObjectPriorityScore(
-        bluePath,
-        effectiveObjectPriorityMap,
+    const allCandidates = (customPaths.candidateStates || [customPaths]).map((state, index) =>
+      makeCustomCandidate({
+        grid,
+        customPaths: state,
+        requiredPriorityCells,
+        objectPriorities,
+        objectPriorityMap: effectiveObjectPriorityMap,
         getCellObjectType,
-        objectPriorities
-      );
-    }
-
-    const missingPriorityCount = countMissingPriorityCells(
-      requiredPriorityCells,
-      [redPath, ...bluePaths]
+        redVariant: index === 0 ? "main-graveyard-beam-best" : "main-graveyard-beam-alternate",
+        redMode: "main_graveyard",
+      })
     );
-    const redLoopPenalty = redBacktrackPenalty(redPath);
-    const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
 
-    const effectiveTotal =
-      customPaths.totalCost +
-      totalObjectPriorityScore +
-      redLoopPenalty +
-      missingPriorityCount * 1000000000 +
-      customPaths.unresolvedTargets * 1000000000;
-
-    const candidate = {
-      redMode: "main_graveyard",
-      redVariant: "emblem-and-shaft-priority-no-gate",
-      redBubble: null,
-      redBubbles: [],
-      redBubbleCount,
-      firstRedBubbleAt,
-      firstBubbleTravelCost: firstBubbleCost,
-      redPath,
-      redCost: customPaths.redCost,
-      gateGoal: null,
-      bluePaths,
-      blueCost: customPaths.blueCost,
-      shaftEntryDots: customPaths.shaftEntryDots,
-      attackPoints: customPaths.attackPoints,
-      unresolvedTargets: customPaths.unresolvedTargets,
-      dependencyCost: 0,
-      assistBonus: 0,
-      lowerShaftBonus: 0,
-      bubbleBonus: 0,
-      redLoopPenalty,
-      overAssistPenalty: 0,
-      redObjectPriorityScore,
-      blueObjectPriorityScore,
-      objectPriorityScore: totalObjectPriorityScore,
-      missingPriorityCount,
-      effectiveTotal,
-    };
-
-    const routeAnalysis = buildRouteAnalysis(grid, [candidate], candidate);
+    allCandidates.sort(compareCustomCandidates);
+    const candidate = allCandidates[0];
+    const routeAnalysis = buildRouteAnalysis(grid, allCandidates, candidate, "main_graveyard");
 
     return {
       ok: true,
@@ -737,32 +685,32 @@ No valid start cells one row below the lowest used row.`,
       redVariant: candidate.redVariant,
       redBubble: null,
       redBubbles: [],
-      redBubbleCount,
-      firstRedBubbleAt,
+      redBubbleCount: candidate.redBubbleCount,
+      firstRedBubbleAt: candidate.firstRedBubbleAt,
       firstBubbleTravelCost:
-        firstBubbleCost === Infinity ? null : roundCost(firstBubbleCost),
-      redPath,
+        candidate.firstBubbleTravelCost === Infinity ? null : roundCost(candidate.firstBubbleTravelCost),
+      redPath: candidate.redPath,
       redCost: roundCost(candidate.redCost),
-      bluePaths,
+      bluePaths: candidate.bluePaths,
       blueCost: roundCost(candidate.blueCost),
       totalCost: roundCost(candidate.redCost + candidate.blueCost),
-      redObjectPriorityScore: roundCost(redObjectPriorityScore),
-      blueObjectPriorityScore: roundCost(blueObjectPriorityScore),
-      objectPriorityScore: roundCost(totalObjectPriorityScore),
-      missingPriorityCount,
-      effectiveTotal: roundCost(effectiveTotal),
+      redObjectPriorityScore: roundCost(candidate.redObjectPriorityScore),
+      blueObjectPriorityScore: roundCost(candidate.blueObjectPriorityScore),
+      objectPriorityScore: roundCost(candidate.objectPriorityScore),
+      missingPriorityCount: candidate.missingPriorityCount,
+      effectiveTotal: roundCost(candidate.effectiveTotal),
       dependencyCost: 0,
       assistBonus: 0,
       lowerShaftBonus: 0,
       bubbleBonus: 0,
-      redLoopPenalty: roundCost(redLoopPenalty),
+      redLoopPenalty: roundCost(candidate.redLoopPenalty),
       overAssistPenalty: 0,
       shaftClusters: shaftClustersOrdered,
-      shaftEntryDots: customPaths.shaftEntryDots,
-      attackPoints: customPaths.attackPoints,
+      shaftEntryDots: candidate.shaftEntryDots,
+      attackPoints: candidate.attackPoints,
       bubbles,
-      unresolvedTargets: customPaths.unresolvedTargets,
-      redCandidateCount: 1,
+      unresolvedTargets: candidate.unresolvedTargets,
+      redCandidateCount: allCandidates.length,
       routeAnalysis,
       message:
         `SOLVER_VERSION: ${SOLVER_VERSION}
@@ -773,21 +721,23 @@ No valid start cells one row below the lowest used row.`,
 ` +
         `gate_type: none
 ` +
-        `red_variant: ${candidate.redVariant}
+        `custom_search: beam
+` +
+        `custom_candidate_count: ${allCandidates.length}
 ` +
         `priority_targets: ${requiredPriorityCells.length}
 ` +
         `shaft_targets: ${shaftClustersOrdered.length}
 ` +
-        `missing_priority_count: ${missingPriorityCount}
+        `missing_priority_count: ${candidate.missingPriorityCount}
 ` +
-        `unresolved_targets: ${customPaths.unresolvedTargets}
+        `unresolved_targets: ${candidate.unresolvedTargets}
 ` +
         `red_cost: ${roundCost(candidate.redCost)}
 ` +
         `blue_cost: ${roundCost(candidate.blueCost)}
 ` +
-        `effective_total: ${roundCost(effectiveTotal)}`
+        `effective_total: ${roundCost(candidate.effectiveTotal)}`
     };
   }
 
@@ -1050,34 +1000,72 @@ No valid start cells one row below the lowest used row.`,
     return total;
   }
 
-  function buildRouteAnalysis(grid, allCandidates, best) {
-    const sorted = [...allCandidates].sort((a, b) => {
-      if (a.unresolvedTargets !== b.unresolvedTargets) {
-        return a.unresolvedTargets - b.unresolvedTargets;
-      }
-      if ((a.missingPriorityCount ?? 0) !== (b.missingPriorityCount ?? 0)) {
-        return (a.missingPriorityCount ?? 0) - (b.missingPriorityCount ?? 0);
-      }
-      if (a.redBubbleCount !== b.redBubbleCount) {
-        return b.redBubbleCount - a.redBubbleCount;
-      }
-      if (a.firstBubbleTravelCost !== b.firstBubbleTravelCost) {
-        return a.firstBubbleTravelCost - b.firstBubbleTravelCost;
-      }
-      if (a.redCost !== b.redCost) {
-        return a.redCost - b.redCost;
-      }
-      if (a.objectPriorityScore !== b.objectPriorityScore) {
-        return a.objectPriorityScore - b.objectPriorityScore;
-      }
-      const aRaw = pathRawNumberSum(a.redPath, grid);
-      const bRaw = pathRawNumberSum(b.redPath, grid);
-      if (aRaw !== bRaw) return aRaw - bRaw;
-      if (a.effectiveTotal !== b.effectiveTotal) return a.effectiveTotal - b.effectiveTotal;
-      return 0;
-    });
+  function compareStandardCandidates(a, b) {
+    if (a.unresolvedTargets !== b.unresolvedTargets) {
+      return a.unresolvedTargets - b.unresolvedTargets;
+    }
 
-    return sorted.slice(0, 12).map((candidate) => {
+    // Standard chambers must keep red focused on the cheapest gate route first.
+    // Blue cost, bubbles, shaft-sharing, and object bonuses are only tie-breakers after red cost.
+    if (a.redCost !== b.redCost) {
+      return a.redCost - b.redCost;
+    }
+
+    if (a.blueCost !== b.blueCost) {
+      return a.blueCost - b.blueCost;
+    }
+
+    const aLen = a.redPath?.length || 0;
+    const bLen = b.redPath?.length || 0;
+    if (aLen !== bLen) return aLen - bLen;
+
+    if (a.effectiveTotal !== b.effectiveTotal) {
+      return a.effectiveTotal - b.effectiveTotal;
+    }
+
+    return 0;
+  }
+
+  function compareCustomCandidates(a, b) {
+    if (a.unresolvedTargets !== b.unresolvedTargets) {
+      return a.unresolvedTargets - b.unresolvedTargets;
+    }
+
+    if ((a.missingPriorityCount ?? 0) !== (b.missingPriorityCount ?? 0)) {
+      return (a.missingPriorityCount ?? 0) - (b.missingPriorityCount ?? 0);
+    }
+
+    if ((a.totalCost ?? 0) !== (b.totalCost ?? 0)) {
+      return (a.totalCost ?? 0) - (b.totalCost ?? 0);
+    }
+
+    if (a.redCost !== b.redCost) return a.redCost - b.redCost;
+    if (a.blueCost !== b.blueCost) return a.blueCost - b.blueCost;
+
+    const aLen =
+      (a.redPath?.length || 0) +
+      (a.bluePaths || []).reduce((sum, path) => sum + path.length, 0);
+    const bLen =
+      (b.redPath?.length || 0) +
+      (b.bluePaths || []).reduce((sum, path) => sum + path.length, 0);
+    if (aLen !== bLen) return aLen - bLen;
+
+    if (a.effectiveTotal !== b.effectiveTotal) {
+      return a.effectiveTotal - b.effectiveTotal;
+    }
+
+    return 0;
+  }
+
+  function buildRouteAnalysis(grid, allCandidates, best, mode = "standard") {
+    const comparator =
+      mode === "custom" || mode === "main_graveyard"
+        ? compareCustomCandidates
+        : compareStandardCandidates;
+
+    const sorted = [...allCandidates].sort(comparator);
+
+    return sorted.slice(0, 20).map((candidate) => {
       const approved = candidate === best;
       return {
         approved,
@@ -1094,6 +1082,7 @@ No valid start cells one row below the lowest used row.`,
         redPathCoords: getPathCoordLabel(candidate.redPath),
         redCost: roundCost(candidate.redCost),
         blueCost: roundCost(candidate.blueCost),
+        totalCost: roundCost(candidate.totalCost ?? (candidate.redCost + candidate.blueCost)),
         effectiveTotal: roundCost(candidate.effectiveTotal),
         deltaFromBest: roundCost(candidate.effectiveTotal - best.effectiveTotal),
       };
@@ -1124,7 +1113,7 @@ No valid start cells one row below the lowest used row.`,
       if (direct) {
         candidates.push({
           mode: "direct",
-          variant: "base",
+          variant: "cheapest-gate-first",
           redBubble: null,
           redBubbles: [],
           path: uniquePath(direct.path),
@@ -1160,7 +1149,7 @@ No valid start cells one row below the lowest used row.`,
 
         candidates.push({
           mode: "via bubble",
-          variant: "base",
+          variant: "bubble-only-if-cheaper-or-tie",
           redBubble: bubble,
           redBubbles: [bubble],
           path: uniquePath(mergePaths(toBubble.path, toGate.path)),
@@ -1422,6 +1411,7 @@ No valid red path to gate.`,
         gateGoal: redCandidate.gateGoal,
         bluePaths: blueEval.bluePaths,
         blueCost: blueEval.blueCost,
+        totalCost: redCandidate.redCost + blueEval.blueCost,
         shaftEntryDots: blueEval.shaftEntryDots,
         attackPoints: blueEval.attackPoints,
         unresolvedTargets: blueEval.unresolved,
@@ -1440,28 +1430,8 @@ No valid red path to gate.`,
 
       allCandidates.push(candidate);
 
-      if (!best) {
+      if (!best || compareStandardCandidates(candidate, best) < 0) {
         best = candidate;
-        continue;
-      }
-
-      if (candidate.unresolvedTargets < best.unresolvedTargets) {
-        best = candidate;
-        continue;
-      }
-
-      if (candidate.unresolvedTargets === best.unresolvedTargets) {
-        if (candidate.effectiveTotal < best.effectiveTotal) {
-          best = candidate;
-          continue;
-        }
-
-        if (
-          candidate.effectiveTotal === best.effectiveTotal &&
-          candidate.redCost < best.redCost
-        ) {
-          best = candidate;
-        }
       }
     }
 
@@ -1474,7 +1444,7 @@ No valid non-loop red path to gate.`,
       };
     }
 
-    const routeAnalysis = buildRouteAnalysis(grid, allCandidates, best);
+    const routeAnalysis = buildRouteAnalysis(grid, allCandidates, best, "standard");
 
     return {
       ok: true,
@@ -1527,6 +1497,8 @@ No valid non-loop red path to gate.`,
         `solver_mode: standard
 ` +
         `solver_status: solved
+` +
+        `selection_order: unresolved > red_cost > blue_cost > red_length > effective_total
 ` +
         `red_cost: ${roundCost(best.redCost)}
 ` +
@@ -1696,6 +1668,31 @@ No valid non-loop red path to gate.`,
     return best;
   }
 
+  function customStateKey(state) {
+    return (
+      state.remaining
+        .map((group) => group.id)
+        .sort()
+        .join("|") +
+      "::" +
+      state.currentStarts
+        .map(([r, c]) => cellKey(r, c))
+        .sort()
+        .join("|")
+    );
+  }
+
+  function scorePartialCustomState(state) {
+    const redLen = state.redPath.length;
+    const blueLen = state.bluePaths.reduce((sum, path) => sum + path.length, 0);
+    return (
+      state.totalCost +
+      redLen * 0.001 +
+      blueLen * 0.001 +
+      state.remaining.length * 100000000
+    );
+  }
+
   function buildCustomPaths({
     grid,
     starts,
@@ -1704,84 +1701,275 @@ No valid non-loop red path to gate.`,
     objectPriorityMap,
     getCellObjectType,
   }) {
-    let remaining = [...targetGroups];
+    const initial = {
+      remaining: [...targetGroups],
+      currentStarts: dedupeCells(starts),
+      reusable: new Set(),
+      redPath: [],
+      bluePaths: [],
+      redCost: 0,
+      blueCost: 0,
+      totalCost: 0,
+      attackPoints: [],
+      shaftEntryDots: [],
+      visitedTargets: [],
+      isFirstPath: true,
+      unresolvedTargets: 0,
+    };
 
-    const redPath = [];
-    const bluePaths = [];
+    let beam = [initial];
+    const completeStates = [];
+    let expansions = 0;
 
-    let redCost = 0;
-    let blueCost = 0;
-    let unresolvedTargets = 0;
+    while (beam.length && expansions < CUSTOM_MAX_CANDIDATES) {
+      const nextBeam = [];
 
-    const reusable = new Set();
-    let cumulativeStarts = dedupeCells(starts);
+      for (const state of beam) {
+        if (!state.remaining.length) {
+          completeStates.push(state);
+          continue;
+        }
 
-    const attackPoints = [];
-    const shaftEntryDots = [];
-    const visitedTargets = [];
+        for (const group of state.remaining) {
+          const route = dijkstra({
+            grid,
+            starts: state.currentStarts,
+            goals: group.goals,
+            freeCells: state.reusable,
+            objectPriorities,
+            objectPriorityMap,
+            getCellObjectType,
+          });
 
-    let isFirstPath = true;
+          if (!route || !route.path || !route.path.length) continue;
 
-    while (remaining.length) {
-      const best = chooseBestCustomTarget({
-        grid,
-        starts: cumulativeStarts,
-        reusable,
-        targetGroups: remaining,
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
+          const cleanPath = uniquePath(route.path);
 
-      if (!best) {
-        unresolvedTargets += remaining.length;
+          const nextReusable = new Set(state.reusable);
+          for (const [r, c] of cleanPath) {
+            nextReusable.add(cellKey(r, c));
+          }
+
+          const nextStarts = dedupeCells(
+            state.currentStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
+          );
+
+          const nextAttackPoints = state.attackPoints.concat([route.goal]);
+          const nextShaftEntryDots = [...state.shaftEntryDots];
+
+          if (group.kind === "shaft" && group.entryMap) {
+            const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
+            if (entry) nextShaftEntryDots.push(entry);
+          }
+
+          const nextRedPath = state.isFirstPath ? cleanPath : state.redPath;
+          const nextBluePaths = state.isFirstPath
+            ? [...state.bluePaths]
+            : state.bluePaths.concat([cleanPath]);
+          const nextRedCost = state.isFirstPath
+            ? state.redCost + route.cost
+            : state.redCost;
+          const nextBlueCost = state.isFirstPath
+            ? state.blueCost
+            : state.blueCost + route.cost;
+
+          nextBeam.push({
+            remaining: state.remaining.filter((g) => g !== group),
+            currentStarts: nextStarts,
+            reusable: nextReusable,
+            redPath: nextRedPath,
+            bluePaths: nextBluePaths,
+            redCost: nextRedCost,
+            blueCost: nextBlueCost,
+            totalCost: nextRedCost + nextBlueCost,
+            attackPoints: nextAttackPoints,
+            shaftEntryDots: nextShaftEntryDots,
+            visitedTargets: state.visitedTargets.concat([group.id]),
+            isFirstPath: false,
+            unresolvedTargets: state.unresolvedTargets,
+          });
+
+          expansions++;
+        }
+      }
+
+      if (!nextBeam.length) {
+        for (const state of beam) {
+          completeStates.push({
+            ...state,
+            unresolvedTargets: state.unresolvedTargets + state.remaining.length,
+            remaining: [],
+          });
+        }
         break;
       }
 
-      const group = best.group;
-      const route = best.route;
-      const cleanPath = uniquePath(route.path);
+      const seen = new Map();
+      nextBeam.sort((a, b) => scorePartialCustomState(a) - scorePartialCustomState(b));
 
-      visitedTargets.push(group.id);
-      attackPoints.push(route.goal);
-
-      if (group.kind === "shaft" && group.entryMap) {
-        const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
-        if (entry) shaftEntryDots.push(entry);
+      for (const state of nextBeam) {
+        const key = customStateKey(state);
+        if (!seen.has(key)) seen.set(key, state);
       }
 
-      if (isFirstPath) {
-        redPath.push(...cleanPath);
-        redCost += route.cost;
-        isFirstPath = false;
-      } else {
-        bluePaths.push(cleanPath);
-        blueCost += route.cost;
-      }
-
-      for (const [r, c] of cleanPath) {
-        reusable.add(cellKey(r, c));
-      }
-
-      cumulativeStarts = dedupeCells(
-        cumulativeStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
-      );
-
-      remaining = remaining.filter((g) => g !== group);
+      beam = Array.from(seen.values())
+        .sort((a, b) => scorePartialCustomState(a) - scorePartialCustomState(b))
+        .slice(0, CUSTOM_BEAM_WIDTH);
     }
 
+    if (beam.length) {
+      completeStates.push(
+        ...beam.map((state) => ({
+          ...state,
+          unresolvedTargets: state.unresolvedTargets + state.remaining.length,
+          remaining: [],
+        }))
+      );
+    }
+
+    if (!completeStates.length) {
+      return {
+        trunkPath: [],
+        branchPaths: [],
+        redPath: [],
+        bluePaths: [],
+        redCost: 0,
+        blueCost: 0,
+        totalCost: 0,
+        unresolvedTargets: targetGroups.length,
+        attackPoints: [],
+        shaftEntryDots: [],
+        visitedTargets: [],
+        candidateStates: [],
+      };
+    }
+
+    const candidateStates = completeStates.map((state) => ({
+      trunkPath: uniquePath(state.redPath),
+      branchPaths: state.bluePaths.map(uniquePath),
+      redPath: uniquePath(state.redPath),
+      bluePaths: state.bluePaths.map(uniquePath),
+      redCost: state.redCost,
+      blueCost: state.blueCost,
+      totalCost: state.redCost + state.blueCost,
+      unresolvedTargets: state.unresolvedTargets,
+      attackPoints: dedupeCells(state.attackPoints),
+      shaftEntryDots: dedupeCells(state.shaftEntryDots),
+      visitedTargets: state.visitedTargets,
+    }));
+
+    candidateStates.sort((a, b) => {
+      if (a.unresolvedTargets !== b.unresolvedTargets) {
+        return a.unresolvedTargets - b.unresolvedTargets;
+      }
+      if (a.totalCost !== b.totalCost) return a.totalCost - b.totalCost;
+      if (a.redCost !== b.redCost) return a.redCost - b.redCost;
+      if (a.blueCost !== b.blueCost) return a.blueCost - b.blueCost;
+      return a.visitedTargets.join("|").localeCompare(b.visitedTargets.join("|"));
+    });
+
+    const best = candidateStates[0];
+
     return {
-      trunkPath: uniquePath(redPath),
-      branchPaths: bluePaths,
-      redPath: uniquePath(redPath),
+      trunkPath: best.redPath,
+      branchPaths: best.bluePaths,
+      redPath: best.redPath,
+      bluePaths: best.bluePaths,
+      redCost: best.redCost,
+      blueCost: best.blueCost,
+      totalCost: best.totalCost,
+      unresolvedTargets: best.unresolvedTargets,
+      attackPoints: best.attackPoints,
+      shaftEntryDots: best.shaftEntryDots,
+      visitedTargets: best.visitedTargets,
+      candidateStates,
+    };
+  }
+
+  function makeCustomCandidate({
+    grid,
+    customPaths,
+    requiredPriorityCells,
+    objectPriorities,
+    objectPriorityMap,
+    getCellObjectType,
+    redVariant,
+    redMode,
+  }) {
+    const redPath = customPaths.redPath || [];
+    const bluePaths = customPaths.bluePaths || [];
+    const redBubbleCount = countRedBubbles(redPath, grid);
+    const firstRedBubbleAt = firstBubbleStep(redPath, grid);
+    const firstBubbleCost = firstBubbleTravelCost(
+      redPath,
+      grid,
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType
+    );
+
+    const redObjectPriorityScore = getPathObjectPriorityScore(
+      redPath,
+      objectPriorityMap,
+      getCellObjectType,
+      objectPriorities
+    );
+
+    let blueObjectPriorityScore = 0;
+    for (const bluePath of bluePaths) {
+      blueObjectPriorityScore += getPathObjectPriorityScore(
+        bluePath,
+        objectPriorityMap,
+        getCellObjectType,
+        objectPriorities
+      );
+    }
+
+    const missingPriorityCount = countMissingPriorityCells(
+      requiredPriorityCells,
+      [redPath, ...bluePaths]
+    );
+    const redLoopPenalty = redBacktrackPenalty(redPath);
+    const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
+
+    const effectiveTotal =
+      customPaths.totalCost +
+      totalObjectPriorityScore +
+      redLoopPenalty +
+      missingPriorityCount * 1000000000 +
+      customPaths.unresolvedTargets * 1000000000;
+
+    return {
+      redMode,
+      redVariant,
+      redBubble: null,
+      redBubbles: [],
+      redBubbleCount,
+      firstRedBubbleAt,
+      firstBubbleTravelCost: firstBubbleCost,
+      redPath,
+      redCost: customPaths.redCost,
+      gateGoal: customPaths.attackPoints.length
+        ? customPaths.attackPoints[customPaths.attackPoints.length - 1]
+        : null,
       bluePaths,
-      redCost,
-      blueCost,
-      totalCost: redCost + blueCost,
-      unresolvedTargets,
-      attackPoints: dedupeCells(attackPoints),
-      shaftEntryDots: dedupeCells(shaftEntryDots),
-      visitedTargets,
+      blueCost: customPaths.blueCost,
+      totalCost: customPaths.totalCost,
+      shaftEntryDots: customPaths.shaftEntryDots,
+      attackPoints: customPaths.attackPoints,
+      unresolvedTargets: customPaths.unresolvedTargets,
+      dependencyCost: 0,
+      assistBonus: 0,
+      lowerShaftBonus: 0,
+      bubbleBonus: 0,
+      redLoopPenalty,
+      overAssistPenalty: 0,
+      redObjectPriorityScore,
+      blueObjectPriorityScore,
+      objectPriorityScore: totalObjectPriorityScore,
+      missingPriorityCount,
+      effectiveTotal,
+      visitedTargets: customPaths.visitedTargets || [],
     };
   }
 
@@ -1840,81 +2028,22 @@ No valid start cells one row below the lowest used row.`,
       getCellObjectType,
     });
 
-    const redPath = customPaths.redPath || [];
-    const bluePaths = customPaths.bluePaths || [];
-    const redBubbleCount = countRedBubbles(redPath, grid);
-    const firstRedBubbleAt = firstBubbleStep(redPath, grid);
-    const firstBubbleCost = firstBubbleTravelCost(
-      redPath,
-      grid,
-      objectPriorities,
-      objectPriorityMap,
-      getCellObjectType
-    );
-
-    const redObjectPriorityScore = getPathObjectPriorityScore(
-      redPath,
-      objectPriorityMap,
-      getCellObjectType,
-      objectPriorities
-    );
-
-    let blueObjectPriorityScore = 0;
-    for (const bluePath of bluePaths) {
-      blueObjectPriorityScore += getPathObjectPriorityScore(
-        bluePath,
+    const allCandidates = (customPaths.candidateStates || [customPaths]).map((state, index) =>
+      makeCustomCandidate({
+        grid,
+        customPaths: state,
+        requiredPriorityCells,
+        objectPriorities,
         objectPriorityMap,
         getCellObjectType,
-        objectPriorities
-      );
-    }
-
-    const missingPriorityCount = countMissingPriorityCells(
-      requiredPriorityCells,
-      [redPath, ...bluePaths]
+        redVariant: index === 0 ? "beam-search-best" : "beam-search-alternate",
+        redMode: "custom",
+      })
     );
-    const redLoopPenalty = redBacktrackPenalty(redPath);
-    const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
 
-    const effectiveTotal =
-      customPaths.totalCost +
-      totalObjectPriorityScore +
-      redLoopPenalty +
-      missingPriorityCount * 1000000000 +
-      customPaths.unresolvedTargets * 1000000000;
-
-    const candidate = {
-      redMode: "custom",
-      redVariant: "greedy-priority-reuse",
-      redBubble: null,
-      redBubbles: [],
-      redBubbleCount,
-      firstRedBubbleAt,
-      firstBubbleTravelCost: firstBubbleCost,
-      redPath,
-      redCost: customPaths.redCost,
-      gateGoal: customPaths.attackPoints.length
-        ? customPaths.attackPoints[customPaths.attackPoints.length - 1]
-        : null,
-      bluePaths,
-      blueCost: customPaths.blueCost,
-      shaftEntryDots: customPaths.shaftEntryDots,
-      attackPoints: customPaths.attackPoints,
-      unresolvedTargets: customPaths.unresolvedTargets,
-      dependencyCost: 0,
-      assistBonus: 0,
-      lowerShaftBonus: 0,
-      bubbleBonus: 0,
-      redLoopPenalty,
-      overAssistPenalty: 0,
-      redObjectPriorityScore,
-      blueObjectPriorityScore,
-      objectPriorityScore: totalObjectPriorityScore,
-      missingPriorityCount,
-      effectiveTotal,
-    };
-
-    const routeAnalysis = buildRouteAnalysis(grid, [candidate], candidate);
+    allCandidates.sort(compareCustomCandidates);
+    const candidate = allCandidates[0];
+    const routeAnalysis = buildRouteAnalysis(grid, allCandidates, candidate, "custom");
 
     return {
       ok: true,
@@ -1934,32 +2063,32 @@ No valid start cells one row below the lowest used row.`,
       redVariant: candidate.redVariant,
       redBubble: null,
       redBubbles: [],
-      redBubbleCount,
-      firstRedBubbleAt,
+      redBubbleCount: candidate.redBubbleCount,
+      firstRedBubbleAt: candidate.firstRedBubbleAt,
       firstBubbleTravelCost:
-        firstBubbleCost === Infinity ? null : roundCost(firstBubbleCost),
-      redPath,
+        candidate.firstBubbleTravelCost === Infinity ? null : roundCost(candidate.firstBubbleTravelCost),
+      redPath: candidate.redPath,
       redCost: roundCost(candidate.redCost),
-      bluePaths,
+      bluePaths: candidate.bluePaths,
       blueCost: roundCost(candidate.blueCost),
       totalCost: roundCost(candidate.redCost + candidate.blueCost),
-      redObjectPriorityScore: roundCost(redObjectPriorityScore),
-      blueObjectPriorityScore: roundCost(blueObjectPriorityScore),
-      objectPriorityScore: roundCost(totalObjectPriorityScore),
-      missingPriorityCount,
-      effectiveTotal: roundCost(effectiveTotal),
+      redObjectPriorityScore: roundCost(candidate.redObjectPriorityScore),
+      blueObjectPriorityScore: roundCost(candidate.blueObjectPriorityScore),
+      objectPriorityScore: roundCost(candidate.objectPriorityScore),
+      missingPriorityCount: candidate.missingPriorityCount,
+      effectiveTotal: roundCost(candidate.effectiveTotal),
       dependencyCost: 0,
       assistBonus: 0,
       lowerShaftBonus: 0,
       bubbleBonus: 0,
-      redLoopPenalty: roundCost(redLoopPenalty),
+      redLoopPenalty: roundCost(candidate.redLoopPenalty),
       overAssistPenalty: 0,
       shaftClusters: shaftClustersOrdered,
-      shaftEntryDots: customPaths.shaftEntryDots,
-      attackPoints: customPaths.attackPoints,
+      shaftEntryDots: candidate.shaftEntryDots,
+      attackPoints: candidate.attackPoints,
       bubbles,
-      unresolvedTargets: customPaths.unresolvedTargets,
-      redCandidateCount: 1,
+      unresolvedTargets: candidate.unresolvedTargets,
+      redCandidateCount: allCandidates.length,
       routeAnalysis,
       message:
         `SOLVER_VERSION: ${SOLVER_VERSION}
@@ -1968,15 +2097,19 @@ No valid start cells one row below the lowest used row.`,
 ` +
         `solver_status: solved
 ` +
-        `missing_priority_count: ${missingPriorityCount}
+        `custom_search: beam
 ` +
-        `unresolved_targets: ${customPaths.unresolvedTargets}
+        `custom_candidate_count: ${allCandidates.length}
+` +
+        `missing_priority_count: ${candidate.missingPriorityCount}
+` +
+        `unresolved_targets: ${candidate.unresolvedTargets}
 ` +
         `red_cost: ${roundCost(candidate.redCost)}
 ` +
         `blue_cost: ${roundCost(candidate.blueCost)}
 ` +
-        `effective_total: ${roundCost(effectiveTotal)}`
+        `effective_total: ${roundCost(candidate.effectiveTotal)}`
     };
   }
 
