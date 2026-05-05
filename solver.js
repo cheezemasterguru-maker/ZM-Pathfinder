@@ -1151,110 +1151,70 @@ if (!redCandidates.length) {
 
 No valid red path to gate.`, startRow, }; }
 
-// HARD STANDARD RULE:
-// Red is selected FIRST by pure red gate cost only.
-// Blue is evaluated AFTER red is locked and can never change the red route.
 const lockedRedCandidate = [...redCandidates].sort((a, b) => {
   if (a.redCost !== b.redCost) return a.redCost - b.redCost;
   return (a.path?.length || 0) - (b.path?.length || 0);
 })[0];
 
-let best = null;
-const allCandidates = [];
+const blueEval = evaluateOrderedBlueForStandard({
+  grid,
+  starts,
+  redCandidate: lockedRedCandidate,
+  shaftClustersOrdered,
+  bubbles,
+  objectPriorities,
+  objectPriorityMap: null,
+  getCellObjectType: null,
+});
 
-for (const redCandidate of [lockedRedCandidate]) {
-  const blueEval = evaluateOrderedBlueForStandard({
-    grid,
-    starts,
-    redCandidate,
-    shaftClustersOrdered,
-    bubbles,
-    objectPriorities,
-    objectPriorityMap: null,
-    getCellObjectType: null,
-  });
+const redBubbleCount = countRedBubbles(lockedRedCandidate.path, grid);
+const firstRedBubbleAt = firstBubbleStep(lockedRedCandidate.path, grid);
+const firstBubbleCost = firstBubbleTravelCost(
+  lockedRedCandidate.path,
+  grid,
+  objectPriorities,
+  null,
+  null
+);
 
-  const redBubbleCount = countRedBubbles(redCandidate.path, grid);
-  const firstRedBubbleAt = firstBubbleStep(redCandidate.path, grid);
-  const firstBubbleCost = firstBubbleTravelCost(
-    redCandidate.path,
-    grid,
-    objectPriorities,
-    null,
-    null
-  );
+const effectiveTotal =
+  lockedRedCandidate.redCost +
+  blueEval.blueCost +
+  blueEval.dependencyCost +
+  blueEval.redLoopPenalty +
+  blueEval.overAssistPenalty;
 
-  const redObjectPriorityScore = getPathObjectPriorityScore(
-    redCandidate.path,
-    null,
-    null,
-    objectPriorities
-  );
+const best = {
+  redMode: lockedRedCandidate.mode,
+  redVariant: lockedRedCandidate.variant,
+  redBubble: lockedRedCandidate.redBubble,
+  redBubbles: lockedRedCandidate.redBubbles,
+  redBubbleCount,
+  firstRedBubbleAt,
+  firstBubbleTravelCost: firstBubbleCost,
+  redPath: lockedRedCandidate.path,
+  redCost: lockedRedCandidate.redCost,
+  gateGoal: lockedRedCandidate.gateGoal,
+  bluePaths: blueEval.bluePaths,
+  blueCost: blueEval.blueCost,
+  totalCost: lockedRedCandidate.redCost + blueEval.blueCost,
+  shaftEntryDots: blueEval.shaftEntryDots,
+  attackPoints: blueEval.attackPoints,
+  unresolvedTargets: blueEval.unresolved,
+  dependencyCost: blueEval.dependencyCost,
+  assistBonus: blueEval.assistBonus,
+  lowerShaftBonus: blueEval.lowerShaftBonus,
+  bubbleBonus: blueEval.bubbleBonus,
+  redLoopPenalty: blueEval.redLoopPenalty,
+  overAssistPenalty: blueEval.overAssistPenalty,
+  redObjectPriorityScore: 0,
+  blueObjectPriorityScore: 0,
+  objectPriorityScore: 0,
+  missingPriorityCount: 0,
+  effectiveTotal,
+};
 
-  let blueObjectPriorityScore = 0;
-  for (const bluePath of blueEval.bluePaths) {
-    blueObjectPriorityScore += getPathObjectPriorityScore(
-      bluePath,
-      null,
-      null,
-      objectPriorities
-    );
-  }
-
-  const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
-
-  const effectiveTotal =
-    redCandidate.redCost +
-    blueEval.blueCost +
-    blueEval.dependencyCost +
-    blueEval.redLoopPenalty +
-    blueEval.overAssistPenalty;
-
-  const candidate = {
-    redMode: redCandidate.mode,
-    redVariant: redCandidate.variant,
-    redBubble: redCandidate.redBubble,
-    redBubbles: redCandidate.redBubbles,
-    redBubbleCount,
-    firstRedBubbleAt,
-    firstBubbleTravelCost: firstBubbleCost,
-    redPath: redCandidate.path,
-    redCost: redCandidate.redCost,
-    gateGoal: redCandidate.gateGoal,
-    bluePaths: blueEval.bluePaths,
-    blueCost: blueEval.blueCost,
-    totalCost: redCandidate.redCost + blueEval.blueCost,
-    shaftEntryDots: blueEval.shaftEntryDots,
-    attackPoints: blueEval.attackPoints,
-    unresolvedTargets: blueEval.unresolved,
-    dependencyCost: blueEval.dependencyCost,
-    assistBonus: blueEval.assistBonus,
-    lowerShaftBonus: blueEval.lowerShaftBonus,
-    bubbleBonus: blueEval.bubbleBonus,
-    redLoopPenalty: blueEval.redLoopPenalty,
-    overAssistPenalty: blueEval.overAssistPenalty,
-    redObjectPriorityScore,
-    blueObjectPriorityScore,
-    objectPriorityScore: totalObjectPriorityScore,
-    missingPriorityCount: 0,
-    effectiveTotal,
-  };
-
-  allCandidates.push(candidate);
-
-  if (!best || compareStandardCandidates(candidate, best) < 0) {
-    best = candidate;
-  }
-}
-
-if (!best) {
-  return {
-    ok: false,
-    message: `SOLVER_VERSION: ${SOLVER_VERSION}
-
-No valid non-loop red path to gate.`, startRow, }; }
-
-const routeAnalysis = buildRouteAnalysis(grid, allCandidates, best, "standard");
+const routeAnalysis = buildRouteAnalysis(grid, [best], best, "standard");
 
 return {
   ok: true,
@@ -1283,9 +1243,9 @@ return {
   bluePaths: best.bluePaths,
   blueCost: roundCost(best.blueCost),
   totalCost: roundCost(best.redCost + best.blueCost),
-  redObjectPriorityScore: roundCost(best.redObjectPriorityScore),
-  blueObjectPriorityScore: roundCost(best.blueObjectPriorityScore),
-  objectPriorityScore: roundCost(best.objectPriorityScore),
+  redObjectPriorityScore: 0,
+  blueObjectPriorityScore: 0,
+  objectPriorityScore: 0,
   missingPriorityCount: 0,
   effectiveTotal: roundCost(best.effectiveTotal),
   dependencyCost: roundCost(best.dependencyCost),
@@ -1305,7 +1265,7 @@ return {
   message:
     `SOLVER_VERSION: ${SOLVER_VERSION}
 
-+solver_mode: standard +solver_status: solved +standard_source: grid_only_no_tile_meta +selection_order: locked_red_cost_first_then_blue +red_cost: ${roundCost(best.redCost)} +blue_cost: ${roundCost(best.blueCost)} +effective_total: ${roundCost(best.effectiveTotal)}` }; }
++solver_mode: standard +solver_status: solved +standard_source: grid_only_no_tile_meta +selection_order: locked_red_first_then_blue +red_cost: ${roundCost(best.redCost)} +blue_cost: ${roundCost(best.blueCost)} +effective_total: ${roundCost(best.effectiveTotal)}` }; }
 
 function buildCustomTargetGroups({ grid, gateType, objectPriorityMap, getCellObjectType, }) { const groups = []; const normalizedMap = objectPriorityMap || {};
 
