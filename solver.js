@@ -16,6 +16,20 @@
     avoidObjectPenalty: 250000,
   };
 
+  const STANDARD_RED_PRIORITIES = {
+    ...DEFAULT_OBJECT_PRIORITIES,
+    mineralMultiplier: 1,
+    mineralFlat: 0,
+    bubbleFlat: 0,
+    blankFlat: 0,
+    gateFlat: 0,
+    startFlat: 0,
+    highMineralThreshold: 28,
+    highMineralFlat: 0,
+    priorityObjectBonus: 0,
+    avoidObjectPenalty: 0,
+  };
+
   // Beam search controls for Custom / Main Graveyard routing.
   // This prevents custom priority routes from locking onto the first greedy path only.
   const CUSTOM_BEAM_WIDTH = 18;
@@ -1001,23 +1015,24 @@ No valid start cells one row below the lowest used row.`,
   }
 
   function compareStandardCandidates(a, b) {
-    if (a.unresolvedTargets !== b.unresolvedTargets) {
-      return a.unresolvedTargets - b.unresolvedTargets;
-    }
-
-    // Standard chambers must keep red focused on the cheapest gate route first.
-    // Blue cost, bubbles, shaft-sharing, and object bonuses are only tie-breakers after red cost.
+    // STANDARD FIX:
+    // Red must lock by cheapest gate path first.
+    // Blue/shaft/bubble/object scoring cannot cause Standard to choose a more expensive red route.
     if (a.redCost !== b.redCost) {
       return a.redCost - b.redCost;
-    }
-
-    if (a.blueCost !== b.blueCost) {
-      return a.blueCost - b.blueCost;
     }
 
     const aLen = a.redPath?.length || 0;
     const bLen = b.redPath?.length || 0;
     if (aLen !== bLen) return aLen - bLen;
+
+    if (a.unresolvedTargets !== b.unresolvedTargets) {
+      return a.unresolvedTargets - b.unresolvedTargets;
+    }
+
+    if (a.blueCost !== b.blueCost) {
+      return a.blueCost - b.blueCost;
+    }
 
     if (a.effectiveTotal !== b.effectiveTotal) {
       return a.effectiveTotal - b.effectiveTotal;
@@ -1105,9 +1120,9 @@ No valid start cells one row below the lowest used row.`,
         grid,
         starts,
         goals: [gateGoal],
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
+        objectPriorities: STANDARD_RED_PRIORITIES,
+        objectPriorityMap: null,
+        getCellObjectType: null,
       });
 
       if (direct) {
@@ -1128,9 +1143,9 @@ No valid start cells one row below the lowest used row.`,
         grid,
         starts,
         goals: [bubble],
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
+        objectPriorities: STANDARD_RED_PRIORITIES,
+        objectPriorityMap: null,
+        getCellObjectType: null,
       });
 
       if (!toBubble) continue;
@@ -1140,9 +1155,9 @@ No valid start cells one row below the lowest used row.`,
           grid,
           starts: [bubble],
           goals: [gateGoal],
-          objectPriorities,
-          objectPriorityMap,
-          getCellObjectType,
+          objectPriorities: STANDARD_RED_PRIORITIES,
+          objectPriorityMap: null,
+          getCellObjectType: null,
         });
 
         if (!toGate) continue;
@@ -1363,17 +1378,12 @@ No valid red path to gate.`,
       const firstBubbleCost = firstBubbleTravelCost(
         redCandidate.path,
         grid,
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType
+        STANDARD_RED_PRIORITIES,
+        null,
+        null
       );
 
-      const redObjectPriorityScore = getPathObjectPriorityScore(
-        redCandidate.path,
-        objectPriorityMap,
-        getCellObjectType,
-        objectPriorities
-      );
+      const redObjectPriorityScore = 0;
 
       let blueObjectPriorityScore = 0;
       for (const bluePath of blueEval.bluePaths) {
@@ -1385,7 +1395,7 @@ No valid red path to gate.`,
         );
       }
 
-      const totalObjectPriorityScore = redObjectPriorityScore + blueObjectPriorityScore;
+      const totalObjectPriorityScore = blueObjectPriorityScore;
 
       const effectiveTotal =
         redCandidate.redCost +
@@ -1498,7 +1508,7 @@ No valid non-loop red path to gate.`,
 ` +
         `solver_status: solved
 ` +
-        `selection_order: unresolved > red_cost > blue_cost > red_length > effective_total
+        `selection_order: red_cost > red_length > unresolved > blue_cost > effective_total
 ` +
         `red_cost: ${roundCost(best.redCost)}
 ` +
