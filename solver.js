@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V7.6-red-locked loaded");
+  console.log("ZM Solver V7.3 loaded");
 
-  const SOLVER_VERSION = "V7.6-red-locked";
+  const SOLVER_VERSION = "V7.3";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -15,11 +15,6 @@
     priorityObjectBonus: -250000,
     avoidObjectPenalty: 250000,
   };
-
-  // Beam search controls for Custom / Main Graveyard routing.
-  // This prevents custom priority routes from locking onto the first greedy path only.
-  const CUSTOM_BEAM_WIDTH = 64;
-  const CUSTOM_MAX_CANDIDATES = 5000;
 
   let GLOBAL_OBJECT_PRIORITIES = { ...DEFAULT_OBJECT_PRIORITIES };
 
@@ -217,16 +212,8 @@
       options.getCellObjectType
     );
 
-    // IMPORTANT:
-    // Do NOT apply negative priority bonus inside Dijkstra movement cost.
-    // Dijkstra cannot safely run with negative-weight cells; negative priority cells
-    // can create endless cheaper loops and freeze normal chambers.
-    // Priority is still handled later by hard objective completion / route ranking.
-    if (setting === "priority") return 0;
-
-    // Avoid is safe here because it is a positive penalty.
+    if (setting === "priority") return priorities.priorityObjectBonus;
     if (setting === "avoid") return priorities.avoidObjectPenalty;
-
     return 0;
   }
 
@@ -411,10 +398,7 @@
   }
 
   function getGateGoals(grid, gateType) {
-    const normalizedGateType = String(gateType || "standard").trim().toLowerCase();
-    if (normalizedGateType === "none") return [];
-
-    const cols = normalizedGateType === "end" ? [2, 3, 4] : [1, 2, 3, 4, 5];
+    const cols = gateType === "end" ? [2, 3, 4] : [1, 2, 3, 4, 5];
     return cols.map((c) => [0, c]).filter(([r, c]) => isWalkableCell(grid, r, c));
   }
 
@@ -458,287 +442,6 @@
     }
 
     return out;
-  }
-
-  function hasAnyCustomPriorityObject(objectPriorityMap) {
-    if (!objectPriorityMap) return false;
-
-    for (const key of Object.keys(objectPriorityMap)) {
-      const normalizedKey = String(key || "").trim().toLowerCase();
-
-      // Main Graveyard ignores gate and essence as custom priority.
-      // Shaft is allowed because Main Graveyard should target shafts if they exist.
-      if (normalizedKey === "gate") continue;
-      if (normalizedKey === "essence") continue;
-
-      if (normalizePrioritySetting(objectPriorityMap[key]) === "priority") {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  function isMainGraveyardDefaultEmblemType(type) {
-    const t = String(type || "").trim().toLowerCase();
-    return t === "emblem" || t === "emblems";
-  }
-
-  function buildMainGraveyardTargetGroups({
-    grid,
-    objectPriorityMap,
-    getCellObjectType,
-  }) {
-    const groups = [];
-    if (typeof getCellObjectType !== "function") return groups;
-
-    const hasCustomPriority = hasAnyCustomPriorityObject(objectPriorityMap);
-    const normalizedMap = objectPriorityMap || {};
-    const seen = new Set();
-
-    if (normalizePrioritySetting(normalizedMap.shaft) === "priority") {
-      const shaftClusters = sortShaftClustersBottomToTop(getShaftClusters(grid));
-
-      shaftClusters.forEach((cluster, index) => {
-        const info = getShaftAttackInfo(grid, cluster);
-        if (info.attacks.length) {
-          groups.push({
-            id: `graveyard-shaft-${index}`,
-            label: `Shaft ${index + 1}`,
-            kind: "shaft",
-            goals: info.attacks,
-            cluster,
-            entryMap: info.entryMap,
-            final: false,
-          });
-        }
-      });
-    }
-
-    for (let r = 0; r < grid.length; r++) {
-      for (let c = 0; c < grid[0].length; c++) {
-        if (!isWalkableCell(grid, r, c)) continue;
-
-        const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
-        if (!type) continue;
-        if (type === "gate" || type === "shaft" || type === "bubble" || type === "essence") continue;
-
-        const shouldTarget = hasCustomPriority
-          ? normalizePrioritySetting(normalizedMap[type]) === "priority"
-          : isMainGraveyardDefaultEmblemType(type);
-
-        if (!shouldTarget) continue;
-
-        const groupId = `${type}-${cellKey(r, c)}`;
-        if (seen.has(groupId)) continue;
-        seen.add(groupId);
-
-        groups.push({
-          id: groupId,
-          label: type,
-          kind: "object",
-          objectType: type,
-          goals: [[r, c]],
-          final: false,
-        });
-      }
-    }
-
-    return groups;
-  }
-
-  function getMainGraveyardRequiredCells(grid, objectPriorityMap, getCellObjectType) {
-    const out = [];
-    if (typeof getCellObjectType !== "function") return out;
-
-    const hasCustomPriority = hasAnyCustomPriorityObject(objectPriorityMap);
-    const normalizedMap = objectPriorityMap || {};
-
-    for (let r = 0; r < grid.length; r++) {
-      for (let c = 0; c < grid[0].length; c++) {
-        if (!isWalkableCell(grid, r, c)) continue;
-
-        const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
-        if (!type) continue;
-        if (type === "gate" || type === "shaft" || type === "bubble" || type === "essence") continue;
-
-        const shouldTarget = hasCustomPriority
-          ? normalizePrioritySetting(normalizedMap[type]) === "priority"
-          : isMainGraveyardDefaultEmblemType(type);
-
-        if (shouldTarget) out.push([r, c]);
-      }
-    }
-
-    return out;
-  }
-
-  function getMainGraveyardPriorityMap(objectPriorityMap) {
-    const map = { ...(objectPriorityMap || {}) };
-
-    // Main Graveyard defaults:
-    // - Emblems are priority.
-    // - Shaft stays priority if app-solver sent shaft priority.
-    // - Essence is NOT priority in graveyard.
-    // - Gate is NOT priority in graveyard.
-    map.emblem = "priority";
-    map.emblems = "priority";
-    map.essence = "normal";
-    map.gate = "normal";
-
-    return map;
-  }
-
-  function solveMainGraveyardNoGate({
-    grid,
-    gateType,
-    eventType,
-    objectPriorities,
-    objectPriorityMap,
-    getCellObjectType,
-  }) {
-    const rows = grid.length;
-    const cols = grid[0].length;
-    const { startRow, starts } = getStartCells(grid);
-
-    if (!starts.length) {
-      return {
-        ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}
-No valid start cells one row below the lowest used row.`,
-        startRow,
-      };
-    }
-
-    const effectiveObjectPriorityMap = getMainGraveyardPriorityMap(objectPriorityMap);
-    const requiredPriorityCells = getMainGraveyardRequiredCells(
-      grid,
-      effectiveObjectPriorityMap,
-      getCellObjectType
-    );
-    const avoidCells = getAvoidCells(grid, effectiveObjectPriorityMap, getCellObjectType);
-    const bubbles = getBubbles(grid);
-    const shaftClustersOrdered = sortShaftClustersBottomToTop(getShaftClusters(grid));
-
-    const targetGroups = buildMainGraveyardTargetGroups({
-      grid,
-      objectPriorityMap: effectiveObjectPriorityMap,
-      getCellObjectType,
-    });
-
-    if (!targetGroups.length) {
-      return {
-        ok: false,
-        message:
-          `SOLVER_VERSION: ${SOLVER_VERSION}
-` +
-          `solver_mode: main_graveyard
-` +
-          `gate_type: none
-` +
-          `No emblem or shaft objectives found.`,
-        startRow,
-      };
-    }
-
-    const customPaths = buildCustomPaths({
-      grid,
-      starts,
-      targetGroups,
-      objectPriorities,
-      objectPriorityMap: effectiveObjectPriorityMap,
-      getCellObjectType,
-    });
-
-    const allCandidates = (customPaths.candidateStates || [customPaths]).map((state, index) =>
-      makeCustomCandidate({
-        grid,
-        customPaths: state,
-        requiredPriorityCells,
-        objectPriorities,
-        objectPriorityMap: effectiveObjectPriorityMap,
-        getCellObjectType,
-        redVariant: index === 0 ? "main-graveyard-beam-best" : "main-graveyard-beam-alternate",
-        redMode: "main_graveyard",
-      })
-    );
-
-    allCandidates.sort(compareCustomCandidates);
-    const candidate = allCandidates[0];
-    const routeAnalysis = buildRouteAnalysis(grid, allCandidates, candidate, "main_graveyard");
-
-    return {
-      ok: true,
-      rows,
-      cols,
-      gateType,
-      eventType,
-      solverMode: "main_graveyard",
-      legacyEndMode: false,
-      startRow,
-      solverVersion: SOLVER_VERSION,
-      objectPriorities: { ...objectPriorities },
-      objectPriorityMap: effectiveObjectPriorityMap ? { ...effectiveObjectPriorityMap } : null,
-      requiredPriorityCells,
-      avoidCells,
-      redMode: candidate.redMode,
-      redVariant: candidate.redVariant,
-      redBubble: null,
-      redBubbles: [],
-      redBubbleCount: candidate.redBubbleCount,
-      firstRedBubbleAt: candidate.firstRedBubbleAt,
-      firstBubbleTravelCost:
-        candidate.firstBubbleTravelCost === Infinity ? null : roundCost(candidate.firstBubbleTravelCost),
-      redPath: candidate.redPath,
-      redCost: roundCost(candidate.redCost),
-      bluePaths: candidate.bluePaths,
-      blueCost: roundCost(candidate.blueCost),
-      totalCost: roundCost(candidate.redCost + candidate.blueCost),
-      redObjectPriorityScore: roundCost(candidate.redObjectPriorityScore),
-      blueObjectPriorityScore: roundCost(candidate.blueObjectPriorityScore),
-      objectPriorityScore: roundCost(candidate.objectPriorityScore),
-      missingPriorityCount: candidate.missingPriorityCount,
-      effectiveTotal: roundCost(candidate.effectiveTotal),
-      dependencyCost: 0,
-      assistBonus: 0,
-      lowerShaftBonus: 0,
-      bubbleBonus: 0,
-      redLoopPenalty: roundCost(candidate.redLoopPenalty),
-      overAssistPenalty: 0,
-      shaftClusters: shaftClustersOrdered,
-      shaftEntryDots: candidate.shaftEntryDots,
-      attackPoints: candidate.attackPoints,
-      bubbles,
-      unresolvedTargets: candidate.unresolvedTargets,
-      redCandidateCount: allCandidates.length,
-      routeAnalysis,
-      message:
-        `SOLVER_VERSION: ${SOLVER_VERSION}
-` +
-        `solver_mode: main_graveyard
-` +
-        `solver_status: solved
-` +
-        `gate_type: none
-` +
-        `custom_search: beam
-` +
-        `custom_candidate_count: ${allCandidates.length}
-` +
-        `priority_targets: ${requiredPriorityCells.length}
-` +
-        `shaft_targets: ${shaftClustersOrdered.length}
-` +
-        `missing_priority_count: ${candidate.missingPriorityCount}
-` +
-        `unresolved_targets: ${candidate.unresolvedTargets}
-` +
-        `red_cost: ${roundCost(candidate.redCost)}
-` +
-        `blue_cost: ${roundCost(candidate.blueCost)}
-` +
-        `effective_total: ${roundCost(candidate.effectiveTotal)}`
-    };
   }
 
   function getPathObjectPriorityScore(path, objectPriorityMap, getCellObjectType, priorities) {
@@ -1000,77 +703,34 @@ No valid start cells one row below the lowest used row.`,
     return total;
   }
 
-  function compareStandardCandidates(a, b) {
-    // Standard Option B final rule:
-    // Red must choose the cheapest gate route first.
-    // Blue cleanup cannot force red onto a more expensive route.
-    if (a.redCost !== b.redCost) return a.redCost - b.redCost;
+  function buildRouteAnalysis(grid, allCandidates, best) {
+    const sorted = [...allCandidates].sort((a, b) => {
+      if (a.unresolvedTargets !== b.unresolvedTargets) {
+        return a.unresolvedTargets - b.unresolvedTargets;
+      }
+      if ((a.missingPriorityCount ?? 0) !== (b.missingPriorityCount ?? 0)) {
+        return (a.missingPriorityCount ?? 0) - (b.missingPriorityCount ?? 0);
+      }
+      if (a.redBubbleCount !== b.redBubbleCount) {
+        return b.redBubbleCount - a.redBubbleCount;
+      }
+      if (a.firstBubbleTravelCost !== b.firstBubbleTravelCost) {
+        return a.firstBubbleTravelCost - b.firstBubbleTravelCost;
+      }
+      if (a.redCost !== b.redCost) {
+        return a.redCost - b.redCost;
+      }
+      if (a.objectPriorityScore !== b.objectPriorityScore) {
+        return a.objectPriorityScore - b.objectPriorityScore;
+      }
+      const aRaw = pathRawNumberSum(a.redPath, grid);
+      const bRaw = pathRawNumberSum(b.redPath, grid);
+      if (aRaw !== bRaw) return aRaw - bRaw;
+      if (a.effectiveTotal !== b.effectiveTotal) return a.effectiveTotal - b.effectiveTotal;
+      return 0;
+    });
 
-    const aRedLen = a.redPath?.length || 0;
-    const bRedLen = b.redPath?.length || 0;
-    if (aRedLen !== bRedLen) return aRedLen - bRedLen;
-
-    if (a.unresolvedTargets !== b.unresolvedTargets) {
-      return a.unresolvedTargets - b.unresolvedTargets;
-    }
-
-    if (a.blueCost !== b.blueCost) return a.blueCost - b.blueCost;
-
-    const aTotalLen =
-      (a.redPath?.length || 0) +
-      (a.bluePaths || []).reduce((sum, path) => sum + path.length, 0);
-    const bTotalLen =
-      (b.redPath?.length || 0) +
-      (b.bluePaths || []).reduce((sum, path) => sum + path.length, 0);
-    if (aTotalLen !== bTotalLen) return aTotalLen - bTotalLen;
-
-    const aTotal = a.totalCost ?? (a.redCost + a.blueCost);
-    const bTotal = b.totalCost ?? (b.redCost + b.blueCost);
-    if (aTotal !== bTotal) return aTotal - bTotal;
-
-    return 0;
-  }
-
-  function compareCustomCandidates(a, b) {
-    if (a.unresolvedTargets !== b.unresolvedTargets) {
-      return a.unresolvedTargets - b.unresolvedTargets;
-    }
-
-    if ((a.missingPriorityCount ?? 0) !== (b.missingPriorityCount ?? 0)) {
-      return (a.missingPriorityCount ?? 0) - (b.missingPriorityCount ?? 0);
-    }
-
-    if ((a.totalCost ?? 0) !== (b.totalCost ?? 0)) {
-      return (a.totalCost ?? 0) - (b.totalCost ?? 0);
-    }
-
-    if (a.redCost !== b.redCost) return a.redCost - b.redCost;
-    if (a.blueCost !== b.blueCost) return a.blueCost - b.blueCost;
-
-    const aLen =
-      (a.redPath?.length || 0) +
-      (a.bluePaths || []).reduce((sum, path) => sum + path.length, 0);
-    const bLen =
-      (b.redPath?.length || 0) +
-      (b.bluePaths || []).reduce((sum, path) => sum + path.length, 0);
-    if (aLen !== bLen) return aLen - bLen;
-
-    if (a.effectiveTotal !== b.effectiveTotal) {
-      return a.effectiveTotal - b.effectiveTotal;
-    }
-
-    return 0;
-  }
-
-  function buildRouteAnalysis(grid, allCandidates, best, mode = "standard") {
-    const comparator =
-      mode === "custom" || mode === "main_graveyard"
-        ? compareCustomCandidates
-        : compareStandardCandidates;
-
-    const sorted = [...allCandidates].sort(comparator);
-
-    return sorted.slice(0, 20).map((candidate) => {
+    return sorted.slice(0, 12).map((candidate) => {
       const approved = candidate === best;
       return {
         approved,
@@ -1087,7 +747,6 @@ No valid start cells one row below the lowest used row.`,
         redPathCoords: getPathCoordLabel(candidate.redPath),
         redCost: roundCost(candidate.redCost),
         blueCost: roundCost(candidate.blueCost),
-        totalCost: roundCost(candidate.totalCost ?? (candidate.redCost + candidate.blueCost)),
         effectiveTotal: roundCost(candidate.effectiveTotal),
         deltaFromBest: roundCost(candidate.effectiveTotal - best.effectiveTotal),
       };
@@ -1103,10 +762,8 @@ No valid start cells one row below the lowest used row.`,
     objectPriorityMap,
     getCellObjectType,
   }) {
-    let bestDirect = null;
+    const candidates = [];
 
-    // STEP 1: Lock red to the single cheapest direct gate route.
-    // Blue cleanup can never pull red onto a more expensive gate path.
     for (const gateGoal of gateGoals) {
       const direct = dijkstra({
         grid,
@@ -1117,33 +774,19 @@ No valid start cells one row below the lowest used row.`,
         getCellObjectType,
       });
 
-      if (!direct) continue;
-
-      const candidate = {
-        mode: "direct",
-        variant: "locked-cheapest-gate",
-        redBubble: null,
-        redBubbles: [],
-        path: uniquePath(direct.path),
-        redCost: direct.cost,
-        gateGoal,
-      };
-
-      if (
-        !bestDirect ||
-        candidate.redCost < bestDirect.redCost ||
-        (candidate.redCost === bestDirect.redCost && candidate.path.length < bestDirect.path.length)
-      ) {
-        bestDirect = candidate;
+      if (direct) {
+        candidates.push({
+          mode: "direct",
+          variant: "base",
+          redBubble: null,
+          redBubbles: [],
+          path: uniquePath(direct.path),
+          redCost: direct.cost,
+          gateGoal,
+        });
       }
     }
 
-    if (!bestDirect) return [];
-
-    let bestLocked = bestDirect;
-
-    // STEP 2: Red may collect a bubble only if it does NOT make red more expensive.
-    // If equal cost, prefer the bubble route only when it is not longer.
     for (const bubble of bubbles) {
       const toBubble = dijkstra({
         grid,
@@ -1156,74 +799,43 @@ No valid start cells one row below the lowest used row.`,
 
       if (!toBubble) continue;
 
-      const toGate = dijkstra({
-        grid,
-        starts: [bubble],
-        goals: gateGoals,
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
+      for (const gateGoal of gateGoals) {
+        const toGate = dijkstra({
+          grid,
+          starts: [bubble],
+          goals: [gateGoal],
+          objectPriorities,
+          objectPriorityMap,
+          getCellObjectType,
+        });
 
-      if (!toGate) continue;
+        if (!toGate) continue;
 
-      const mergedPath = uniquePath(mergePaths(toBubble.path, toGate.path));
-      const combinedCost = toBubble.cost + toGate.cost;
-
-      const bubbleCandidate = {
-        mode: "via bubble",
-        variant: "locked-cheapest-gate-bubble-free-or-better",
-        redBubble: bubble,
-        redBubbles: [bubble],
-        path: mergedPath,
-        redCost: combinedCost,
-        gateGoal: toGate.goal || bestDirect.gateGoal,
-      };
-
-      if (
-        combinedCost < bestLocked.redCost ||
-        (combinedCost === bestLocked.redCost && mergedPath.length <= bestLocked.path.length)
-      ) {
-        bestLocked = bubbleCandidate;
-      }
-    }
-
-    return [bestLocked];
-  }
-
-  function buildStandardBlueTargetGroups(grid, redCandidate, shaftClustersOrdered, bubbles) {
-    const groups = [];
-
-    shaftClustersOrdered.forEach((cluster, index) => {
-      const info = getShaftAttackInfo(grid, cluster);
-      if (info.attacks.length) {
-        groups.push({
-          id: `standard-shaft-${index}`,
-          label: `Shaft ${index + 1}`,
-          kind: "shaft",
-          goals: info.attacks,
-          cluster,
-          entryMap: info.entryMap,
+        candidates.push({
+          mode: "via bubble",
+          variant: "base",
+          redBubble: bubble,
+          redBubbles: [bubble],
+          path: uniquePath(mergePaths(toBubble.path, toGate.path)),
+          redCost: toBubble.cost + toGate.cost,
+          gateGoal,
         });
       }
-    });
-
-    const redSet = pathSet(redCandidate.path);
-    for (const bubble of bubbles) {
-      const key = cellKey(bubble[0], bubble[1]);
-      if (redSet.has(key)) continue;
-      groups.push({
-        id: `standard-bubble-${key}`,
-        label: "Bubble",
-        kind: "bubble",
-        goals: [bubble],
-      });
     }
 
-    return groups;
+    const seen = new Set();
+    return candidates
+      .filter((cand) => {
+        const key = cand.path.map(([r, c]) => cellKey(r, c)).join("|");
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return !hasPathLoop(cand.path);
+      })
+      .sort((a, b) => a.redCost - b.redCost || a.path.length - b.path.length)
+      .slice(0, 40);
   }
 
-  function evaluateBlueBeamForStandard({
+  function evaluateOrderedBlueForStandard({
     grid,
     starts,
     redCandidate,
@@ -1232,190 +844,113 @@ No valid start cells one row below the lowest used row.`,
     objectPriorities,
     objectPriorityMap,
     getCellObjectType,
-  }) {
-    const targetGroups = buildStandardBlueTargetGroups(
-      grid,
-      redCandidate,
-      shaftClustersOrdered,
-      bubbles
-    );
-
-    const initialReusable = new Set([...pathSet(redCandidate.path)]);
-    const initialStarts = dedupeCells(starts.concat(redCandidate.path));
-
-    if (!targetGroups.length) {
-      return {
-        bluePaths: [],
-        shaftEntryDots: [],
-        attackPoints: [],
-        blueCost: 0,
-        unresolved: 0,
-        dependencyCost: 0,
-        assistBonus: 0,
-        lowerShaftBonus: 0,
-        bubbleBonus: 0,
-        redLoopPenalty: redBacktrackPenalty(redCandidate.path),
-        overAssistPenalty: redLoopAssistPenalty(),
-      };
-    }
-
-    const initial = {
-      remaining: [...targetGroups],
-      currentStarts: initialStarts,
-      reusable: initialReusable,
-      bluePaths: [],
-      blueCost: 0,
-      attackPoints: [],
-      shaftEntryDots: [],
-      visitedTargets: [],
-      unresolvedTargets: 0,
-    };
-
-    let beam = [initial];
-    const completeStates = [];
-    let expansions = 0;
-
-    function blueStateScore(state) {
-      const len = state.bluePaths.reduce((sum, path) => sum + path.length, 0);
-      return state.blueCost + len * 0.001 + state.remaining.length * 100000000;
-    }
-
-    function blueStateKey(state) {
-      return (
-        state.remaining.map((group) => group.id).sort().join("|") +
-        "::" +
-        state.currentStarts.map(([r, c]) => cellKey(r, c)).sort().join("|")
-      );
-    }
-
-    while (beam.length && expansions < CUSTOM_MAX_CANDIDATES) {
-      const nextBeam = [];
-
-      for (const state of beam) {
-        if (!state.remaining.length) {
-          completeStates.push(state);
-          continue;
-        }
-
-        for (const group of state.remaining) {
-          const route = dijkstra({
-            grid,
-            starts: state.currentStarts,
-            goals: group.goals,
-            freeCells: state.reusable,
-            objectPriorities,
-            objectPriorityMap,
-            getCellObjectType,
-          });
-
-          if (!route || !route.path || !route.path.length) continue;
-
-          const cleanPath = uniquePath(route.path);
-          const nextReusable = new Set(state.reusable);
-          for (const [r, c] of cleanPath) {
-            nextReusable.add(cellKey(r, c));
-          }
-
-          const nextStarts = dedupeCells(
-            state.currentStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
-          );
-
-          const nextAttackPoints = state.attackPoints.concat([route.goal]);
-          const nextShaftEntryDots = [...state.shaftEntryDots];
-
-          if (group.kind === "shaft" && group.entryMap) {
-            const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
-            if (entry) nextShaftEntryDots.push(entry);
-          }
-
-          nextBeam.push({
-            remaining: state.remaining.filter((g) => g !== group),
-            currentStarts: nextStarts,
-            reusable: nextReusable,
-            bluePaths: state.bluePaths.concat([cleanPath]),
-            blueCost: state.blueCost + route.cost,
-            attackPoints: nextAttackPoints,
-            shaftEntryDots: nextShaftEntryDots,
-            visitedTargets: state.visitedTargets.concat([group.id]),
-            unresolvedTargets: state.unresolvedTargets,
-          });
-
-          expansions++;
-        }
-      }
-
-      if (!nextBeam.length) {
-        for (const state of beam) {
-          completeStates.push({
-            ...state,
-            unresolvedTargets: state.unresolvedTargets + state.remaining.length,
-            remaining: [],
-          });
-        }
-        break;
-      }
-
-      const seen = new Map();
-      nextBeam.sort((a, b) => blueStateScore(a) - blueStateScore(b));
-
-      for (const state of nextBeam) {
-        const key = blueStateKey(state);
-        if (!seen.has(key)) seen.set(key, state);
-      }
-
-      beam = Array.from(seen.values())
-        .sort((a, b) => blueStateScore(a) - blueStateScore(b))
-        .slice(0, CUSTOM_BEAM_WIDTH);
-    }
-
-    if (!completeStates.length && beam.length) {
-      completeStates.push(
-        ...beam.map((state) => ({
-          ...state,
-          unresolvedTargets: state.unresolvedTargets + state.remaining.length,
-          remaining: [],
-        }))
-      );
-    }
-
-    completeStates.sort((a, b) => {
-      if (a.unresolvedTargets !== b.unresolvedTargets) {
-        return a.unresolvedTargets - b.unresolvedTargets;
-      }
-      if (a.blueCost !== b.blueCost) return a.blueCost - b.blueCost;
-      const aLen = a.bluePaths.reduce((sum, path) => sum + path.length, 0);
-      const bLen = b.bluePaths.reduce((sum, path) => sum + path.length, 0);
-      return aLen - bLen;
-    });
-
-    const best = completeStates[0] || initial;
-
+    }) {
+    const bluePaths = [];
+    const shaftEntryDots = [];
+    const attackPoints = [];
+    let blueCost = 0;
+    let unresolved = 0;
+    let dependencyCost = 0;
     let assistBonus = 0;
     let lowerShaftBonus = 0;
     let bubbleBonus = 0;
 
-    best.bluePaths.forEach((path) => {
-      assistBonus += Math.min(1.25, countAdjacentSharedOpens(redCandidate.path, path) * 0.03);
-      bubbleBonus += bubblePathBonus(path, path[path.length - 1], grid);
-    });
+    const reusable = new Set([...pathSet(redCandidate.path)]);
+    let cumulativeStarts = dedupeCells(starts.concat(redCandidate.path));
+
+    for (let i = 0; i < shaftClustersOrdered.length; i++) {
+      const cluster = shaftClustersOrdered[i];
+      const info = getShaftAttackInfo(grid, cluster);
+
+      if (!info.attacks.length) {
+        unresolved++;
+        continue;
+      }
+
+      const route = dijkstra({
+        grid,
+        starts: cumulativeStarts,
+        goals: info.attacks,
+        freeCells: reusable,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+
+      if (!route) {
+        unresolved++;
+        continue;
+      }
+
+      const finalPath = uniquePath(route.path);
+      const entry = info.entryMap.get(cellKey(route.goal[0], route.goal[1]));
+
+      bluePaths.push(finalPath);
+      attackPoints.push(route.goal);
+      if (entry) shaftEntryDots.push(entry);
+
+      blueCost += route.cost;
+      assistBonus += Math.min(1.25, countAdjacentSharedOpens(redCandidate.path, finalPath) * 0.03);
+      lowerShaftBonus += getLowestShaftPreferenceBonus(route, entry, cluster, "base", i === 0);
+      bubbleBonus += bubblePathBonus(finalPath, entry, grid);
+
+      for (const [r, c] of finalPath) {
+        reusable.add(cellKey(r, c));
+      }
+
+      cumulativeStarts = dedupeCells(
+        cumulativeStarts.concat(finalPath).concat(getPathEndpoints(finalPath))
+      );
+    }
+
+    const redBubbleKeys = new Set((redCandidate.redBubbles || []).map(([r, c]) => cellKey(r, c)));
+
+    for (const bubble of bubbles) {
+      const key = cellKey(bubble[0], bubble[1]);
+      if (redBubbleKeys.has(key)) continue;
+
+      const route = dijkstra({
+        grid,
+        starts: cumulativeStarts,
+        goals: [bubble],
+        freeCells: reusable,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+
+      if (!route) {
+        unresolved++;
+        continue;
+      }
+
+      const finalPath = uniquePath(route.path);
+      bluePaths.push(finalPath);
+      blueCost += route.cost;
+      bubbleBonus += bubblePathBonus(finalPath, route.goal, grid);
+
+      for (const [r, c] of finalPath) {
+        reusable.add(cellKey(r, c));
+      }
+
+      cumulativeStarts = dedupeCells(
+        cumulativeStarts.concat(finalPath).concat(getPathEndpoints(finalPath))
+      );
+    }
 
     return {
-      bluePaths: best.bluePaths.map(uniquePath),
-      shaftEntryDots: dedupeCells(best.shaftEntryDots),
-      attackPoints: dedupeCells(best.attackPoints),
-      blueCost: best.blueCost,
-      unresolved: best.unresolvedTargets,
-      dependencyCost: 0,
+      bluePaths,
+      shaftEntryDots,
+      attackPoints,
+      blueCost,
+      unresolved,
+      dependencyCost,
       assistBonus,
       lowerShaftBonus,
       bubbleBonus,
       redLoopPenalty: redBacktrackPenalty(redCandidate.path),
       overAssistPenalty: redLoopAssistPenalty(),
     };
-  }
-
-  function evaluateOrderedBlueForStandard(args) {
-    return evaluateBlueBeamForStandard(args);
   }
 
   function solveStandard({
@@ -1433,8 +968,7 @@ No valid start cells one row below the lowest used row.`,
     if (!starts.length) {
       return {
         ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}
-No valid start cells one row below the lowest used row.`,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid start cells one row below the lowest used row.`,
         startRow,
       };
     }
@@ -1443,8 +977,7 @@ No valid start cells one row below the lowest used row.`,
     if (!gateGoals.length) {
       return {
         ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}
-No valid gate attack cells.`,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid gate attack cells.`,
         startRow,
       };
     }
@@ -1466,8 +999,7 @@ No valid gate attack cells.`,
     if (!redCandidates.length) {
       return {
         ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}
-No valid red path to gate.`,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid red path to gate.`,
         startRow,
       };
     }
@@ -1519,9 +1051,13 @@ No valid red path to gate.`,
       const effectiveTotal =
         redCandidate.redCost +
         blueEval.blueCost +
-        blueEval.dependencyCost +
+        blueEval.dependencyCost -
+        blueEval.assistBonus -
+        blueEval.lowerShaftBonus -
+        blueEval.bubbleBonus +
         blueEval.redLoopPenalty +
-        blueEval.overAssistPenalty;
+        blueEval.overAssistPenalty +
+        totalObjectPriorityScore;
 
       const candidate = {
         redMode: redCandidate.mode,
@@ -1536,7 +1072,6 @@ No valid red path to gate.`,
         gateGoal: redCandidate.gateGoal,
         bluePaths: blueEval.bluePaths,
         blueCost: blueEval.blueCost,
-        totalCost: redCandidate.redCost + blueEval.blueCost,
         shaftEntryDots: blueEval.shaftEntryDots,
         attackPoints: blueEval.attackPoints,
         unresolvedTargets: blueEval.unresolved,
@@ -1555,21 +1090,40 @@ No valid red path to gate.`,
 
       allCandidates.push(candidate);
 
-      if (!best || compareStandardCandidates(candidate, best) < 0) {
+      if (!best) {
         best = candidate;
+        continue;
+      }
+
+      if (candidate.unresolvedTargets < best.unresolvedTargets) {
+        best = candidate;
+        continue;
+      }
+
+      if (candidate.unresolvedTargets === best.unresolvedTargets) {
+        if (candidate.effectiveTotal < best.effectiveTotal) {
+          best = candidate;
+          continue;
+        }
+
+        if (
+          candidate.effectiveTotal === best.effectiveTotal &&
+          candidate.redCost < best.redCost
+        ) {
+          best = candidate;
+        }
       }
     }
 
     if (!best) {
       return {
         ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}
-No valid non-loop red path to gate.`,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid non-loop red path to gate.`,
         startRow,
       };
     }
 
-    const routeAnalysis = buildRouteAnalysis(grid, allCandidates, best, "standard");
+    const routeAnalysis = buildRouteAnalysis(grid, allCandidates, best);
 
     return {
       ok: true,
@@ -1617,18 +1171,11 @@ No valid non-loop red path to gate.`,
       redCandidateCount: redCandidates.length,
       routeAnalysis,
       message:
-        `SOLVER_VERSION: ${SOLVER_VERSION}
-` +
-        `solver_mode: standard
-` +
-        `solver_status: solved
-` +
-        `selection_order: red_cost > red_length > unresolved > blue_cost > total_length
-` +
-        `red_cost: ${roundCost(best.redCost)}
-` +
-        `blue_cost: ${roundCost(best.blueCost)}
-` +
+        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
+        `solver_mode: standard\n` +
+        `solver_status: solved\n` +
+        `red_cost: ${roundCost(best.redCost)}\n` +
+        `blue_cost: ${roundCost(best.blueCost)}\n` +
         `effective_total: ${roundCost(best.effectiveTotal)}`
     };
   }
@@ -1682,7 +1229,7 @@ No valid non-loop red path to gate.`,
 
           const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
           if (!type) continue;
-          if (type === "gate" || type === "shaft" || type === "bubble" || type === "essence") continue;
+          if (type === "gate" || type === "shaft" || type === "bubble") continue;
           if (normalizePrioritySetting(normalizedMap[type]) !== "priority") continue;
 
           const groupId = `${type}-${cellKey(r, c)}`;
@@ -1709,7 +1256,7 @@ No valid non-loop red path to gate.`,
           label: "Gate",
           kind: "gate",
           goals: gateGoals,
-          final: false,
+          final: true,
         });
       }
     }
@@ -1793,31 +1340,6 @@ No valid non-loop red path to gate.`,
     return best;
   }
 
-  function customStateKey(state) {
-    return (
-      state.remaining
-        .map((group) => group.id)
-        .sort()
-        .join("|") +
-      "::" +
-      state.currentStarts
-        .map(([r, c]) => cellKey(r, c))
-        .sort()
-        .join("|")
-    );
-  }
-
-  function scorePartialCustomState(state) {
-    const redLen = state.redPath.length;
-    const blueLen = state.bluePaths.reduce((sum, path) => sum + path.length, 0);
-    return (
-      state.totalCost +
-      redLen * 0.001 +
-      blueLen * 0.001 +
-      state.remaining.length * 100000000
-    );
-  }
-
   function buildCustomPaths({
     grid,
     starts,
@@ -1826,201 +1348,139 @@ No valid non-loop red path to gate.`,
     objectPriorityMap,
     getCellObjectType,
   }) {
-    const initial = {
-      remaining: [...targetGroups],
-      currentStarts: dedupeCells(starts),
-      reusable: new Set(),
-      redPath: [],
-      bluePaths: [],
-      redCost: 0,
-      blueCost: 0,
-      totalCost: 0,
-      attackPoints: [],
-      shaftEntryDots: [],
-      visitedTargets: [],
-      isFirstPath: true,
-      unresolvedTargets: 0,
-    };
+    let remaining = [...targetGroups];
 
-    let beam = [initial];
-    const completeStates = [];
-    let expansions = 0;
+    const redPath = [];
+    const bluePaths = [];
 
-    while (beam.length && expansions < CUSTOM_MAX_CANDIDATES) {
-      const nextBeam = [];
+    let redCost = 0;
+    let blueCost = 0;
+    let unresolvedTargets = 0;
 
-      for (const state of beam) {
-        if (!state.remaining.length) {
-          completeStates.push(state);
-          continue;
-        }
+    const reusable = new Set();
+    let cumulativeStarts = dedupeCells(starts);
 
-        for (const group of state.remaining) {
-          const route = dijkstra({
-            grid,
-            starts: state.currentStarts,
-            goals: group.goals,
-            freeCells: state.reusable,
-            objectPriorities,
-            objectPriorityMap,
-            getCellObjectType,
-          });
+    const attackPoints = [];
+    const shaftEntryDots = [];
+    const visitedTargets = [];
 
-          if (!route || !route.path || !route.path.length) continue;
+    let isFirstPath = true;
 
-          const cleanPath = uniquePath(route.path);
+    while (remaining.length) {
+      const best = chooseBestCustomTarget({
+        grid,
+        starts: cumulativeStarts,
+        reusable,
+        targetGroups: remaining,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
 
-          const nextReusable = new Set(state.reusable);
-          for (const [r, c] of cleanPath) {
-            nextReusable.add(cellKey(r, c));
-          }
-
-          const nextStarts = dedupeCells(
-            state.currentStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
-          );
-
-          const nextAttackPoints = state.attackPoints.concat([route.goal]);
-          const nextShaftEntryDots = [...state.shaftEntryDots];
-
-          if (group.kind === "shaft" && group.entryMap) {
-            const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
-            if (entry) nextShaftEntryDots.push(entry);
-          }
-
-          const nextRedPath = state.isFirstPath ? cleanPath : state.redPath;
-          const nextBluePaths = state.isFirstPath
-            ? [...state.bluePaths]
-            : state.bluePaths.concat([cleanPath]);
-          const nextRedCost = state.isFirstPath
-            ? state.redCost + route.cost
-            : state.redCost;
-          const nextBlueCost = state.isFirstPath
-            ? state.blueCost
-            : state.blueCost + route.cost;
-
-          nextBeam.push({
-            remaining: state.remaining.filter((g) => g !== group),
-            currentStarts: nextStarts,
-            reusable: nextReusable,
-            redPath: nextRedPath,
-            bluePaths: nextBluePaths,
-            redCost: nextRedCost,
-            blueCost: nextBlueCost,
-            totalCost: nextRedCost + nextBlueCost,
-            attackPoints: nextAttackPoints,
-            shaftEntryDots: nextShaftEntryDots,
-            visitedTargets: state.visitedTargets.concat([group.id]),
-            isFirstPath: false,
-            unresolvedTargets: state.unresolvedTargets,
-          });
-
-          expansions++;
-        }
-      }
-
-      if (!nextBeam.length) {
-        for (const state of beam) {
-          completeStates.push({
-            ...state,
-            unresolvedTargets: state.unresolvedTargets + state.remaining.length,
-            remaining: [],
-          });
-        }
+      if (!best) {
+        unresolvedTargets += remaining.length;
         break;
       }
 
-      const seen = new Map();
-      nextBeam.sort((a, b) => scorePartialCustomState(a) - scorePartialCustomState(b));
+      const group = best.group;
+      const route = best.route;
+      const cleanPath = uniquePath(route.path);
 
-      for (const state of nextBeam) {
-        const key = customStateKey(state);
-        if (!seen.has(key)) seen.set(key, state);
+      visitedTargets.push(group.id);
+      attackPoints.push(route.goal);
+
+      if (group.kind === "shaft" && group.entryMap) {
+        const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
+        if (entry) shaftEntryDots.push(entry);
       }
 
-      beam = Array.from(seen.values())
-        .sort((a, b) => scorePartialCustomState(a) - scorePartialCustomState(b))
-        .slice(0, CUSTOM_BEAM_WIDTH);
-    }
+      if (isFirstPath) {
+        redPath.push(...cleanPath);
+        redCost += route.cost;
+        isFirstPath = false;
+      } else {
+        bluePaths.push(cleanPath);
+        blueCost += route.cost;
+      }
 
-    if (!completeStates.length && beam.length) {
-      completeStates.push(
-        ...beam.map((state) => ({
-          ...state,
-          unresolvedTargets: state.unresolvedTargets + state.remaining.length,
-          remaining: [],
-        }))
+      for (const [r, c] of cleanPath) {
+        reusable.add(cellKey(r, c));
+      }
+
+      cumulativeStarts = dedupeCells(
+        cumulativeStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
       );
+
+      remaining = remaining.filter((g) => g !== group);
     }
-
-    if (!completeStates.length) {
-      return {
-        trunkPath: [],
-        branchPaths: [],
-        redPath: [],
-        bluePaths: [],
-        redCost: 0,
-        blueCost: 0,
-        totalCost: 0,
-        unresolvedTargets: targetGroups.length,
-        attackPoints: [],
-        shaftEntryDots: [],
-        visitedTargets: [],
-        candidateStates: [],
-      };
-    }
-
-    const candidateStates = completeStates.map((state) => ({
-      trunkPath: uniquePath(state.redPath),
-      branchPaths: state.bluePaths.map(uniquePath),
-      redPath: uniquePath(state.redPath),
-      bluePaths: state.bluePaths.map(uniquePath),
-      redCost: state.redCost,
-      blueCost: state.blueCost,
-      totalCost: state.redCost + state.blueCost,
-      unresolvedTargets: state.unresolvedTargets,
-      attackPoints: dedupeCells(state.attackPoints),
-      shaftEntryDots: dedupeCells(state.shaftEntryDots),
-      visitedTargets: state.visitedTargets,
-    }));
-
-    candidateStates.sort((a, b) => {
-      if (a.unresolvedTargets !== b.unresolvedTargets) {
-        return a.unresolvedTargets - b.unresolvedTargets;
-      }
-      if (a.totalCost !== b.totalCost) return a.totalCost - b.totalCost;
-      if (a.redCost !== b.redCost) return a.redCost - b.redCost;
-      if (a.blueCost !== b.blueCost) return a.blueCost - b.blueCost;
-      return a.visitedTargets.join("|").localeCompare(b.visitedTargets.join("|"));
-    });
-
-    const best = candidateStates[0];
 
     return {
-      trunkPath: best.redPath,
-      branchPaths: best.bluePaths,
-      redPath: best.redPath,
-      bluePaths: best.bluePaths,
-      redCost: best.redCost,
-      blueCost: best.blueCost,
-      totalCost: best.totalCost,
-      unresolvedTargets: best.unresolvedTargets,
-      attackPoints: best.attackPoints,
-      shaftEntryDots: best.shaftEntryDots,
-      visitedTargets: best.visitedTargets,
-      candidateStates,
+      trunkPath: uniquePath(redPath),
+      branchPaths: bluePaths,
+      redPath: uniquePath(redPath),
+      bluePaths,
+      redCost,
+      blueCost,
+      totalCost: redCost + blueCost,
+      unresolvedTargets,
+      attackPoints: dedupeCells(attackPoints),
+      shaftEntryDots: dedupeCells(shaftEntryDots),
+      visitedTargets,
     };
   }
 
-  function makeCustomCandidate({
+  function solveCustom({
     grid,
-    customPaths,
-    requiredPriorityCells,
+    gateType,
+    eventType,
     objectPriorities,
     objectPriorityMap,
     getCellObjectType,
-    redVariant,
-    redMode,
   }) {
+    const rows = grid.length;
+    const cols = grid[0].length;
+    const { startRow, starts } = getStartCells(grid);
+
+    if (!starts.length) {
+      return {
+        ok: false,
+        message: `SOLVER_VERSION: ${SOLVER_VERSION}\nNo valid start cells one row below the lowest used row.`,
+        startRow,
+      };
+    }
+
+    const requiredPriorityCells = getPriorityCells(grid, objectPriorityMap, getCellObjectType);
+    const avoidCells = getAvoidCells(grid, objectPriorityMap, getCellObjectType);
+    const bubbles = getBubbles(grid);
+    const shaftClustersOrdered = sortShaftClustersBottomToTop(getShaftClusters(grid));
+
+    const targetGroups = buildCustomTargetGroups({
+      grid,
+      gateType,
+      objectPriorityMap,
+      getCellObjectType,
+    });
+
+    if (!targetGroups.length) {
+      return {
+        ok: false,
+        message:
+          `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
+          `solver_mode: custom\n` +
+          `No custom objectives selected.`,
+        startRow,
+      };
+    }
+
+    const customPaths = buildCustomPaths({
+      grid,
+      starts,
+      targetGroups,
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType,
+    });
+
     const redPath = customPaths.redPath || [];
     const bluePaths = customPaths.bluePaths || [];
     const redBubbleCount = countRedBubbles(redPath, grid);
@@ -2059,13 +1519,14 @@ No valid non-loop red path to gate.`,
 
     const effectiveTotal =
       customPaths.totalCost +
+      totalObjectPriorityScore +
       redLoopPenalty +
       missingPriorityCount * 1000000000 +
       customPaths.unresolvedTargets * 1000000000;
 
-    return {
-      redMode,
-      redVariant,
+    const candidate = {
+      redMode: "custom",
+      redVariant: "greedy-priority-reuse",
       redBubble: null,
       redBubbles: [],
       redBubbleCount,
@@ -2078,7 +1539,6 @@ No valid non-loop red path to gate.`,
         : null,
       bluePaths,
       blueCost: customPaths.blueCost,
-      totalCost: customPaths.totalCost,
       shaftEntryDots: customPaths.shaftEntryDots,
       attackPoints: customPaths.attackPoints,
       unresolvedTargets: customPaths.unresolvedTargets,
@@ -2093,81 +1553,9 @@ No valid non-loop red path to gate.`,
       objectPriorityScore: totalObjectPriorityScore,
       missingPriorityCount,
       effectiveTotal,
-      visitedTargets: customPaths.visitedTargets || [],
     };
-  }
 
-  function solveCustom({
-    grid,
-    gateType,
-    eventType,
-    objectPriorities,
-    objectPriorityMap,
-    getCellObjectType,
-  }) {
-    const rows = grid.length;
-    const cols = grid[0].length;
-    const { startRow, starts } = getStartCells(grid);
-
-    if (!starts.length) {
-      return {
-        ok: false,
-        message: `SOLVER_VERSION: ${SOLVER_VERSION}
-No valid start cells one row below the lowest used row.`,
-        startRow,
-      };
-    }
-
-    const requiredPriorityCells = getPriorityCells(grid, objectPriorityMap, getCellObjectType);
-    const avoidCells = getAvoidCells(grid, objectPriorityMap, getCellObjectType);
-    const bubbles = getBubbles(grid);
-    const shaftClustersOrdered = sortShaftClustersBottomToTop(getShaftClusters(grid));
-
-    const targetGroups = buildCustomTargetGroups({
-      grid,
-      gateType,
-      objectPriorityMap,
-      getCellObjectType,
-    });
-
-    if (!targetGroups.length) {
-      return {
-        ok: false,
-        message:
-          `SOLVER_VERSION: ${SOLVER_VERSION}
-` +
-          `solver_mode: custom
-` +
-          `No custom objectives selected.`,
-        startRow,
-      };
-    }
-
-    const customPaths = buildCustomPaths({
-      grid,
-      starts,
-      targetGroups,
-      objectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-    });
-
-    const allCandidates = (customPaths.candidateStates || [customPaths]).map((state, index) =>
-      makeCustomCandidate({
-        grid,
-        customPaths: state,
-        requiredPriorityCells,
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-        redVariant: index === 0 ? "beam-search-best" : "beam-search-alternate",
-        redMode: "custom",
-      })
-    );
-
-    allCandidates.sort(compareCustomCandidates);
-    const candidate = allCandidates[0];
-    const routeAnalysis = buildRouteAnalysis(grid, allCandidates, candidate, "custom");
+    const routeAnalysis = buildRouteAnalysis(grid, [candidate], candidate);
 
     return {
       ok: true,
@@ -2187,53 +1575,42 @@ No valid start cells one row below the lowest used row.`,
       redVariant: candidate.redVariant,
       redBubble: null,
       redBubbles: [],
-      redBubbleCount: candidate.redBubbleCount,
-      firstRedBubbleAt: candidate.firstRedBubbleAt,
+      redBubbleCount,
+      firstRedBubbleAt,
       firstBubbleTravelCost:
-        candidate.firstBubbleTravelCost === Infinity ? null : roundCost(candidate.firstBubbleTravelCost),
-      redPath: candidate.redPath,
+        firstBubbleCost === Infinity ? null : roundCost(firstBubbleCost),
+      redPath,
       redCost: roundCost(candidate.redCost),
-      bluePaths: candidate.bluePaths,
+      bluePaths,
       blueCost: roundCost(candidate.blueCost),
       totalCost: roundCost(candidate.redCost + candidate.blueCost),
-      redObjectPriorityScore: roundCost(candidate.redObjectPriorityScore),
-      blueObjectPriorityScore: roundCost(candidate.blueObjectPriorityScore),
-      objectPriorityScore: roundCost(candidate.objectPriorityScore),
-      missingPriorityCount: candidate.missingPriorityCount,
-      effectiveTotal: roundCost(candidate.effectiveTotal),
+      redObjectPriorityScore: roundCost(redObjectPriorityScore),
+      blueObjectPriorityScore: roundCost(blueObjectPriorityScore),
+      objectPriorityScore: roundCost(totalObjectPriorityScore),
+      missingPriorityCount,
+      effectiveTotal: roundCost(effectiveTotal),
       dependencyCost: 0,
       assistBonus: 0,
       lowerShaftBonus: 0,
       bubbleBonus: 0,
-      redLoopPenalty: roundCost(candidate.redLoopPenalty),
+      redLoopPenalty: roundCost(redLoopPenalty),
       overAssistPenalty: 0,
       shaftClusters: shaftClustersOrdered,
-      shaftEntryDots: candidate.shaftEntryDots,
-      attackPoints: candidate.attackPoints,
+      shaftEntryDots: customPaths.shaftEntryDots,
+      attackPoints: customPaths.attackPoints,
       bubbles,
-      unresolvedTargets: candidate.unresolvedTargets,
-      redCandidateCount: allCandidates.length,
+      unresolvedTargets: customPaths.unresolvedTargets,
+      redCandidateCount: 1,
       routeAnalysis,
       message:
-        `SOLVER_VERSION: ${SOLVER_VERSION}
-` +
-        `solver_mode: custom
-` +
-        `solver_status: solved
-` +
-        `custom_search: beam
-` +
-        `custom_candidate_count: ${allCandidates.length}
-` +
-        `missing_priority_count: ${candidate.missingPriorityCount}
-` +
-        `unresolved_targets: ${candidate.unresolvedTargets}
-` +
-        `red_cost: ${roundCost(candidate.redCost)}
-` +
-        `blue_cost: ${roundCost(candidate.blueCost)}
-` +
-        `effective_total: ${roundCost(candidate.effectiveTotal)}`
+        `SOLVER_VERSION: ${SOLVER_VERSION}\n` +
+        `solver_mode: custom\n` +
+        `solver_status: solved\n` +
+        `missing_priority_count: ${missingPriorityCount}\n` +
+        `unresolved_targets: ${customPaths.unresolvedTargets}\n` +
+        `red_cost: ${roundCost(candidate.redCost)}\n` +
+        `blue_cost: ${roundCost(candidate.blueCost)}\n` +
+        `effective_total: ${roundCost(effectiveTotal)}`
     };
   }
 
@@ -2250,18 +1627,6 @@ No valid start cells one row below the lowest used row.`,
       objectPriorities || GLOBAL_OBJECT_PRIORITIES
     );
     const normalizedSolverMode = normalizeSolverMode(solverMode);
-    const rawSolverMode = String(solverMode || "standard").trim().toLowerCase();
-
-    if (rawSolverMode === "main_graveyard" || rawSolverMode === "graveyard") {
-      return solveMainGraveyardNoGate({
-        grid,
-        gateType: "none",
-        eventType,
-        objectPriorities: normalizedObjectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
-    }
 
     if (normalizedSolverMode === "custom") {
       return solveCustom({
