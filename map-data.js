@@ -1182,7 +1182,7 @@ window.ZM_MAP_DATA = {
       ]
     }
   },
-      "Mine 5": {}
+      "Mine 5": {},
       "The Deep": {}
     },
 
