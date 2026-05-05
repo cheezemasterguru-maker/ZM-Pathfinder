@@ -30,6 +30,12 @@
     avoidObjectPenalty: 0,
   };
 
+  // Standard red needs chained bubble search because the cheapest gate route can be:
+  // start -> bubble -> bubble -> gate.
+  // The old standard route only checked direct or one bubble, which made Standard more costly than Custom.
+  const STANDARD_RED_MAX_BUBBLE_CHAIN = 3;
+  const STANDARD_RED_MAX_CANDIDATES = 120;
+
   // Beam search controls for Custom / Main Graveyard routing.
   // This prevents custom priority routes from locking onto the first greedy path only.
   const CUSTOM_BEAM_WIDTH = 18;
@@ -1104,6 +1110,114 @@ No valid start cells one row below the lowest used row.`,
     });
   }
 
+  function makeStandardRedCandidateFromSequence({
+    grid,
+    starts,
+    gateGoal,
+    bubbleSequence,
+  }) {
+    let totalCost = 0;
+    let fullPath = [];
+    let currentStarts = dedupeCells(starts);
+    const reusable = new Set();
+
+    for (const bubble of bubbleSequence || []) {
+      const route = dijkstra({
+        grid,
+        starts: currentStarts,
+        goals: [bubble],
+        freeCells: reusable,
+        objectPriorities: STANDARD_RED_PRIORITIES,
+        objectPriorityMap: null,
+        getCellObjectType: null,
+      });
+
+      if (!route || !route.path || !route.path.length) return null;
+
+      const cleanPath = uniquePath(route.path);
+      fullPath = mergePaths(fullPath, cleanPath);
+      totalCost += route.cost;
+
+      for (const [r, c] of cleanPath) {
+        reusable.add(cellKey(r, c));
+      }
+
+      currentStarts = [bubble];
+    }
+
+    const gateRoute = dijkstra({
+      grid,
+      starts: currentStarts,
+      goals: [gateGoal],
+      freeCells: reusable,
+      objectPriorities: STANDARD_RED_PRIORITIES,
+      objectPriorityMap: null,
+      getCellObjectType: null,
+    });
+
+    if (!gateRoute || !gateRoute.path || !gateRoute.path.length) return null;
+
+    const cleanGatePath = uniquePath(gateRoute.path);
+    fullPath = mergePaths(fullPath, cleanGatePath);
+    totalCost += gateRoute.cost;
+
+    const redBubbles = [];
+    const seenBubbles = new Set();
+
+    for (const [r, c] of fullPath) {
+      if (grid[r]?.[c] !== "B") continue;
+      const key = cellKey(r, c);
+      if (seenBubbles.has(key)) continue;
+      seenBubbles.add(key);
+      redBubbles.push([r, c]);
+    }
+
+    const mode =
+      redBubbles.length > 1
+        ? "via bubbles"
+        : redBubbles.length === 1
+          ? "via bubble"
+          : "direct";
+
+    const variant =
+      redBubbles.length > 1
+        ? `bubble-chain-${redBubbles.length}-then-gate`
+        : redBubbles.length === 1
+          ? "bubble-then-gate"
+          : "cheapest-gate-first";
+
+    return {
+      mode,
+      variant,
+      redBubble: redBubbles.length ? redBubbles[0] : null,
+      redBubbles,
+      path: uniquePath(fullPath),
+      redCost: totalCost,
+      gateGoal,
+    };
+  }
+
+  function buildBubbleSequences(bubbles, maxDepth) {
+    const results = [[]];
+    const max = Math.min(maxDepth, bubbles.length);
+
+    function walk(prefix, remaining, depth) {
+      if (depth >= max) return;
+
+      for (let i = 0; i < remaining.length; i++) {
+        const next = remaining[i];
+        const nextPrefix = prefix.concat([next]);
+        results.push(nextPrefix);
+
+        const nextRemaining = remaining.filter((_, idx) => idx !== i);
+        walk(nextPrefix, nextRemaining, depth + 1);
+      }
+    }
+
+    walk([], bubbles, 0);
+    return results;
+  }
+
   function buildStandardRedCandidates({
     grid,
     starts,
@@ -1114,63 +1228,21 @@ No valid start cells one row below the lowest used row.`,
     getCellObjectType,
   }) {
     const candidates = [];
+    const bubbleSequences = buildBubbleSequences(
+      bubbles,
+      STANDARD_RED_MAX_BUBBLE_CHAIN
+    );
 
     for (const gateGoal of gateGoals) {
-      const direct = dijkstra({
-        grid,
-        starts,
-        goals: [gateGoal],
-        objectPriorities: STANDARD_RED_PRIORITIES,
-        objectPriorityMap: null,
-        getCellObjectType: null,
-      });
-
-      if (direct) {
-        candidates.push({
-          mode: "direct",
-          variant: "cheapest-gate-first",
-          redBubble: null,
-          redBubbles: [],
-          path: uniquePath(direct.path),
-          redCost: direct.cost,
-          gateGoal,
-        });
-      }
-    }
-
-    for (const bubble of bubbles) {
-      const toBubble = dijkstra({
-        grid,
-        starts,
-        goals: [bubble],
-        objectPriorities: STANDARD_RED_PRIORITIES,
-        objectPriorityMap: null,
-        getCellObjectType: null,
-      });
-
-      if (!toBubble) continue;
-
-      for (const gateGoal of gateGoals) {
-        const toGate = dijkstra({
+      for (const bubbleSequence of bubbleSequences) {
+        const candidate = makeStandardRedCandidateFromSequence({
           grid,
-          starts: [bubble],
-          goals: [gateGoal],
-          objectPriorities: STANDARD_RED_PRIORITIES,
-          objectPriorityMap: null,
-          getCellObjectType: null,
-        });
-
-        if (!toGate) continue;
-
-        candidates.push({
-          mode: "via bubble",
-          variant: "bubble-only-if-cheaper-or-tie",
-          redBubble: bubble,
-          redBubbles: [bubble],
-          path: uniquePath(mergePaths(toBubble.path, toGate.path)),
-          redCost: toBubble.cost + toGate.cost,
+          starts,
           gateGoal,
+          bubbleSequence,
         });
+
+        if (candidate) candidates.push(candidate);
       }
     }
 
@@ -1183,7 +1255,7 @@ No valid start cells one row below the lowest used row.`,
         return !hasPathLoop(cand.path);
       })
       .sort((a, b) => a.redCost - b.redCost || a.path.length - b.path.length)
-      .slice(0, 40);
+      .slice(0, STANDARD_RED_MAX_CANDIDATES);
   }
 
   function evaluateOrderedBlueForStandard({
@@ -1509,6 +1581,10 @@ No valid non-loop red path to gate.`,
         `solver_status: solved
 ` +
         `selection_order: red_cost > red_length > unresolved > blue_cost > effective_total
+` +
+        `standard_red_search: direct + chained bubbles up to ${STANDARD_RED_MAX_BUBBLE_CHAIN}
+` +
+        `red_candidate_count: ${redCandidates.length}
 ` +
         `red_cost: ${roundCost(best.redCost)}
 ` +
