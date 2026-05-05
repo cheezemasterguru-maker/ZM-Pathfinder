@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V7.6-efficiency-required loaded");
+  console.log("ZM Solver V7.6-red-locked loaded");
 
-  const SOLVER_VERSION = "V7.6-efficiency-required";
+  const SOLVER_VERSION = "V7.6-red-locked";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -1103,8 +1103,10 @@ No valid start cells one row below the lowest used row.`,
     objectPriorityMap,
     getCellObjectType,
   }) {
-    const candidates = [];
+    let bestDirect = null;
 
+    // STEP 1: Lock red to the single cheapest direct gate route.
+    // Blue cleanup can never pull red onto a more expensive gate path.
     for (const gateGoal of gateGoals) {
       const direct = dijkstra({
         grid,
@@ -1115,19 +1117,33 @@ No valid start cells one row below the lowest used row.`,
         getCellObjectType,
       });
 
-      if (direct) {
-        candidates.push({
-          mode: "direct",
-          variant: "cheapest-gate-first",
-          redBubble: null,
-          redBubbles: [],
-          path: uniquePath(direct.path),
-          redCost: direct.cost,
-          gateGoal,
-        });
+      if (!direct) continue;
+
+      const candidate = {
+        mode: "direct",
+        variant: "locked-cheapest-gate",
+        redBubble: null,
+        redBubbles: [],
+        path: uniquePath(direct.path),
+        redCost: direct.cost,
+        gateGoal,
+      };
+
+      if (
+        !bestDirect ||
+        candidate.redCost < bestDirect.redCost ||
+        (candidate.redCost === bestDirect.redCost && candidate.path.length < bestDirect.path.length)
+      ) {
+        bestDirect = candidate;
       }
     }
 
+    if (!bestDirect) return [];
+
+    let bestLocked = bestDirect;
+
+    // STEP 2: Red may collect a bubble only if it does NOT make red more expensive.
+    // If equal cost, prefer the bubble route only when it is not longer.
     for (const bubble of bubbles) {
       const toBubble = dijkstra({
         grid,
@@ -1140,40 +1156,39 @@ No valid start cells one row below the lowest used row.`,
 
       if (!toBubble) continue;
 
-      for (const gateGoal of gateGoals) {
-        const toGate = dijkstra({
-          grid,
-          starts: [bubble],
-          goals: [gateGoal],
-          objectPriorities,
-          objectPriorityMap,
-          getCellObjectType,
-        });
+      const toGate = dijkstra({
+        grid,
+        starts: [bubble],
+        goals: gateGoals,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
 
-        if (!toGate) continue;
+      if (!toGate) continue;
 
-        candidates.push({
-          mode: "via bubble",
-          variant: "bubble-only-if-cheaper-or-tie",
-          redBubble: bubble,
-          redBubbles: [bubble],
-          path: uniquePath(mergePaths(toBubble.path, toGate.path)),
-          redCost: toBubble.cost + toGate.cost,
-          gateGoal,
-        });
+      const mergedPath = uniquePath(mergePaths(toBubble.path, toGate.path));
+      const combinedCost = toBubble.cost + toGate.cost;
+
+      const bubbleCandidate = {
+        mode: "via bubble",
+        variant: "locked-cheapest-gate-bubble-free-or-better",
+        redBubble: bubble,
+        redBubbles: [bubble],
+        path: mergedPath,
+        redCost: combinedCost,
+        gateGoal: toGate.goal || bestDirect.gateGoal,
+      };
+
+      if (
+        combinedCost < bestLocked.redCost ||
+        (combinedCost === bestLocked.redCost && mergedPath.length <= bestLocked.path.length)
+      ) {
+        bestLocked = bubbleCandidate;
       }
     }
 
-    const seen = new Set();
-    return candidates
-      .filter((cand) => {
-        const key = cand.path.map(([r, c]) => cellKey(r, c)).join("|");
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return !hasPathLoop(cand.path);
-      })
-      .sort((a, b) => a.redCost - b.redCost || a.path.length - b.path.length)
-      .slice(0, 40);
+    return [bestLocked];
   }
 
   function buildStandardBlueTargetGroups(grid, redCandidate, shaftClustersOrdered, bubbles) {
