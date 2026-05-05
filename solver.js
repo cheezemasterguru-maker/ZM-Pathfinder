@@ -1001,19 +1001,18 @@ No valid start cells one row below the lowest used row.`,
   }
 
   function compareStandardCandidates(a, b) {
-    if (a.unresolvedTargets !== b.unresolvedTargets) {
-      return a.unresolvedTargets - b.unresolvedTargets;
-    }
-
-    // Standard Option B rule:
-    // Red is locked to the cheapest gate route first.
-    // Blue optimizes shafts + remaining bubbles only AFTER red is chosen.
-    // Blue can never pull red onto a more expensive gate path.
+    // Standard Option B final rule:
+    // Red must choose the cheapest gate route first.
+    // Blue cleanup cannot force red onto a more expensive route.
     if (a.redCost !== b.redCost) return a.redCost - b.redCost;
 
     const aRedLen = a.redPath?.length || 0;
     const bRedLen = b.redPath?.length || 0;
     if (aRedLen !== bRedLen) return aRedLen - bRedLen;
+
+    if (a.unresolvedTargets !== b.unresolvedTargets) {
+      return a.unresolvedTargets - b.unresolvedTargets;
+    }
 
     if (a.blueCost !== b.blueCost) return a.blueCost - b.blueCost;
 
@@ -1609,7 +1608,7 @@ No valid non-loop red path to gate.`,
 ` +
         `solver_status: solved
 ` +
-        `selection_order: unresolved > red_cost > red_length > blue_cost > total_length
+        `selection_order: red_cost > red_length > unresolved > blue_cost > total_length
 ` +
         `red_cost: ${roundCost(best.redCost)}
 ` +
