@@ -233,7 +233,13 @@
       options.getCellObjectType
     );
 
+    // IMPORTANT:
+    // Do NOT apply negative priority bonus inside Dijkstra movement cost.
+    // Dijkstra cannot safely run with negative-weight cells; negative priority cells
+    // can create endless cheaper loops and freeze normal chambers.
+    // Priority is still handled later by objectPriorityScore / route ranking.
     if (setting === "priority") return 0;
+
     if (setting === "avoid") return priorities.avoidObjectPenalty;
 
     return 0;
@@ -475,6 +481,8 @@
     for (const key of Object.keys(objectPriorityMap)) {
       const normalizedKey = String(key || "").trim().toLowerCase();
 
+      // Main Graveyard ignores gate and essence as custom priority.
+      // Shaft is allowed because Main Graveyard should target shafts if they exist.
       if (normalizedKey === "gate") continue;
       if (normalizedKey === "essence") continue;
 
@@ -583,6 +591,11 @@
   function getMainGraveyardPriorityMap(objectPriorityMap) {
     const map = { ...(objectPriorityMap || {}) };
 
+    // Main Graveyard defaults:
+    // - Emblems are priority.
+    // - Shaft stays priority if app-solver sent shaft priority.
+    // - Essence is NOT priority in graveyard.
+    // - Gate is NOT priority in graveyard.
     map.emblem = "priority";
     map.emblems = "priority";
     map.essence = "normal";
@@ -1003,6 +1016,9 @@ No valid start cells one row below the lowest used row.`,
   }
 
   function compareStandardCandidates(a, b) {
+    // STANDARD FIX:
+    // Red locks cheapest direct gate route first.
+    // Bubbles and shafts are handled by blue after red is locked.
     if (a.redCost !== b.redCost) {
       return a.redCost - b.redCost;
     }
@@ -1098,48 +1114,29 @@ No valid start cells one row below the lowest used row.`,
     objectPriorityMap,
     getCellObjectType,
   }) {
-    const targetGroups = [];
-
-    for (let i = 0; i < bubbles.length; i++) {
-      targetGroups.push({
-        id: `standard-bubble-${i}`,
-        label: `Bubble ${i + 1}`,
-        kind: "bubble",
-        goals: [bubbles[i]],
-        final: false,
-      });
-    }
-
-    targetGroups.push({
-      id: "standard-gate",
-      label: "Gate",
-      kind: "gate",
-      goals: gateGoals,
-      final: true,
-    });
-
-    const customPaths = buildCustomPaths({
-      grid,
-      starts,
-      targetGroups,
-      objectPriorities: STANDARD_RED_PRIORITIES,
-      objectPriorityMap: null,
-      getCellObjectType: null,
-    });
-
-    const states = customPaths.candidateStates?.length
-      ? customPaths.candidateStates
-      : [customPaths];
-
     const candidates = [];
 
-    for (const state of states) {
-      if (!state.redPath || !state.redPath.length) continue;
+    // STANDARD FIX:
+    // Red only solves cheapest direct route to the gate.
+    // It does not intentionally route to bubbles.
+    // Any bubble red collects is only because it lies naturally on the cheapest gate path.
+    for (const gateGoal of gateGoals) {
+      const direct = dijkstra({
+        grid,
+        starts,
+        goals: [gateGoal],
+        objectPriorities: STANDARD_RED_PRIORITIES,
+        objectPriorityMap: null,
+        getCellObjectType: null,
+      });
 
+      if (!direct) continue;
+
+      const path = uniquePath(direct.path);
       const redBubbles = [];
       const seenBubbles = new Set();
 
-      for (const [r, c] of state.redPath) {
+      for (const [r, c] of path) {
         if (grid[r]?.[c] !== "B") continue;
         const key = cellKey(r, c);
         if (seenBubbles.has(key)) continue;
@@ -1148,17 +1145,13 @@ No valid start cells one row below the lowest used row.`,
       }
 
       candidates.push({
-        mode: redBubbles.length ? "custom-beam-standard-red" : "direct",
-        variant: redBubbles.length
-          ? `standard-red-beam-${redBubbles.length}-bubble`
-          : "cheapest-gate-first",
+        mode: "direct",
+        variant: "cheapest-direct-gate-only",
         redBubble: redBubbles.length ? redBubbles[0] : null,
         redBubbles,
-        path: uniquePath(state.redPath),
-        redCost: state.redCost,
-        gateGoal: state.attackPoints?.length
-          ? state.attackPoints[state.attackPoints.length - 1]
-          : null,
+        path,
+        redCost: direct.cost,
+        gateGoal,
       });
     }
 
@@ -1499,7 +1492,7 @@ No valid non-loop red path to gate.`,
 ` +
         `selection_order: red_cost > red_length > unresolved > blue_cost > effective_total
 ` +
-        `standard_red_search: custom_beam_bubbles_plus_gate
+        `standard_red_search: cheapest_direct_gate_only
 ` +
         `red_candidate_count: ${redCandidates.length}
 ` +
