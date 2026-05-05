@@ -2164,43 +2164,42 @@ No valid start cells one row below the lowest used row.`,
   }
 
   function solveGrid({
-    grid,
-    gateType = "standard",
-    eventType = null,
-    objectPriorities = null,
-    objectPriorityMap = null,
-    getCellObjectType = null,
-    solverMode = "standard",
-  }) {
-    const normalizedObjectPriorities = normalizeObjectPriorities(
-      objectPriorities || GLOBAL_OBJECT_PRIORITIES
-    );
-    const normalizedSolverMode = normalizeSolverMode(solverMode);
-    const rawSolverMode = String(solverMode || "standard").trim().toLowerCase();
+  grid,
+  gateType = "standard",
+  eventType = null,
+  objectPriorities = null,
+  objectPriorityMap = null,
+  getCellObjectType = null,
+  solverMode = "standard",
+}) {
+  const normalizedObjectPriorities = normalizeObjectPriorities(
+    objectPriorities || GLOBAL_OBJECT_PRIORITIES
+  );
+  const normalizedSolverMode = normalizeSolverMode(solverMode);
+  const rawSolverMode = String(solverMode || "standard").trim().toLowerCase();
 
-    if (rawSolverMode === "main_graveyard" || rawSolverMode === "graveyard") {
-      return solveMainGraveyardNoGate({
-        grid,
-        gateType: "none",
-        eventType,
-        objectPriorities: normalizedObjectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
-    }
+  let result;
 
-    if (normalizedSolverMode === "custom") {
-      return solveCustom({
-        grid,
-        gateType,
-        eventType,
-        objectPriorities: normalizedObjectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-      });
-    }
-
-    return solveStandard({
+  if (rawSolverMode === "main_graveyard" || rawSolverMode === "graveyard") {
+    result = solveMainGraveyardNoGate({
+      grid,
+      gateType: "none",
+      eventType,
+      objectPriorities: normalizedObjectPriorities,
+      objectPriorityMap,
+      getCellObjectType,
+    });
+  } else if (normalizedSolverMode === "custom") {
+    result = solveCustom({
+      grid,
+      gateType,
+      eventType,
+      objectPriorities: normalizedObjectPriorities,
+      objectPriorityMap,
+      getCellObjectType,
+    });
+  } else {
+    result = solveStandard({
       grid,
       gateType,
       eventType,
@@ -2210,6 +2209,16 @@ No valid start cells one row below the lowest used row.`,
     });
   }
 
+  window.lastSolveResult = result;
+  window.currentSolveResult = result;
+  window.ZMLastSolveResult = result;
+
+  console.log("ZM last solve result:", result);
+  if (result?.message) console.log(result.message);
+  if (result?.routeAnalysis) console.table(result.routeAnalysis);
+
+  return result;
+}
   window.ZMPathfinderSolver = {
     solverVersion: SOLVER_VERSION,
     numberCost,
