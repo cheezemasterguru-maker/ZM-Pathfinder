@@ -1005,24 +1005,29 @@ No valid start cells one row below the lowest used row.`,
       return a.unresolvedTargets - b.unresolvedTargets;
     }
 
-    // Efficiency-first standard rule:
-    // Required overall: Gate + attackable Shafts + reachable Bubbles.
-    // Winner is the cheapest COMPLETE total route. Red assist is only allowed
-    // when the whole red+blue route cost improves or ties.
+    // Standard Option B rule:
+    // Red is locked to the cheapest gate route first.
+    // Blue optimizes shafts + remaining bubbles only AFTER red is chosen.
+    // Blue can never pull red onto a more expensive gate path.
+    if (a.redCost !== b.redCost) return a.redCost - b.redCost;
+
+    const aRedLen = a.redPath?.length || 0;
+    const bRedLen = b.redPath?.length || 0;
+    if (aRedLen !== bRedLen) return aRedLen - bRedLen;
+
+    if (a.blueCost !== b.blueCost) return a.blueCost - b.blueCost;
+
+    const aTotalLen =
+      (a.redPath?.length || 0) +
+      (a.bluePaths || []).reduce((sum, path) => sum + path.length, 0);
+    const bTotalLen =
+      (b.redPath?.length || 0) +
+      (b.bluePaths || []).reduce((sum, path) => sum + path.length, 0);
+    if (aTotalLen !== bTotalLen) return aTotalLen - bTotalLen;
+
     const aTotal = a.totalCost ?? (a.redCost + a.blueCost);
     const bTotal = b.totalCost ?? (b.redCost + b.blueCost);
     if (aTotal !== bTotal) return aTotal - bTotal;
-
-    if (a.redCost !== b.redCost) return a.redCost - b.redCost;
-    if (a.blueCost !== b.blueCost) return a.blueCost - b.blueCost;
-
-    const aLen =
-      (a.redPath?.length || 0) +
-      (a.bluePaths || []).reduce((sum, path) => sum + path.length, 0);
-    const bLen =
-      (b.redPath?.length || 0) +
-      (b.bluePaths || []).reduce((sum, path) => sum + path.length, 0);
-    if (aLen !== bLen) return aLen - bLen;
 
     return 0;
   }
@@ -1604,7 +1609,7 @@ No valid non-loop red path to gate.`,
 ` +
         `solver_status: solved
 ` +
-        `selection_order: unresolved > total_cost > red_cost > blue_cost > total_length
+        `selection_order: unresolved > red_cost > red_length > blue_cost > total_length
 ` +
         `red_cost: ${roundCost(best.redCost)}
 ` +
