@@ -982,7 +982,37 @@ window.ZM_MAP_DATA = {
 
   Legacy: {
     "Love Story": {
-      "Mine 1": {},
+  "Mine 1": {
+    "Chamber 1": {
+      title: "Love Story - Mine 1 - Chamber 1",
+      gateType: "standard",
+      grid: [
+        ["X", 6, 8, 9, 6, 8, "X"],
+        ["X", 8, 7, 6, "X", 7, "X"],
+        ["S","S","X","B", 6, 5, "X"],
+        ["S","S", 5, 4, 5, 4, "X"],
+        ["S","S", 4, 6, 4, "S","S"],
+        [5, 4, 3, 4, 3, "S","S"],
+        ["X","X", 4, 3, 2, "S","S"],
+        ["X","X", 2, 3, "X", 2, "X"]
+      ]
+    },
+
+    "Chamber 2": {
+      title: "Love Story - Mine 1 - Chamber 2",
+      gateType: "end",
+      grid: [
+        ["X","X", 8, 7, 6, "X","X"],
+        ["X", 6, 7,10, 9, 7, "X"],
+        ["X", 7,"B", 6, 7, 6, "X"],
+        ["X","X", 6, 7, 8, "S","S"],
+        ["X","X", 7, 6, 7, "S","S"],
+        ["S","S","X", 7, 6, "S","S"],
+        ["S","S", 7, 6, 7, "X", 7],
+        ["S","S","X", 5, 6, 7, 6]
+      ]
+    }
+  },
       "Mine 2": {},
       "Mine 3": {},
       "Mine 4": {},
