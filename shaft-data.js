@@ -269,12 +269,108 @@ window.ZM_SHAFT_DATA = {
 
   Legacy: {
     "Love Story": {
-      "Mine 1": {},
-      "Mine 2": {},
-      "Mine 3": {},
-      "Mine 4": {},
-      "Mine 5": {},
-      "The Deep": {}
+      "Mine 1": {
+        "Chamber 1": [
+          { shaftType: "Beryl", level: 3, auto: 3 },
+          { shaftType: "Quartz", level: 6, auto: 4 }
+        ],
+        "Chamber 2": [
+          { shaftType: "Cobalt", level: 5, auto: 4 },
+          { shaftType: "Amber", level: 7, auto: 3 }
+        ]
+      },
+
+      "Mine 2": {
+        "Chamber 1": [
+          { shaftType: "Beryl", level: 4, auto: 5 },
+          { shaftType: "Quartz", level: 6, auto: 5 },
+          { shaftType: "Cobalt", level: 8, auto: 6 }
+        ],
+        "Chamber 2": [
+          { shaftType: "Amber", level: 10, auto: 6 },
+          { shaftType: "Ametrine", level: 12, auto: 5 }
+        ],
+        "Chamber 3": [
+          { shaftType: "Barite", level: 9, auto: 5 }
+        ]
+      },
+
+      "Mine 3": {
+        "Chamber 1": [
+          { shaftType: "Beryl", level: 5, auto: 7 },
+          { shaftType: "Quartz", level: 8, auto: 7 },
+          { shaftType: "Cobalt", level: 12, auto: 8 }
+        ],
+        "Chamber 2": [
+          { shaftType: "Amber", level: 9, auto: 7 },
+          { shaftType: "Ametrine", level: 14, auto: 7 },
+          { shaftType: "Barite", level: 18, auto: 8 }
+        ],
+        "Chamber 3": [
+          { shaftType: "Elendir", level: 16, auto: 8 },
+          { shaftType: "Lapis Lazuli", level: 22, auto: 6 }
+        ]
+      },
+
+      "Mine 4": {
+        "Chamber 1": [
+          { shaftType: "Beryl", level: 8, auto: 8 },
+          { shaftType: "Quartz", level: 14, auto: 8 }
+        ],
+        "Chamber 2": [
+          { shaftType: "Cobalt", level: 12, auto: 9 },
+          { shaftType: "Amber", level: 18, auto: 9 },
+          { shaftType: "Ametrine", level: 22, auto: 10 }
+        ],
+        "Chamber 3": [
+          { shaftType: "Barite", level: 19, auto: 9 },
+          { shaftType: "Elendir", level: 25, auto: 9 },
+          { shaftType: "Lapis Lazuli", level: 27, auto: 10 }
+        ],
+        "Chamber 4": [
+          { shaftType: "Aventurine", level: 33, auto: 9 }
+        ]
+      },
+
+      "Mine 5": {
+        "Chamber 1": [
+          { shaftType: "Beryl", level: 15, auto: 10 },
+          { shaftType: "Quartz", level: 18, auto: 10 },
+          { shaftType: "Cobalt", level: 23, auto: 11 }
+        ],
+        "Chamber 2": [
+          { shaftType: "Amber", level: 27, auto: 11 },
+          { shaftType: "Ametrine", level: 30, auto: 11 }
+        ],
+        "Chamber 3": [
+          { shaftType: "Barite", level: 32, auto: 11 },
+          { shaftType: "Elendir", level: 36, auto: 11 },
+          { shaftType: "Lapis Lazuli", level: 38, auto: 11 }
+        ],
+        "Chamber 4": [
+          { shaftType: "Aventurine", level: 42, auto: 11 }
+        ]
+      },
+
+      "The Deep": {
+        "Chamber 1": [
+          { shaftType: "Beryl", level: 15, auto: 11 },
+          { shaftType: "Quartz", level: 19, auto: 11 }
+        ],
+        "Chamber 2": [
+          { shaftType: "Cobalt", level: 24, auto: 12 },
+          { shaftType: "Amber", level: 27, auto: 12 },
+          { shaftType: "Ametrine", level: 30, auto: 12 }
+        ],
+        "Chamber 3": [
+          { shaftType: "Barite", level: 32, auto: 12 },
+          { shaftType: "Elendir", level: 36, auto: 12 },
+          { shaftType: "Lapis Lazuli", level: 38, auto: 12 }
+        ],
+        "Chamber 4": [
+          { shaftType: "Aventurine", level: 42, auto: 12 }
+        ]
+      }
     },
 
     "Clover Festival": {
