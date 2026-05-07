@@ -145,21 +145,11 @@
   }
 
   function getBaseTileMeta(eventType, eventName, eventMine, chamberName, r, c) {
-  if (!originalGetTileMeta) return null;
+    if (!originalGetTileMeta) return null;
+    return originalGetTileMeta(eventType, eventName, eventMine, chamberName, r, c) || null;
+  }
 
-  return (
-    originalGetTileMeta(
-      eventType,
-      eventName,
-      eventMine,
-      chamberName,
-      r,
-      c
-    ) || null
-  );
-}
-
-function getMergedTileMeta(eventType, eventName, eventMine, chamberName, r, c) {
+  function getMergedTileMeta(eventType, eventName, eventMine, chamberName, r, c) {
     const baseMeta = getBaseTileMeta(eventType, eventName, eventMine, chamberName, r, c);
     const bucket = getCustomMetaBucket(false);
     const customMeta = bucket ? bucket[getCellMetaKey(r, c)] : undefined;
