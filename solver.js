@@ -1743,7 +1743,7 @@ No valid non-loop red path to gate.`,
       state.totalCost +
       redLen * 0.001 +
       blueLen * 0.001 +
-      state.remaining.length * 100000000
+      state.remaining.length * 1000000
     );
   }
 
