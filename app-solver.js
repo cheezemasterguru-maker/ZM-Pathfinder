@@ -74,9 +74,24 @@ function normalizeObjectTypeName(value) {
 }
 
 function normalizeSolverModeValue(value) {
-  return String(value || "standard").trim().toLowerCase() === "custom"
-    ? "custom"
-    : "standard";
+  const mode = String(value || "standard").trim().toLowerCase();
+
+  if (
+    mode === "custom" ||
+    mode === "custom_graveyard" ||
+    mode === "graveyard_custom"
+  ) {
+    return "custom";
+  }
+
+  if (
+    mode === "main_graveyard" ||
+    mode === "graveyard"
+  ) {
+    return "main_graveyard";
+  }
+
+  return "standard";
 }
 
 function isMainEventGraveyard() {
@@ -384,14 +399,14 @@ function renderObjectPrioritiesModal() {
 
     if (isMainEventGraveyard()) {
       note.textContent =
-        solverMode === "standard"
-          ? "Graveyard rules are active. Gates are disabled."
-          : "Custom rules are active. You can change any available object priority on this board.";
+        solverMode === "custom"
+          ? "Custom rules are active. You can choose which available objects matter on this graveyard."
+          : "Graveyard standard rules are active. Gates are disabled and default graveyard objectives are used.";
     } else {
       note.textContent =
-        solverMode === "standard"
-          ? "Standard rules are active. Custom objective toggles are disabled."
-          : "Custom rules are active. You can change any available object priority on this board.";
+        solverMode === "custom"
+          ? "Custom rules are active. You can change any available object priority on this board."
+          : "Standard rules are active. Custom objective toggles are disabled.";
     }
 
     intro.appendChild(modeWrap);
@@ -568,6 +583,11 @@ function solveBoard() {
     ? "none"
     : (gateTypeEl?.value || "standard");
 
+  const modeForSolver =
+    isMainEventGraveyard() && solverMode !== "custom"
+      ? "main_graveyard"
+      : solverMode;
+
   const result = window.ZMPathfinderSolver.solveGrid({
     grid: getVisibleGridSlice(),
     gateType: forcedGateType,
@@ -575,7 +595,7 @@ function solveBoard() {
     eventName: currentMapContext.eventName,
     eventMine: currentMapContext.eventMine,
     chamberName: currentMapContext.chamberName,
-    solverMode: isMainEventGraveyard() ? "main_graveyard" : solverMode,
+    solverMode: modeForSolver,
     objectPriorityMap: getObjectPriorityMapForSolver(),
     getCellObjectType
   });
@@ -601,7 +621,7 @@ function solveBoard() {
     message: result.message || (typeof t === "function" ? t("solvedMessage") : "Solved"),
     routeAnalysis: result.routeAnalysis || [],
     solverVersion: result.solverVersion || null,
-    solverMode: result.solverMode || solverMode,
+    solverMode: result.solverMode || modeForSolver,
     legacyEndMode: !!result.legacyEndMode,
     redBubbleCount: result.redBubbleCount ?? 0,
     firstBubbleTravelCost: result.firstBubbleTravelCost ?? null,
