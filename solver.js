@@ -532,10 +532,10 @@
         if (!isWalkableCell(grid, r, c)) continue;
 
         const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
-        if (!type) continue;
-        if (type === "gate" || type === "shaft" || type === "bubble" || type === "essence") continue;
+if (!type) continue;
+if (type === "gate" || type === "shaft" || type === "bubble") continue;
 
-        const shouldTarget = hasCustomPriority
+const shouldTarget = hasCustomPriority
           ? normalizePrioritySetting(normalizedMap[type]) === "priority"
           : isMainGraveyardDefaultEmblemType(type);
 
@@ -571,10 +571,10 @@
         if (!isWalkableCell(grid, r, c)) continue;
 
         const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
-        if (!type) continue;
-        if (type === "gate" || type === "shaft" || type === "bubble" || type === "essence") continue;
+if (!type) continue;
+if (type === "gate" || type === "shaft" || type === "bubble") continue;
 
-        const shouldTarget = hasCustomPriority
+const shouldTarget = hasCustomPriority
           ? normalizePrioritySetting(normalizedMap[type]) === "priority"
           : isMainGraveyardDefaultEmblemType(type);
 
