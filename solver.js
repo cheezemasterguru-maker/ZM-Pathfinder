@@ -36,8 +36,7 @@
   const STANDARD_RED_ALT_EARLY_STEPS = 6;
 
   const CUSTOM_BEAM_WIDTH = 400;
-  const CUSTOM_MAX_CANDIDATES = 12000;
-
+  const CUSTOM_MAX_CANDIDATES = 250000;
   let GLOBAL_OBJECT_PRIORITIES = { ...DEFAULT_OBJECT_PRIORITIES };
 
   function normalizeObjectPriorities(priorities) {
@@ -1790,7 +1789,7 @@ if (!prioritySetting) continue;
       state.totalCost +
       redLen * 0.001 +
       blueLen * 0.001 +
-      state.remaining.length * 4000000
+      state.remaining.length * 1000000000
     );
   }
 
