@@ -1827,7 +1827,9 @@ No valid non-loop red path to gate.`,
         for (const group of state.remaining) {
           const route = dijkstra({
             grid,
-            starts: state.currentStarts,
+            starts: state.redPath.length
+  ? [state.redPath[state.redPath.length - 1]]
+  : state.currentStarts,
             goals: group.goals,
             freeCells: state.reusable,
             objectPriorities,
@@ -1856,16 +1858,14 @@ No valid non-loop red path to gate.`,
             if (entry) nextShaftEntryDots.push(entry);
           }
 
-          const nextRedPath = state.isFirstPath ? cleanPath : state.redPath;
-const nextBluePaths = state.isFirstPath
-  ? [...state.bluePaths]
-  : state.bluePaths.concat([cleanPath]);
-const nextRedCost = state.isFirstPath
-  ? state.redCost + route.cost
-  : state.redCost;
-const nextBlueCost = state.isFirstPath
-  ? state.blueCost
-  : state.blueCost + route.cost;
+          const mergedRedPath = state.redPath.length
+  ? mergePaths(state.redPath, cleanPath)
+  : cleanPath;
+
+const nextRedPath = uniquePath(mergedRedPath);
+const nextBluePaths = [];
+const nextRedCost = state.redCost + route.cost;
+const nextBlueCost = 0;
           nextBeam.push({
             remaining: state.remaining.filter((g) => g !== group),
             currentStarts: nextStarts,
