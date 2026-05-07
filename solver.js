@@ -36,7 +36,7 @@
   const STANDARD_RED_ALT_EARLY_STEPS = 6;
 
   const CUSTOM_BEAM_WIDTH = 400;
-  const CUSTOM_MAX_CANDIDATES = 50000;
+  const CUSTOM_MAX_CANDIDATES = 12000;
 
   let GLOBAL_OBJECT_PRIORITIES = { ...DEFAULT_OBJECT_PRIORITIES };
 
@@ -1743,7 +1743,7 @@ No valid non-loop red path to gate.`,
       state.totalCost +
       redLen * 0.001 +
       blueLen * 0.001 +
-      state.remaining.length * 1000000
+      state.remaining.length * 25000000
     );
   }
 
