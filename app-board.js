@@ -145,9 +145,33 @@
   }
 
   function getBaseTileMeta(eventType, eventName, eventMine, chamberName, r, c) {
-    if (!originalGetTileMeta) return null;
-    return originalGetTileMeta(eventType, eventName, eventMine, chamberName, r, c) || null;
+  if (!originalGetTileMeta) return null;
+
+  // Legacy maps
+  if (eventType === "Legacy") {
+    return (
+      originalGetTileMeta(
+        eventType,
+        eventName,
+        eventMine,
+        chamberName,
+        r,
+        c
+      ) || null
+    );
   }
+
+  // Main + MainDeep graveyards/chambers
+  return (
+    originalGetTileMeta(
+      eventType,
+      eventName,
+      chamberName,
+      r,
+      c
+    ) || null
+  );
+}
 
   function getMergedTileMeta(eventType, eventName, eventMine, chamberName, r, c) {
     const baseMeta = getBaseTileMeta(eventType, eventName, eventMine, chamberName, r, c);
