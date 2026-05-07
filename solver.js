@@ -1827,7 +1827,9 @@ No valid non-loop red path to gate.`,
         for (const group of state.remaining) {
           const route = dijkstra({
             grid,
-            starts: state.currentStarts,
+            starts: state.redPath.length
+  ? [state.redPath[state.redPath.length - 1]]
+  : state.currentStarts,
             goals: group.goals,
             freeCells: state.reusable,
             objectPriorities,
