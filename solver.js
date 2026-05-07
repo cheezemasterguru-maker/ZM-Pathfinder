@@ -648,27 +648,89 @@ No valid start cells one row below the lowest used row.`,
       };
     }
 
-    const customPaths = buildCustomPaths({
-      grid,
-      starts,
-      targetGroups,
-      objectPriorities,
-      objectPriorityMap: effectiveObjectPriorityMap,
-      getCellObjectType,
-    });
+    const reusable = new Set();
+let currentStarts = dedupeCells(starts);
 
-    const allCandidates = (customPaths.candidateStates || [customPaths]).map((state, index) =>
-      makeCustomCandidate({
-        grid,
-        customPaths: state,
-        requiredPriorityCells,
-        objectPriorities,
-        objectPriorityMap: effectiveObjectPriorityMap,
-        getCellObjectType,
-        redVariant: index === 0 ? "main-graveyard-beam-best" : "main-graveyard-beam-alternate",
-        redMode: "main_graveyard",
-      })
-    );
+const redPath = [];
+const bluePaths = [];
+const attackPoints = [];
+const shaftEntryDots = [];
+
+let redCost = 0;
+let blueCost = 0;
+let unresolvedTargets = 0;
+
+for (const group of targetGroups) {
+  const route = dijkstra({
+    grid,
+    starts: currentStarts,
+    goals: group.goals,
+    freeCells: reusable,
+    objectPriorities,
+    objectPriorityMap: effectiveObjectPriorityMap,
+    getCellObjectType,
+  });
+
+  if (!route || !route.path?.length) {
+    unresolvedTargets++;
+    continue;
+  }
+
+  const cleanPath = uniquePath(route.path);
+
+  if (!redPath.length) {
+    redPath.push(...cleanPath);
+    redCost += route.cost;
+  } else {
+    bluePaths.push(cleanPath);
+    blueCost += route.cost;
+  }
+
+  for (const [r, c] of cleanPath) {
+    reusable.add(cellKey(r, c));
+  }
+
+  currentStarts = dedupeCells(
+    currentStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
+  );
+
+  attackPoints.push(route.goal);
+
+  if (group.kind === "shaft" && group.entryMap) {
+    const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
+    if (entry) shaftEntryDots.push(entry);
+  }
+}
+
+const candidate = makeCustomCandidate({
+  grid,
+  customPaths: {
+    redPath,
+    bluePaths,
+    redCost,
+    blueCost,
+    totalCost: redCost + blueCost,
+    unresolvedTargets,
+    attackPoints,
+    shaftEntryDots,
+    visitedTargets: targetGroups.map(g => g.id),
+  },
+  requiredPriorityCells,
+  objectPriorities,
+  objectPriorityMap: effectiveObjectPriorityMap,
+  getCellObjectType,
+  redVariant: "main-graveyard-sequential",
+  redMode: "main_graveyard",
+});
+
+const allCandidates = [candidate];
+const routeAnalysis = buildRouteAnalysis(
+  grid,
+  allCandidates,
+  candidate,
+  "main_graveyard"
+);
+
 
     allCandidates.sort(compareCustomCandidates);
     const candidate = allCandidates[0];
@@ -2073,27 +2135,25 @@ No valid start cells one row below the lowest used row.`,
       };
     }
 
-    const customPaths = buildCustomPaths({
-      grid,
-      starts,
-      targetGroups,
-      objectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-    });
+    const customPaths = buildSequentialPaths({
+  grid,
+  starts,
+  targetGroups,
+  objectPriorities,
+  objectPriorityMap,
+  getCellObjectType,
+});
 
-    const allCandidates = (customPaths.candidateStates || [customPaths]).map((state, index) =>
-      makeCustomCandidate({
-        grid,
-        customPaths: state,
-        requiredPriorityCells,
-        objectPriorities,
-        objectPriorityMap,
-        getCellObjectType,
-        redVariant: index === 0 ? "beam-search-best" : "beam-search-alternate",
-        redMode: "custom",
-      })
-    );
+const allCandidates = [makeCustomCandidate({
+  grid,
+  customPaths,
+  requiredPriorityCells,
+  objectPriorities,
+  objectPriorityMap,
+  getCellObjectType,
+  redVariant: "sequential",
+  redMode: "custom",
+})];
 
     allCandidates.sort(compareCustomCandidates);
     const candidate = allCandidates[0];
