@@ -2180,7 +2180,7 @@ No valid start cells one row below the lowest used row.`,
 
   let result;
 
-  if (
+if (
   normalizedSolverMode === "custom" ||
   rawSolverMode === "custom_graveyard" ||
   rawSolverMode === "graveyard_custom"
@@ -2206,34 +2206,25 @@ No valid start cells one row below the lowest used row.`,
     getCellObjectType,
   });
 } else {
-    result = solveCustom({
-      grid,
-      gateType,
-      eventType,
-      objectPriorities: normalizedObjectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-    });
-  } else {
-    result = solveStandard({
-      grid,
-      gateType,
-      eventType,
-      objectPriorities: normalizedObjectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-    });
-  }
+  result = solveStandard({
+    grid,
+    gateType,
+    eventType,
+    objectPriorities: normalizedObjectPriorities,
+    objectPriorityMap,
+    getCellObjectType,
+  });
+}
 
-  window.lastSolveResult = result;
-  window.currentSolveResult = result;
-  window.ZMLastSolveResult = result;
+window.lastSolveResult = result;
+window.currentSolveResult = result;
+window.ZMLastSolveResult = result;
 
-  console.log("ZM last solve result:", result);
-  if (result?.message) console.log(result.message);
-  if (result?.routeAnalysis) console.table(result.routeAnalysis);
+console.log("ZM last solve result:", result);
+if (result?.message) console.log(result.message);
+if (result?.routeAnalysis) console.table(result.routeAnalysis);
 
-  return result;
+return result;
 }
   window.ZMPathfinderSolver = {
     solverVersion: SOLVER_VERSION,
