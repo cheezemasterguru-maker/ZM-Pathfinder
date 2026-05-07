@@ -488,9 +488,9 @@
   }
 
   function isMainGraveyardDefaultEmblemType(type) {
-    const t = String(type || "").trim().toLowerCase();
-    return t === "emblem" || t === "emblems";
-  }
+  const t = String(type || "").trim().toLowerCase();
+  return t === "essence" || t === "ess" || t === "essences";
+}
 
   function buildMainGraveyardTargetGroups({
     grid,
