@@ -147,25 +147,11 @@
   function getBaseTileMeta(eventType, eventName, eventMine, chamberName, r, c) {
   if (!originalGetTileMeta) return null;
 
-  // Legacy maps
-  if (eventType === "Legacy") {
-    return (
-      originalGetTileMeta(
-        eventType,
-        eventName,
-        eventMine,
-        chamberName,
-        r,
-        c
-      ) || null
-    );
-  }
-
-  // Main + MainDeep graveyards/chambers
   return (
     originalGetTileMeta(
       eventType,
       eventName,
+      eventMine,
       chamberName,
       r,
       c
@@ -173,7 +159,7 @@
   );
 }
 
-  function getMergedTileMeta(eventType, eventName, eventMine, chamberName, r, c) {
+function getMergedTileMeta(eventType, eventName, eventMine, chamberName, r, c) {
     const baseMeta = getBaseTileMeta(eventType, eventName, eventMine, chamberName, r, c);
     const bucket = getCustomMetaBucket(false);
     const customMeta = bucket ? bucket[getCellMetaKey(r, c)] : undefined;
