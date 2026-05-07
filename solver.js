@@ -2180,16 +2180,32 @@ No valid start cells one row below the lowest used row.`,
 
   let result;
 
-  if (rawSolverMode === "main_graveyard" || rawSolverMode === "graveyard") {
-    result = solveMainGraveyardNoGate({
-      grid,
-      gateType: "none",
-      eventType,
-      objectPriorities: normalizedObjectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-    });
-  } else if (normalizedSolverMode === "custom") {
+  if (
+  normalizedSolverMode === "custom" ||
+  rawSolverMode === "custom_graveyard" ||
+  rawSolverMode === "graveyard_custom"
+) {
+  result = solveCustom({
+    grid,
+    gateType,
+    eventType,
+    objectPriorities: normalizedObjectPriorities,
+    objectPriorityMap,
+    getCellObjectType,
+  });
+} else if (
+  rawSolverMode === "main_graveyard" ||
+  rawSolverMode === "graveyard"
+) {
+  result = solveMainGraveyardNoGate({
+    grid,
+    gateType: "none",
+    eventType,
+    objectPriorities: normalizedObjectPriorities,
+    objectPriorityMap,
+    getCellObjectType,
+  });
+} else {
     result = solveCustom({
       grid,
       gateType,
