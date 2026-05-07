@@ -378,8 +378,7 @@
             objectPriorityMap,
             getCellObjectType,
           }) +
-          penalty;
-        const nextLen = cur.len + 1;
+          penalty;        const nextLen = cur.len + 1;
 
         if (
           nextCost < dist[nr][nc] ||
@@ -488,13 +487,9 @@
   }
 
   function isMainGraveyardDefaultEmblemType(type) {
-  const t = String(type || "").trim().toLowerCase();
-
-  return (
-    t === "emblem" ||
-    t === "emblems"
-  );
-}
+    const t = String(type || "").trim().toLowerCase();
+    return t === "emblem" || t === "emblems";
+  }
 
   function buildMainGraveyardTargetGroups({
     grid,
@@ -532,10 +527,10 @@
         if (!isWalkableCell(grid, r, c)) continue;
 
         const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
-if (!type) continue;
-if (type === "gate" || type === "shaft" || type === "bubble") continue;
+        if (!type) continue;
+        if (type === "gate" || type === "shaft" || type === "bubble") continue;
 
-const shouldTarget = hasCustomPriority
+        const shouldTarget = hasCustomPriority
           ? normalizePrioritySetting(normalizedMap[type]) === "priority"
           : isMainGraveyardDefaultEmblemType(type);
 
@@ -571,10 +566,10 @@ const shouldTarget = hasCustomPriority
         if (!isWalkableCell(grid, r, c)) continue;
 
         const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
-if (!type) continue;
-if (type === "gate" || type === "shaft" || type === "bubble") continue;
+        if (!type) continue;
+        if (type === "gate" || type === "shaft" || type === "bubble") continue;
 
-const shouldTarget = hasCustomPriority
+        const shouldTarget = hasCustomPriority
           ? normalizePrioritySetting(normalizedMap[type]) === "priority"
           : isMainGraveyardDefaultEmblemType(type);
 
@@ -649,92 +644,87 @@ No valid start cells one row below the lowest used row.`,
     }
 
     const reusable = new Set();
-let currentStarts = dedupeCells(starts);
+    let currentStarts = dedupeCells(starts);
 
-const redPath = [];
-const bluePaths = [];
-const attackPoints = [];
-const shaftEntryDots = [];
+    const redPath = [];
+    const bluePaths = [];
+    const attackPoints = [];
+    const shaftEntryDots = [];
 
-let redCost = 0;
-let blueCost = 0;
-let unresolvedTargets = 0;
+    let redCost = 0;
+    let blueCost = 0;
+    let unresolvedTargets = 0;
 
-for (const group of targetGroups) {
-  const route = dijkstra({
-    grid,
-    starts: currentStarts,
-    goals: group.goals,
-    freeCells: reusable,
-    objectPriorities,
-    objectPriorityMap: effectiveObjectPriorityMap,
-    getCellObjectType,
-  });
+    for (const group of targetGroups) {
+      const route = dijkstra({
+        grid,
+        starts: currentStarts,
+        goals: group.goals,
+        freeCells: reusable,
+        objectPriorities,
+        objectPriorityMap: effectiveObjectPriorityMap,
+        getCellObjectType,
+      });
 
-  if (!route || !route.path?.length) {
-    unresolvedTargets++;
-    continue;
-  }
+      if (!route || !route.path?.length) {
+        unresolvedTargets++;
+        continue;
+      }
 
-  const cleanPath = uniquePath(route.path);
+      const cleanPath = uniquePath(route.path);
 
-  if (!redPath.length) {
-    redPath.push(...cleanPath);
-    redCost += route.cost;
-  } else {
-    bluePaths.push(cleanPath);
-    blueCost += route.cost;
-  }
+      if (!redPath.length) {
+        redPath.push(...cleanPath);
+        redCost += route.cost;
+      } else {
+        bluePaths.push(cleanPath);
+        blueCost += route.cost;
+      }
 
-  for (const [r, c] of cleanPath) {
-    reusable.add(cellKey(r, c));
-  }
+      for (const [r, c] of cleanPath) {
+        reusable.add(cellKey(r, c));
+      }
 
-  currentStarts = dedupeCells(
-    currentStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
-  );
+      currentStarts = dedupeCells(
+        currentStarts.concat(cleanPath).concat(getPathEndpoints(cleanPath))
+      );
 
-  attackPoints.push(route.goal);
+      attackPoints.push(route.goal);
 
-  if (group.kind === "shaft" && group.entryMap) {
-    const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
-    if (entry) shaftEntryDots.push(entry);
-  }
-}
+      if (group.kind === "shaft" && group.entryMap) {
+        const entry = group.entryMap.get(cellKey(route.goal[0], route.goal[1]));
+        if (entry) shaftEntryDots.push(entry);
+      }
+    }
 
-const candidate = makeCustomCandidate({
-  grid,
-  customPaths: {
-    redPath,
-    bluePaths,
-    redCost,
-    blueCost,
-    totalCost: redCost + blueCost,
-    unresolvedTargets,
-    attackPoints,
-    shaftEntryDots,
-    visitedTargets: targetGroups.map(g => g.id),
-  },
-  requiredPriorityCells,
-  objectPriorities,
-  objectPriorityMap: effectiveObjectPriorityMap,
-  getCellObjectType,
-  redVariant: "main-graveyard-sequential",
-  redMode: "main_graveyard",
-});
+    const candidate = makeCustomCandidate({
+      grid,
+      customPaths: {
+        redPath,
+        bluePaths,
+        redCost,
+        blueCost,
+        totalCost: redCost + blueCost,
+        unresolvedTargets,
+        attackPoints,
+        shaftEntryDots,
+        visitedTargets: targetGroups.map(g => g.id),
+      },
+      requiredPriorityCells,
+      objectPriorities,
+      objectPriorityMap: effectiveObjectPriorityMap,
+      getCellObjectType,
+      redVariant: "main-graveyard-sequential",
+      redMode: "main_graveyard",
+    });
 
-const allCandidates = [candidate];
-const routeAnalysis = buildRouteAnalysis(
-  grid,
-  allCandidates,
-  candidate,
-  "main_graveyard"
-);
-
-
-    allCandidates.sort(compareCustomCandidates);
-    const candidate = allCandidates[0];
-    const routeAnalysis = buildRouteAnalysis(grid, allCandidates, candidate, "main_graveyard");
+    const allCandidates = [candidate];
+    const routeAnalysis = buildRouteAnalysis(
+      grid,
+      allCandidates,
+      candidate,
+      "main_graveyard"
+    );
 
     return {
       ok: true,
@@ -1194,14 +1184,6 @@ const routeAnalysis = buildRouteAnalysis(
   }) {
     const candidates = [];
 
-    // STANDARD RED RULE:
-    // Red chooses the cheapest route to the gate only.
-    // Blue handles remaining bubbles and shafts after red is locked.
-    //
-    // FIX:
-    // Test every valid start cell and every valid gate cell.
-    // Re-run Dijkstra with early-path penalties to force alternate first corridors.
-    // This prevents Dijkstra from collapsing into one preferred corridor shape.
     for (const start of starts) {
       for (const gateGoal of gateGoals) {
         const penaltyCells = new Map();
@@ -1229,9 +1211,6 @@ const routeAnalysis = buildRouteAnalysis(
 
           if (candidate) candidates.push(candidate);
 
-          // IMPORTANT:
-          // Penalize only the early corridor, not the whole path.
-          // This forces different first-direction choices without corrupting the full route ranking.
           const maxEarly = Math.min(STANDARD_RED_ALT_EARLY_STEPS, route.path.length);
           for (let i = 1; i < maxEarly; i++) {
             const [r, c] = route.path[i];
@@ -1249,7 +1228,6 @@ const routeAnalysis = buildRouteAnalysis(
       }
     }
 
-    // Also run all starts together once per gate as a fallback.
     for (const gateGoal of gateGoals) {
       const direct = dijkstra({
         grid,
@@ -2135,25 +2113,27 @@ No valid start cells one row below the lowest used row.`,
       };
     }
 
-    const customPaths = buildSequentialPaths({
-  grid,
-  starts,
-  targetGroups,
-  objectPriorities,
-  objectPriorityMap,
-  getCellObjectType,
-});
+    const customPaths = buildCustomPaths({
+      grid,
+      starts,
+      targetGroups,
+      objectPriorities,
+      objectPriorityMap,
+      getCellObjectType,
+    });
 
-const allCandidates = [makeCustomCandidate({
-  grid,
-  customPaths,
-  requiredPriorityCells,
-  objectPriorities,
-  objectPriorityMap,
-  getCellObjectType,
-  redVariant: "sequential",
-  redMode: "custom",
-})];
+    const allCandidates = (customPaths.candidateStates || [customPaths]).map((state, index) =>
+      makeCustomCandidate({
+        grid,
+        customPaths: state,
+        requiredPriorityCells,
+        objectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+        redVariant: index === 0 ? "beam-search-best" : "beam-search-alternate",
+        redMode: "custom",
+      })
+    );
 
     allCandidates.sort(compareCustomCandidates);
     const candidate = allCandidates[0];
@@ -2228,68 +2208,69 @@ const allCandidates = [makeCustomCandidate({
   }
 
   function solveGrid({
-  grid,
-  gateType = "standard",
-  eventType = null,
-  objectPriorities = null,
-  objectPriorityMap = null,
-  getCellObjectType = null,
-  solverMode = "standard",
-}) {
-  const normalizedObjectPriorities = normalizeObjectPriorities(
-    objectPriorities || GLOBAL_OBJECT_PRIORITIES
-  );
-  const normalizedSolverMode = normalizeSolverMode(solverMode);
-  const rawSolverMode = String(solverMode || "standard").trim().toLowerCase();
-
-  let result;
-
-if (
-  normalizedSolverMode === "custom" ||
-  rawSolverMode === "custom_graveyard" ||
-  rawSolverMode === "graveyard_custom"
-) {
-  result = solveCustom({
     grid,
-    gateType,
-    eventType,
-    objectPriorities: normalizedObjectPriorities,
-    objectPriorityMap,
-    getCellObjectType,
-  });
-} else if (
-  rawSolverMode === "main_graveyard" ||
-  rawSolverMode === "graveyard"
-) {
-  result = solveMainGraveyardNoGate({
-    grid,
-    gateType: "none",
-    eventType,
-    objectPriorities: normalizedObjectPriorities,
-    objectPriorityMap,
-    getCellObjectType,
-  });
-} else {
-  result = solveStandard({
-    grid,
-    gateType,
-    eventType,
-    objectPriorities: normalizedObjectPriorities,
-    objectPriorityMap,
-    getCellObjectType,
-  });
-}
+    gateType = "standard",
+    eventType = null,
+    objectPriorities = null,
+    objectPriorityMap = null,
+    getCellObjectType = null,
+    solverMode = "standard",
+  }) {
+    const normalizedObjectPriorities = normalizeObjectPriorities(
+      objectPriorities || GLOBAL_OBJECT_PRIORITIES
+    );
+    const normalizedSolverMode = normalizeSolverMode(solverMode);
+    const rawSolverMode = String(solverMode || "standard").trim().toLowerCase();
 
-window.lastSolveResult = result;
-window.currentSolveResult = result;
-window.ZMLastSolveResult = result;
+    let result;
 
-console.log("ZM last solve result:", result);
-if (result?.message) console.log(result.message);
-if (result?.routeAnalysis) console.table(result.routeAnalysis);
+    if (
+      normalizedSolverMode === "custom" ||
+      rawSolverMode === "custom_graveyard" ||
+      rawSolverMode === "graveyard_custom"
+    ) {
+      result = solveCustom({
+        grid,
+        gateType,
+        eventType,
+        objectPriorities: normalizedObjectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+    } else if (
+      rawSolverMode === "main_graveyard" ||
+      rawSolverMode === "graveyard"
+    ) {
+      result = solveMainGraveyardNoGate({
+        grid,
+        gateType: "none",
+        eventType,
+        objectPriorities: normalizedObjectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+    } else {
+      result = solveStandard({
+        grid,
+        gateType,
+        eventType,
+        objectPriorities: normalizedObjectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+    }
 
-return result;
-}
+    window.lastSolveResult = result;
+    window.currentSolveResult = result;
+    window.ZMLastSolveResult = result;
+
+    console.log("ZM last solve result:", result);
+    if (result?.message) console.log(result.message);
+    if (result?.routeAnalysis) console.table(result.routeAnalysis);
+
+    return result;
+  }
+
   window.ZMPathfinderSolver = {
     solverVersion: SOLVER_VERSION,
     numberCost,
