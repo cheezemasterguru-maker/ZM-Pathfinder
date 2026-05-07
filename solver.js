@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V7.4-route-quality loaded");
+  console.log("ZM Solver V7.5-main-graveyard-custom-fixed loaded");
 
-  const SOLVER_VERSION = "V7.4-route-quality";
+  const SOLVER_VERSION = "V7.5-main-graveyard-custom-fixed";
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -77,6 +77,7 @@
   }
 
   function setObjectPriorities(priorities) {
+    GLOBAL_OBJECT_PRIITIES = normalizeObjectPriorities(priorities);
     GLOBAL_OBJECT_PRIORITIES = normalizeObjectPriorities(priorities);
     return { ...GLOBAL_OBJECT_PRIORITIES };
   }
@@ -477,7 +478,6 @@
       const normalizedKey = String(key || "").trim().toLowerCase();
 
       if (normalizedKey === "gate") continue;
-      if (normalizedKey === "essence") continue;
 
       if (normalizePrioritySetting(objectPriorityMap[key]) === "priority") {
         return true;
@@ -487,9 +487,9 @@
     return false;
   }
 
-  function isMainGraveyardDefaultEmblemType(type) {
+  function isMainGraveyardDefaultTargetType(type) {
     const t = String(type || "").trim().toLowerCase();
-    return t === "emblem" || t === "emblems";
+    return t === "emblem" || t === "emblems" || t === "essence";
   }
 
   function buildMainGraveyardTargetGroups({
@@ -529,11 +529,11 @@
 
         const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
         if (!type) continue;
-        if (type === "gate" || type === "shaft" || type === "bubble" || type === "essence") continue;
+        if (type === "gate" || type === "shaft" || type === "bubble") continue;
 
         const shouldTarget = hasCustomPriority
           ? normalizePrioritySetting(normalizedMap[type]) === "priority"
-          : isMainGraveyardDefaultEmblemType(type);
+          : isMainGraveyardDefaultTargetType(type);
 
         if (!shouldTarget) continue;
 
@@ -568,11 +568,11 @@
 
         const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
         if (!type) continue;
-        if (type === "gate" || type === "shaft" || type === "bubble" || type === "essence") continue;
+        if (type === "gate" || type === "shaft" || type === "bubble") continue;
 
         const shouldTarget = hasCustomPriority
           ? normalizePrioritySetting(normalizedMap[type]) === "priority"
-          : isMainGraveyardDefaultEmblemType(type);
+          : isMainGraveyardDefaultTargetType(type);
 
         if (shouldTarget) out.push([r, c]);
       }
@@ -586,7 +586,7 @@
 
     map.emblem = "priority";
     map.emblems = "priority";
-    map.essence = "normal";
+    map.essence = "priority";
     map.gate = "normal";
 
     return map;
@@ -639,7 +639,7 @@ No valid start cells one row below the lowest used row.`,
 ` +
           `gate_type: none
 ` +
-          `No emblem or shaft objectives found.`,
+          `No emblem, essence, or shaft objectives found.`,
         startRow,
       };
     }
@@ -723,6 +723,8 @@ No valid start cells one row below the lowest used row.`,
         `solver_status: solved
 ` +
         `gate_type: none
+` +
+        `default_targets: emblems + essence
 ` +
         `custom_search: beam
 ` +
@@ -1128,14 +1130,6 @@ No valid start cells one row below the lowest used row.`,
   }) {
     const candidates = [];
 
-    // STANDARD RED RULE:
-    // Red chooses the cheapest route to the gate only.
-    // Blue handles remaining bubbles and shafts after red is locked.
-    //
-    // FIX:
-    // Test every valid start cell and every valid gate cell.
-    // Re-run Dijkstra with early-path penalties to force alternate first corridors.
-    // This prevents Dijkstra from collapsing into one preferred corridor shape.
     for (const start of starts) {
       for (const gateGoal of gateGoals) {
         const penaltyCells = new Map();
@@ -1163,9 +1157,6 @@ No valid start cells one row below the lowest used row.`,
 
           if (candidate) candidates.push(candidate);
 
-          // IMPORTANT:
-          // Penalize only the early corridor, not the whole path.
-          // This forces different first-direction choices without corrupting the full route ranking.
           const maxEarly = Math.min(STANDARD_RED_ALT_EARLY_STEPS, route.path.length);
           for (let i = 1; i < maxEarly; i++) {
             const [r, c] = route.path[i];
@@ -1183,7 +1174,6 @@ No valid start cells one row below the lowest used row.`,
       }
     }
 
-    // Also run all starts together once per gate as a fallback.
     for (const gateGoal of gateGoals) {
       const direct = dijkstra({
         grid,
@@ -1607,7 +1597,7 @@ No valid non-loop red path to gate.`,
 
           const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
           if (!type) continue;
-          if (type === "gate" || type === "shaft" || type === "bubble" || type === "essence") continue;
+          if (type === "gate" || type === "shaft" || type === "bubble") continue;
           if (normalizePrioritySetting(normalizedMap[type]) !== "priority") continue;
 
           const groupId = `${type}-${cellKey(r, c)}`;
@@ -2164,61 +2154,66 @@ No valid start cells one row below the lowest used row.`,
   }
 
   function solveGrid({
-  grid,
-  gateType = "standard",
-  eventType = null,
-  objectPriorities = null,
-  objectPriorityMap = null,
-  getCellObjectType = null,
-  solverMode = "standard",
-}) {
-  const normalizedObjectPriorities = normalizeObjectPriorities(
-    objectPriorities || GLOBAL_OBJECT_PRIORITIES
-  );
-  const normalizedSolverMode = normalizeSolverMode(solverMode);
-  const rawSolverMode = String(solverMode || "standard").trim().toLowerCase();
+    grid,
+    gateType = "standard",
+    eventType = null,
+    objectPriorities = null,
+    objectPriorityMap = null,
+    getCellObjectType = null,
+    solverMode = "standard",
+  }) {
+    const normalizedObjectPriorities = normalizeObjectPriorities(
+      objectPriorities || GLOBAL_OBJECT_PRIORITIES
+    );
+    const normalizedSolverMode = normalizeSolverMode(solverMode);
+    const rawSolverMode = String(solverMode || "standard").trim().toLowerCase();
 
-  let result;
+    let result;
 
-  if (rawSolverMode === "main_graveyard" || rawSolverMode === "graveyard") {
-    result = solveMainGraveyardNoGate({
-      grid,
-      gateType: "none",
-      eventType,
-      objectPriorities: normalizedObjectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-    });
-  } else if (normalizedSolverMode === "custom") {
-    result = solveCustom({
-      grid,
-      gateType,
-      eventType,
-      objectPriorities: normalizedObjectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-    });
-  } else {
-    result = solveStandard({
-      grid,
-      gateType,
-      eventType,
-      objectPriorities: normalizedObjectPriorities,
-      objectPriorityMap,
-      getCellObjectType,
-    });
+    // FIX:
+    // Custom must always go through solveCustom first.
+    // This prevents Main graveyard mode from forcing default emblem/essence targeting
+    // when the player is trying to choose custom objectives.
+    if (normalizedSolverMode === "custom") {
+      result = solveCustom({
+        grid,
+        gateType,
+        eventType,
+        objectPriorities: normalizedObjectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+    } else if (rawSolverMode === "main_graveyard" || rawSolverMode === "graveyard") {
+      result = solveMainGraveyardNoGate({
+        grid,
+        gateType: "none",
+        eventType,
+        objectPriorities: normalizedObjectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+    } else {
+      result = solveStandard({
+        grid,
+        gateType,
+        eventType,
+        objectPriorities: normalizedObjectPriorities,
+        objectPriorityMap,
+        getCellObjectType,
+      });
+    }
+
+    window.lastSolveResult = result;
+    window.currentSolveResult = result;
+    window.ZMLastSolveResult = result;
+
+    console.log("ZM last solve result:", result);
+    if (result?.message) console.log(result.message);
+    if (result?.routeAnalysis) console.table(result.routeAnalysis);
+
+    return result;
   }
 
-  window.lastSolveResult = result;
-  window.currentSolveResult = result;
-  window.ZMLastSolveResult = result;
-
-  console.log("ZM last solve result:", result);
-  if (result?.message) console.log(result.message);
-  if (result?.routeAnalysis) console.table(result.routeAnalysis);
-
-  return result;
-}
   window.ZMPathfinderSolver = {
     solverVersion: SOLVER_VERSION,
     numberCost,
