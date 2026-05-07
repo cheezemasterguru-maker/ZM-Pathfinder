@@ -1652,7 +1652,14 @@ No valid non-loop red path to gate.`,
           const type = String(getCellObjectType(r, c) || "").trim().toLowerCase();
           if (!type) continue;
           if (type === "gate" || type === "shaft" || type === "bubble" || type === "essence") continue;
-          if (normalizePrioritySetting(normalizedMap[type]) !== "priority") continue;
+          const prioritySetting =
+  normalizePrioritySetting(normalizedMap[type]) === "priority" ||
+  (type === "badge" && normalizePrioritySetting(normalizedMap.emblem) === "priority") ||
+  (type === "badges" && normalizePrioritySetting(normalizedMap.emblems) === "priority") ||
+  (type === "emblem" && normalizePrioritySetting(normalizedMap.badge) === "priority") ||
+  (type === "emblems" && normalizePrioritySetting(normalizedMap.badges) === "priority");
+
+if (!prioritySetting) continue;
 
           const groupId = `${type}-${cellKey(r, c)}`;
           if (seen.has(groupId)) continue;
