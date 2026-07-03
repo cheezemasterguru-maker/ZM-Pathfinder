@@ -517,16 +517,95 @@ window.ZM_SHAFT_DATA = {
       }
     },
 
-    "4th of July": {
-      "Mine 1": {},
-      "Mine 2": {},
-      "Mine 3": {},
-      "Mine 4": {},
-      "Mine 5": {},
-      "The Deep": {}
-    },
+    "4th Of July": {
+  "Mine 1": {
+    "Chamber 1": [
+      { shaftType: "Beryl", level: 3, auto: 3 },
+      { shaftType: "Quartz", level: 6, auto: 4 }
+    ],
+    "Chamber 2": [
+      { shaftType: "Cobalt", level: 5, auto: 4 },
+      { shaftType: "Amber", level: 7, auto: 3 }
+    ]
+  },
 
-    "Mystery Reef": {
+  "Mine 2": {
+    "Chamber 1": [
+      { shaftType: "Beryl", level: 4, auto: 5 },
+      { shaftType: "Quartz", level: 6, auto: 5 }
+    ],
+    "Chamber 2": [
+      { shaftType: "Cobalt", level: 8, auto: 6 },
+      { shaftType: "Amber", level: 10, auto: 6 },
+      { shaftType: "Ametrine", level: 12, auto: 5 }
+    ],
+    "Chamber 3": [
+      { shaftType: "Barite", level: 9, auto: 5 }
+    ]
+  },
+
+  "Mine 3": {
+    "Chamber 1": [
+      { shaftType: "Beryl", level: 5, auto: 7 },
+      { shaftType: "Quartz", level: 8, auto: 7 },
+      { shaftType: "Cobalt", level: 10, auto: 8 }
+    ],
+    "Chamber 2": [
+      { shaftType: "Amber", level: 8, auto: 7 },
+      { shaftType: "Ametrine", level: 14, auto: 7 },
+      { shaftType: "Barite", level: 17, auto: 8 }
+    ],
+    "Chamber 3": [
+      { shaftType: "Elendir", level: 15, auto: 7 },
+      { shaftType: "Lapis Lazuli", level: 20, auto: 6 }
+    ]
+  },
+
+  "Mine 4": {
+    "Chamber 1": [
+      { shaftType: "Beryl", level: 9, auto: 8 },
+      { shaftType: "Quartz", level: 11, auto: 8 }
+    ],
+    "Chamber 2": [
+      { shaftType: "Cobalt", level: 12, auto: 9 },
+      { shaftType: "Amber", level: 18, auto: 8 },
+      { shaftType: "Ametrine", level: 21, auto: 9 }
+    ],
+    "Chamber 3": [
+      { shaftType: "Barite", level: 19, auto: 9 },
+      { shaftType: "Elendir", level: 25, auto: 8 },
+      { shaftType: "Lapis Lazuli", level: 27, auto: 9 }
+    ],
+    "Chamber 4": [
+      { shaftType: "Aventurine", level: 31, auto: 8 }
+    ]
+  },
+
+  "Mine 5": {
+    "Chamber 1": [
+      { shaftType: "Beryl", level: 16, auto: 9 },
+      { shaftType: "Quartz", level: 19, auto: 9 },
+      { shaftType: "Cobalt", level: 23, auto: 10 }
+    ],
+    "Chamber 2": [
+      { shaftType: "Amber", level: 27, auto: 9 },
+      { shaftType: "Ametrine", level: 29, auto: 10 }
+    ],
+    "Chamber 3": [
+      { shaftType: "Barite", level: 32, auto: 11 },
+      { shaftType: "Elendir", level: 35, auto: 10 },
+      { shaftType: "Lapis Lazuli", level: 37, auto: 11 }
+    ],
+    "Chamber 4": [
+      { shaftType: "Aventurine", level: 41, auto: 11 }
+    ]
+  },
+
+      "The Deep": {
+    }
+  },
+
+  "Mystery Reef": {
   "Mine 1": {
     "Chamber 1": [
       { shaftType: "Beryl", level: 3, auto: 3 },
