@@ -46,7 +46,7 @@ window.ZM_MAP_LIBRARY = {
       "The Deep": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
     },
 
-    "4th of July": {
+    "4th Of July": {
       "Mine 1": ["Chamber 1", "Chamber 2"],
       "Mine 2": ["Chamber 1", "Chamber 2", "Chamber 3"],
       "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
