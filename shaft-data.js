@@ -602,7 +602,26 @@ window.ZM_SHAFT_DATA = {
   },
 
       "The Deep": {
-    }
+  "Chamber 1": [
+    { shaftType: "Beryl", level: 17, auto: 11 },
+    { shaftType: "Quartz", level: 20, auto: 11 },
+    { shaftType: "Cobalt", level: 24, auto: 12 }
+  ],
+
+  "Chamber 2": [
+    { shaftType: "Amber", level: 28, auto: 12 },
+    { shaftType: "Ametrine", level: 30, auto: 12 }
+  ],
+
+  "Chamber 3": [
+    { shaftType: "Barite", level: 33, auto: 12 },
+    { shaftType: "Elendir", level: 36, auto: 12 },
+    { shaftType: "Lapis Lazuli", level: 38, auto: 12 }
+  ],
+
+  "Chamber 4": [
+    { shaftType: "Aventurine", level: 42, auto: 12 }
+  ]
   },
 
   "Mystery Reef": {
