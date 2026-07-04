@@ -2313,11 +2313,12 @@ window.ZM_MAP_DATA = {
       [54, 44, "X", 43, 53, 42, 52],
       [43, 53, 42, 51, 41, 54, 40],
       [52, 41, 50, 40, "", 39, 51]
-                          ]
+    ]
     }
-  },
+  }
+},
 
-  "Mystery Reef": {
+"Mystery Reef": {
   "Mine 1": {
     "Chamber 1": {
       title: "Mystery Reef - Mine 1 - Chamber 1",
@@ -2854,4 +2855,4 @@ window.ZM_MAP_DATA = {
       "The Deep": {}
     }
   }
-};
+}};
