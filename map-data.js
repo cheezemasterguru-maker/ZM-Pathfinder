@@ -2216,7 +2216,7 @@ window.ZM_MAP_DATA = {
 
   "The Deep": {
   "Chamber 1": {
-    title: "4th of July - The Deep - Chamber 1",
+    title: "4th Of July - The Deep - Chamber 1",
     gateType: "standard",
     grid: [
       [25, 19, 29, 18, 30, 26, "X"],
@@ -2234,7 +2234,7 @@ window.ZM_MAP_DATA = {
   },
 
   "Chamber 2": {
-    title: "4th of July - The Deep - Chamber 2",
+    title: "4th Of July - The Deep - Chamber 2",
     gateType: "standard",
     grid: [
       ["X", 30, 35, 26, 35, 36, 25],
@@ -2252,7 +2252,7 @@ window.ZM_MAP_DATA = {
   },
 
   "Chamber 3": {
-    title: "4th of July - The Deep - Chamber 3",
+    title: "4th Of July - The Deep - Chamber 3",
     gateType: "standard",
     grid: [
       ["X", 42, 34, 42, 43, 41, 32],
@@ -2272,7 +2272,7 @@ window.ZM_MAP_DATA = {
   },
 
   "Chamber 4": {
-    title: "4th of July - The Deep - Chamber 4",
+    title: "4th Of July - The Deep - Chamber 4",
     gateType: "standard",
     grid: [
       [40, 52, 53, 48, 41, 53, "X"],
@@ -2292,7 +2292,7 @@ window.ZM_MAP_DATA = {
   },
 
   "Graveyard": {
-    title: "4th of July - The Deep - Graveyard",
+    title: "4th Of July - The Deep - Graveyard",
     gateType: "end",
     grid: [
       ["X", 63, 59, 65, 62, 67, 70],
