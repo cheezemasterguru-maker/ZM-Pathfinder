@@ -619,9 +619,10 @@ window.ZM_SHAFT_DATA = {
     { shaftType: "Lapis Lazuli", level: 38, auto: 12 }
   ],
 
-  "Chamber 4": [
-    { shaftType: "Aventurine", level: 42, auto: 12 }
-  ]
+        "Chamber 4": [
+        { shaftType: "Aventurine", level: 42, auto: 12 }
+      ]
+    }
   },
 
   "Mystery Reef": {
