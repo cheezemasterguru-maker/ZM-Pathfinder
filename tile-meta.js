@@ -2699,7 +2699,7 @@ window.ZM_TILE_META = {
 }
 },
 
-    "4th of July": {
+    "4th Of July": {
   "Mine 1": {
     "Chamber 1": {
       tiles: {
