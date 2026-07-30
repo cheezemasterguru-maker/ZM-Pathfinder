@@ -64,6 +64,16 @@ window.ZM_MAP_LIBRARY = {
       "The Deep": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
     },
 
+"Happy Birthday Party": {
+      "Mine 1": ["Chamber 1", "Chamber 2"],
+      "Mine 2": ["Chamber 1", "Chamber 2", "Chamber 3"],
+      "Mine 3": ["Chamber 1", "Chamber 2", "Chamber 3"],
+      "Mine 4": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
+      "Mine 5": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4"],
+      "Mine 6": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"],
+      "The Deep": ["Chamber 1", "Chamber 2", "Chamber 3", "Chamber 4", "Graveyard"]
+    },
+
     "Teamwork Festival": {
       "Mine 1": ["Chamber 1", "Chamber 2"],
       "Mine 2": ["Chamber 1", "Chamber 2", "Chamber 3"],
