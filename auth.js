@@ -5,7 +5,6 @@ const SESSION_STORAGE_KEY = "zm_pathfinder_beta_session";
 
 const DEFAULT_TESTERS = [
   { name: "CheezeMasterGuru", id: "7625451!", isAdmin: true },
-  { name: "AniLaBanani", id: "23358613", isAdmin: false },
   { name: "ChristopherH", id: "17462546", isAdmin: false },
   { name: "Azshannia", id: "13276937", isAdmin: false },
   { name: "Sonlite", id: "19540845", isAdmin: false },
@@ -13,18 +12,8 @@ const DEFAULT_TESTERS = [
   { name: "Garon98", id: "4120350", isAdmin: false },
   { name: "XCONN6286", id: "12507785", isAdmin: false },
   { name: "FS1997", id: "19770641", isAdmin: false },
-  { name: "bball523", id: "891092", isAdmin: false },
-  { name: "Norsixa", id: "22673958", isAdmin: false },
-  { name: "TheDude", id: "20750358", isAdmin: false },
-  { name: "Player21018271", id: "21018271", isAdmin: false },
-  { name: "Jetscavenger", id: "20087302", isAdmin: false },
-  { name: "Creafee", id: "2909004", isAdmin: false },
-  { name: "Yana2025", id: "13608092", isAdmin: false },
-  { name: "Okiehustle", id: "9614738", isAdmin: false },
   { name: "Pastafarian42", id: "20450746", isAdmin: false },
-  { name: "Sol", id: "23528629", isAdmin: false },
-  { name: "Karen", id: "12152109", isAdmin: false },
-  { name: "Zonkers", id: "22890521", isAdmin: false }
+  { name: "Karen", id: "12152109", isAdmin: false }
 ];
 
 window.currentTester = null;
