@@ -2817,6 +2817,16 @@ window.ZM_MAP_DATA = {
   }
   },
 
+    "Happy Birthday Party": {
+      "Mine 1": {},
+      "Mine 2": {},
+      "Mine 3": {},
+      "Mine 4": {},
+      "Mine 5": {},
+      "Mine 6": {},
+      "The Deep": {}
+    },
+
     "Teamwork Festival": {
       "Mine 1": {},
       "Mine 2": {},
