@@ -3975,10 +3975,249 @@ window.ZM_TILE_META = {
 },
 
     "Teamwork Festival": {
-      "Mine 1": {},
-      "Mine 2": {},
-      "Mine 3": {},
-      "Mine 4": {},
+  "Mine 1": {
+    "Chamber 1": {
+      tiles: {
+        "0,2": { object: "emblems" },
+        "0,3": { object: "chest", subtype: "iron" },
+        "0,5": { object: "essence" },
+        "1,1": { object: "chest", subtype: "wood" },
+        "1,5": { object: "keys" },
+        "2,4": { object: "chest", subtype: "wood" },
+        "4,3": { object: "essence" },
+        "5,0": { object: "essence" },
+        "5,1": { object: "chest", subtype: "wood" },
+        "5,4": { object: "chest", subtype: "wood" },
+        "6,3": { object: "keys" },
+        "7,3": { object: "emblems" }
+      }
+    },
+
+    "Chamber 2": {
+      tiles: {
+        "0,2": { object: "emblems" },
+        "1,3": { object: "keys" },
+        "1,4": { object: "essence" },
+        "2,1": { object: "chest", subtype: "wood" },
+        "3,4": { object: "emblems" },
+        "5,3": { object: "essence" },
+        "6,6": { object: "chest", subtype: "wood" },
+        "7,4": { object: "keys" }
+      }
+    }
+  },
+
+  "Mine 2": {
+    "Chamber 1": {
+      tiles: {
+        "0,1": { object: "chest", subtype: "wood" },
+        "0,4": { object: "emblems" },
+        "1,3": { object: "chest", subtype: "iron" },
+        "1,5": { object: "emblems" },
+        "2,4": { object: "essence" },
+        "3,3": { object: "keys" },
+        "4,2": { object: "chest", subtype: "wood" },
+        "5,1": { object: "essence" },
+        "6,2": { object: "emblems" },
+        "7,5": { object: "emblems" },
+        "8,4": { object: "essence" },
+        "8,6": { object: "chest", subtype: "wood" }
+      }
+    },
+
+    "Chamber 2": {
+      tiles: {
+        "0,0": { object: "essence" },
+        "0,3": { object: "emblems" },
+        "1,0": { object: "emblems" },
+        "1,2": { object: "keys" },
+        "1,4": { object: "chest", subtype: "iron" },
+        "3,2": { object: "essence" },
+        "3,4": { object: "essence" },
+        "4,4": { object: "emblems" },
+        "4,5": { object: "essence" },
+        "5,2": { object: "emblems" },
+        "5,4": { object: "chest", subtype: "wood" },
+        "6,3": { object: "essence" },
+        "6,5": { object: "keys" },
+        "7,3": { object: "chest", subtype: "wood" }
+      }
+    },
+
+    "Chamber 3": {
+      tiles: {
+        "0,2": { object: "essence" },
+        "0,3": { object: "emblems" },
+        "1,1": { object: "chest", subtype: "iron" },
+        "1,4": { object: "essence" },
+        "1,5": { object: "chest", subtype: "wood" },
+        "2,3": { object: "keys" },
+        "3,4": { object: "essence" },
+        "4,2": { object: "emblems" },
+        "5,4": { object: "keys" },
+        "6,1": { object: "essence" },
+        "6,4": { object: "chest", subtype: "wood" },
+        "6,5": { object: "emblems" }
+      }
+    }
+  },
+
+  "Mine 3": {
+    "Chamber 1": {
+      tiles: {
+        "1,1": { object: "essence" },
+        "1,3": { object: "emblems" },
+        "1,5": { object: "keys" },
+        "2,3": { object: "chest", subtype: "wood" },
+        "2,4": { object: "essence" },
+        "3,2": { object: "emblems" },
+        "4,5": { object: "chest", subtype: "wood" },
+        "5,0": { object: "emblems" },
+        "6,1": { object: "essence" },
+        "6,3": { object: "chest", subtype: "wood" },
+        "6,4": { object: "emblems" },
+        "8,3": { object: "keys" },
+        "9,5": { object: "essence" },
+        "10,4": { object: "chest", subtype: "wood" }
+      }
+    },
+
+    "Chamber 2": {
+      tiles: {
+        "1,2": { object: "keys" },
+        "1,5": { object: "chest", subtype: "wood" },
+        "2,1": { object: "chest", subtype: "iron" },
+        "2,3": { object: "essence" },
+        "3,2": { object: "emblems" },
+        "4,5": { object: "emblems" },
+        "5,2": { object: "essence" },
+        "6,4": { object: "essence" },
+        "7,0": { object: "essence" },
+        "7,3": { object: "emblems" },
+        "8,2": { object: "chest", subtype: "wood" },
+        "9,3": { object: "essence" },
+        "9,6": { object: "emblems" },
+        "10,4": { object: "keys" },
+        "11,6": { object: "chest", subtype: "wood" }
+      }
+    },
+
+    "Chamber 3": {
+      tiles: {
+        "0,2": { object: "essence" },
+        "2,3": { object: "chest", subtype: "steel" },
+        "2,4": { object: "emblems" },
+        "2,5": { object: "essence" },
+        "3,2": { object: "emblems" },
+        "3,4": { object: "keys" },
+        "4,1": { object: "keys" },
+        "5,2": { object: "chest", subtype: "iron" },
+        "7,3": { object: "chest", subtype: "wood" },
+        "7,4": { object: "emblems" },
+        "8,5": { object: "chest", subtype: "wood" },
+        "9,3": { object: "keys" },
+        "9,5": { object: "essence" },
+        "10,0": { object: "emblems" },
+        "10,2": { object: "essence" }
+      }
+    }
+  },
+
+  "Mine 4": {
+    "Chamber 1": {
+      tiles: {
+        "1,0": { object: "essence" },
+        "1,3": { object: "essence" },
+        "1,5": { object: "essence" },
+        "1,6": { object: "chest", subtype: "wood" },
+        "2,1": { object: "emblems" },
+        "2,2": { object: "keys" },
+        "2,4": { object: "emblems" },
+        "3,3": { object: "essence" },
+        "5,3": { object: "keys" },
+        "6,2": { object: "essence" },
+        "6,4": { object: "essence" },
+        "7,5": { object: "emblems" },
+        "8,3": { object: "chest", subtype: "wood" },
+        "9,0": { object: "emblems" },
+        "9,5": { object: "essence" }
+      }
+    },
+
+    "Chamber 2": {
+      tiles: {
+        "1,2": { object: "chest", subtype: "steel" },
+        "1,5": { object: "essence" },
+        "2,3": { object: "essence" },
+        "2,4": { object: "essence" },
+        "3,2": { object: "emblems" },
+        "5,5": { object: "keys" },
+        "5,6": { object: "essence" },
+        "6,4": { object: "essence" },
+        "6,6": { object: "emblems" },
+        "7,2": { object: "chest", subtype: "iron" },
+        "7,3": { object: "essence" },
+        "8,0": { object: "emblems" },
+        "8,1": { object: "keys" },
+        "8,2": { object: "essence" },
+        "9,1": { object: "essence" },
+        "10,0": { object: "chest", subtype: "wood" }
+      }
+    },
+
+    "Chamber 3": {
+      tiles: {
+        "1,0": { object: "essence" },
+        "1,1": { object: "essence" },
+        "1,4": { object: "emblems" },
+        "2,0": { object: "emblems" },
+        "2,2": { object: "keys" },
+        "3,1": { object: "chest", subtype: "wood" },
+        "3,3": { object: "essence" },
+        "5,2": { object: "essence" },
+        "5,4": { object: "chest", subtype: "iron" },
+        "5,6": { object: "emblems" },
+        "6,6": { object: "essence" },
+        "7,3": { object: "chest", subtype: "wood" },
+        "8,1": { object: "emblems" },
+        "8,2": { object: "essence" },
+        "8,3": { object: "keys" },
+        "9,4": { object: "essence" },
+        "10,2": { object: "chest", subtype: "wood" },
+        "11,2": { object: "essence" },
+        "11,5": { object: "emblems" },
+        "11,6": { object: "essence" }
+      }
+    },
+
+    "Chamber 4": {
+      tiles: {
+        "0,6": { object: "emblems" },
+        "2,1": { object: "keys" },
+        "2,2": { object: "essence" },
+        "2,4": { object: "essence" },
+        "3,3": { object: "chest", subtype: "steel" },
+        "3,5": { object: "chest", subtype: "silver" },
+        "4,1": { object: "emblems" },
+        "4,2": { object: "essence" },
+        "4,6": { object: "emblems" },
+        "6,2": { object: "emblems" },
+        "6,5": { object: "chest", subtype: "steel" },
+        "7,4": { object: "essence" },
+        "7,6": { object: "essence" },
+        "8,5": { object: "chest", subtype: "iron" },
+        "9,0": { object: "chest", subtype: "wood" },
+        "9,3": { object: "keys" },
+        "9,4": { object: "emblems" },
+        "10,1": { object: "chest", subtype: "wood" },
+        "10,2": { object: "essence" },
+        "12,4": { object: "essence" },
+        "12,5": { object: "emblems" },
+        "13,3": { object: "emblems" }
+      }
+    }
+  }
+},
       "Mine 5": {},
       "The Deep": {}
     },
