@@ -4190,7 +4190,7 @@ window.ZM_TILE_META = {
       }
     },
 
-    "Chamber 4": {
+        "Chamber 4": {
       tiles: {
         "0,6": { object: "emblems" },
         "2,1": { object: "keys" },
@@ -4216,11 +4216,11 @@ window.ZM_TILE_META = {
         "13,3": { object: "emblems" }
       }
     }
-  }
+  },
+
+  "Mine 5": {},
+  "The Deep": {}
 },
-      "Mine 5": {},
-      "The Deep": {}
-    },
 
     "Halloween": {
       "Mine 1": {},
