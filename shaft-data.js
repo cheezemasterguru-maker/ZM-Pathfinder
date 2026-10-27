@@ -960,7 +960,7 @@ window.ZM_SHAFT_DATA = {
     ],
     "Chamber 3": [
       { shaftType: "Barite", level: 18, auto: 9 },
-      { shaftType: "Elendir", level: 22, auto: 9 },
+      { shaftType: "Elendir", level: 22, auto: 8 },
       { shaftType: "Lapis Lazuli", level: 24, auto: 9 }
     ],
     "Chamber 4": [
