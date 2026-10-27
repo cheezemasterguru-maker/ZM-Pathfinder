@@ -4084,13 +4084,13 @@ window.ZM_MAP_DATA = {
         ["X", 51, 63, 63, 63, 63, "X"]
       ]
     }
-    },
+      },
   "The Deep": {
     "Chamber 1": {
       title: "Halloween - The Deep - Chamber 1",
       gateType: "standard",
       grid: [
-        [19, 28, 20, 19, 24, 19, "B"],
+        [19, 28, 20, 23, 24, 19, "B"],
         [26, 30, 29, "X", "X", 22, 23],
         ["S", "S", 24, "X", "X", 18, 27],
         ["S", "S", 26, 25, 17, 19, "X"],
