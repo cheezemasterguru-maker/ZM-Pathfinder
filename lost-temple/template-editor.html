@@ -1,1 +1,203 @@
-
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lost Temple — Historical Template Recorder</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#edf0f6;background:#111722}
+*{box-sizing:border-box}body{margin:0}header{background:#1c2738;border-bottom:1px solid #36465b;padding:16px 20px}
+h1{font-size:1.35rem;margin:0}h2{font-size:1.05rem;margin:0 0 12px}small,.muted{color:#aebdd0}
+main{max-width:1250px;margin:auto;padding:18px;display:grid;grid-template-columns:minmax(300px,1fr) minmax(280px,380px);gap:18px}
+.panel{background:#1b2636;border:1px solid #34465b;border-radius:12px;padding:16px;min-width:0}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:12px 0}
+label{font-size:.83rem;color:#c9d4e3;display:grid;gap:5px}
+select,input[type=file],button{background:#29384c;color:#f3f7ff;border:1px solid #536981;border-radius:7px;padding:9px;font:inherit}
+button{cursor:pointer}button:hover:not(:disabled){background:#38516d}button:disabled{opacity:.38;cursor:not-allowed}
+button.active{outline:2px solid #6acbff;background:#345779}
+button.primary{background:#136b9c}button.danger{background:#713a43}
+.gridwrap{overflow:auto;padding:6px}.board{--cols:4;display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:3px;max-width:620px;margin:12px auto;position:relative}
+.cell{aspect-ratio:1;min-width:0;padding:0;position:relative;border:2px solid #927447;background:#cba56d;border-radius:4px;color:#fff;display:grid;place-items:center;font-size:clamp(10px,1.7vw,17px);font-weight:700;text-shadow:0 1px 2px #111}
+.cell.placed{border-color:#f4f5ff}.cell.selected{outline:3px solid #70d7ff;z-index:2}
+.cell .tag{position:absolute;top:2px;left:3px;font-size:10px;opacity:.8}
+.cell .coord{position:absolute;bottom:2px;right:3px;font-size:9px;opacity:.8}
+.palette{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.piece{display:flex;gap:9px;align-items:center;text-align:left;font-size:.82rem;min-width:0}
+.swatch{width:29px;height:29px;flex:none;border-radius:5px;border:1px solid #ffffff66}
+.status{padding:10px;border-radius:8px;background:#12202f;white-space:pre-wrap;line-height:1.45;font-size:.85rem}
+.status.error{background:#482b35;color:#ffced4}.status.good{background:#1a453a;color:#b9ffe0}
+#screenshot{max-width:100%;max-height:380px;object-fit:contain;display:none;margin:10px auto;border:1px solid #536981}
+#saved{max-height:210px;overflow:auto}#saved button{width:100%;text-align:left;margin:3px 0}
+footer{max-width:1250px;margin:0 auto 25px;padding:0 18px;color:#aebdd0;font-size:.83rem}
+@media(max-width:800px){main{grid-template-columns:1fr}.board{max-width:520px}.cell{font-size:13px}}
+</style>
+</head>
+<body>
+<header><h1>Lost Temple · Historical Template Recorder</h1><small>Standalone administrator tool — no Pathfinder scripts or dependencies</small></header>
+<main>
+<section class="panel">
+<h2>Board setup</h2>
+<div class="controls">
+<label>Game version<select id="version"><option value="5">5-puzzle version</option><option value="6">6-puzzle version</option></select></label>
+<label>Level<select id="level"></select></label>
+<label>Template name<input id="name" value="" placeholder="e.g. Verified board 001" maxlength="100"></label>
+</div>
+<div class="controls">
+<button id="rotate">Rotate selected piece ↻</button><button id="undo">Undo</button><button id="clear" class="danger">Clear board</button>
+</div>
+<div class="muted" id="instructions">Select a piece, then tap its top-left placement cell. Tap a placed piece to select/remove it.</div>
+<div class="gridwrap"><div id="board" class="board" aria-label="Template grid"></div></div>
+<div id="status" class="status"></div>
+</section>
+<aside>
+<section class="panel">
+<h2>Pieces</h2><div id="palette" class="palette"></div>
+<div class="controls"><button id="erase">Remove piece tool</button></div>
+<div class="muted">Piece quantities are enforced. Touching is allowed; overlap is forbidden. Squares do not rotate.</div>
+</section>
+<section class="panel" style="margin-top:16px">
+<h2>Reference screenshot (optional)</h2>
+<label>Open image locally<input id="photo" type="file" accept="image/*"></label>
+<img id="screenshot" alt="Local reference screenshot">
+<small>The screenshot stays in your browser and is not included in exported templates.</small>
+</section>
+<section class="panel" style="margin-top:16px">
+<h2>Save / export</h2>
+<div class="controls"><button id="save" class="primary">Save verified template</button><button id="export">Export library JSON</button><button id="import">Import library JSON</button></div>
+<input type="file" id="jsonfile" accept=".json,application/json" hidden>
+<div id="saved"></div>
+<small>Saved templates live in this browser's local storage until exported. Export JSON regularly for server backups. A saved board is automatically checked against rotated/mirrored duplicates.</small>
+</section>
+</aside>
+</main>
+<footer>Template recording only. This page does not predict hidden tiles or alter the player solver. Only fully completed, inventory-valid boards can be saved.</footer>
+<script>
+'use strict';
+const TYPES={
+ blue:{label:'Blue',w:2,h:1,fill:'#277edc'},
+ green:{label:'Green',w:3,h:1,fill:'#26a957'},
+ yellow:{label:'Yellow',w:2,h:2,fill:'#e5b52c'},
+ purpleLight:{label:'Light purple',w:3,h:2,fill:'#b38ce5'},
+ purple:{label:'Purple',w:3,h:3,fill:'#883ed1'},
+ cyan:{label:'Light blue',w:1,h:1,fill:'#68d5ec'},
+ orange:{label:'Orange / yellow',w:5,h:1,fill:'linear-gradient(120deg,#ffce39,#f58b20)'},
+ red:{label:'Red',w:4,h:2,fill:'#d74b46'},
+ blueRed:{label:'Blue / red',w:4,h:4,fill:'linear-gradient(135deg,#2e7dd9 0%,#4b80d0 40%,#a44f85 65%,#df5347 100%)'}
+};
+const CONFIG={
+ common:{
+  1:{cols:4,rows:4,pieces:{blue:2,green:1,yellow:1}},
+  2:{cols:5,rows:5,pieces:{blue:2,green:2,purpleLight:1}},
+  3:{cols:6,rows:6,pieces:{purpleLight:2,yellow:2,blue:1,cyan:1}},
+  4:{cols:7,rows:6,pieces:{purpleLight:2,yellow:2,blue:1,green:2}}
+ },
+ purpleFinal:{cols:8,rows:8,pieces:{purple:2,yellow:2,green:2,blue:1}},
+ final:{cols:8,rows:8,pieces:{green:2,blue:2,orange:2,red:1,blueRed:1}}
+};
+const $=id=>document.getElementById(id);
+let version='5',level=1,placed=[],selected='blue',rotated=false,history=[];
+let library=[];
+try{library=JSON.parse(localStorage.getItem('lt_verified_templates_v1')||'[]');if(!Array.isArray(library))library=[]}catch{library=[]}
+function config(v=version,l=level){return l<=4?CONFIG.common[l]:v==='5'?CONFIG.final:l===5?CONFIG.purpleFinal:CONFIG.final}
+function count(type){return placed.filter(p=>p.type===type).length}
+function footprint(p){const t=TYPES[p.type],w=p.rotated?t.h:t.w,h=p.rotated?t.w:t.h;return {w,h,cells:Array.from({length:w*h},(_,i)=>[p.x+i%w,p.y+Math.floor(i/w)])}}
+function occupied(){const m=new Map();placed.forEach((p,i)=>footprint(p).cells.forEach(([x,y])=>m.set(`${x},${y}`,i)));return m}
+function snapshot(){history.push(JSON.stringify(placed));if(history.length>100)history.shift()}
+function choose(type){selected=type;rotated=false;render()}
+function render(){
+ const cfg=config();$('board').style.setProperty('--cols',cfg.cols);
+ const m=occupied(),b=$('board');b.innerHTML='';
+ for(let y=0;y<cfg.rows;y++)for(let x=0;x<cfg.cols;x++){
+  const cell=document.createElement('button');cell.type='button';cell.className='cell';const idx=m.get(`${x},${y}`);
+  if(idx!==undefined){const p=placed[idx],t=TYPES[p.type];cell.classList.add('placed');cell.style.background=t.fill;cell.title=t.label+' piece';cell.innerHTML=`<span class="coord">${String.fromCharCode(65+x)}${y+1}</span>`}
+  else{cell.title=`${String.fromCharCode(65+x)}${y+1}`;cell.innerHTML=`<span class="coord">${String.fromCharCode(65+x)}${y+1}</span>`}
+  cell.addEventListener('click',()=>clickCell(x,y));b.appendChild(cell)
+ }
+ const pal=$('palette');pal.innerHTML='';
+ Object.entries(cfg.pieces).forEach(([type,qty])=>{
+  const t=TYPES[type],n=count(type),btn=document.createElement('button');
+  btn.className='piece'+(selected===type?' active':'');btn.disabled=n>=qty&&selected!==type;
+  btn.innerHTML=`<span class="swatch"></span><span>${t.label}<br><small>${t.w}×${t.h} · ${n}/${qty} placed</small></span>`;
+  btn.querySelector('.swatch').style.background=t.fill;btn.onclick=()=>choose(type);pal.appendChild(btn);
+ });
+ $('erase').classList.toggle('active',selected==='erase');
+ const valid=validate();$('status').className='status '+(valid.complete?'good':'');
+ $('status').textContent=valid.message;
+ $('rotate').disabled=selected==='erase'||!TYPES[selected]||TYPES[selected].w===TYPES[selected].h;
+ $('rotate').textContent='Rotate selected piece ↻'+(rotated?' (rotated)':'');
+ $('undo').disabled=!history.length;
+ renderSaved();
+}
+function clickCell(x,y){
+ const cfg=config(),m=occupied(),i=m.get(`${x},${y}`);
+ if(i!==undefined){snapshot();placed.splice(i,1);render();return}
+ if(selected==='erase')return;
+ if(!cfg.pieces[selected]||count(selected)>=cfg.pieces[selected])return;
+ const p={type:selected,x,y,rotated},f=footprint(p);
+ if(f.cells.some(([a,b])=>a<0||b<0||a>=cfg.cols||b>=cfg.rows||m.has(`${a},${b}`))){alert('That piece would overlap another piece or extend outside the grid.');return}
+ snapshot();placed.push(p);render()
+}
+function validate(){
+ const cfg=config(),m=new Set();
+ for(const p of placed){if(!(p.type in cfg.pieces))return {complete:false,message:'Invalid piece type for this level.'};
+  for(const [x,y] of footprint(p).cells){const key=x+','+y;if(x<0||y<0||x>=cfg.cols||y>=cfg.rows||m.has(key))return {complete:false,message:'Invalid placement: overlap or outside grid.'};m.add(key)}
+ }
+ const missing=Object.entries(cfg.pieces).filter(([type,n])=>count(type)!==n).map(([type,n])=>`${TYPES[type].label}: ${count(type)}/${n}`);
+ return missing.length?{complete:false,message:'Incomplete — '+missing.join(' · ')}:{complete:true,message:`VALID COMPLETE BOARD — ${placed.length} pieces, ${m.size} occupied cells, ${cfg.cols*cfg.rows-m.size} empty cells. Ready to save.`}
+}
+function transformCells(cells,cols,rows,kind){
+ return cells.map(([x,y])=>{switch(kind){case 0:return [x,y];case 1:return [cols-1-x,y];case 2:return [x,rows-1-y];case 3:return [cols-1-x,rows-1-y];case 4:return [y,cols-1-x];case 5:return [cols-1-y,x];case 6:return [rows-1-y,cols-1-x];case 7:return [rows-1-y,x]}})}
+function signature(pieces,cfg){
+ const transforms=cfg.cols===cfg.rows?[0,1,2,3,4,5,6,7]:[0,1,2,3];
+ return transforms.map(k=>pieces.map(p=>{
+  const cells=transformCells(footprint(p).cells,cfg.cols,cfg.rows,k);
+  return p.type+':'+cells.map(([x,y])=>x+','+y).sort().join(';')
+ }).sort().join('|')).sort()[0]
+}
+function storage(){localStorage.setItem('lt_verified_templates_v1',JSON.stringify(library))}
+function renderSaved(){
+ const list=library.filter(t=>t.version===version&&t.level===level),el=$('saved');el.innerHTML=`<p class="muted">${list.length} saved for this version/level · ${library.length} total</p>`;
+ list.forEach(t=>{const btn=document.createElement('button');btn.textContent=t.name+' · '+t.id.slice(-6);btn.onclick=()=>{if(placed.length&&!confirm('Replace current board with saved template?'))return;placed=structuredClone(t.pieces);history=[];$('name').value=t.name;render()};el.appendChild(btn)})
+}
+function reset(){placed=[];history=[];selected=Object.keys(config().pieces)[0];rotated=false;render()}
+function levels(){const max=version==='5'?5:6;$('level').innerHTML=Array.from({length:max},(_,i)=>`<option value="${i+1}">Level ${i+1} (${config(version,i+1).cols}×${config(version,i+1).rows})</option>`).join('');level=Math.min(level,max);$('level').value=level}
+$('version').onchange=()=>{version=$('version').value;level=1;levels();reset()};
+$('level').onchange=()=>{level=Number($('level').value);reset()};
+$('rotate').onclick=()=>{rotated=!rotated;render()};
+$('erase').onclick=()=>choose('erase');
+$('undo').onclick=()=>{if(history.length){placed=JSON.parse(history.pop());render()}};
+$('clear').onclick=()=>{if(placed.length&& !confirm('Clear all placed pieces?'))return;snapshot();placed=[];render()};
+$('photo').onchange=e=>{const file=e.target.files?.[0];if(!file)return;const img=$('screenshot');if(img.dataset.url)URL.revokeObjectURL(img.dataset.url);img.dataset.url=URL.createObjectURL(file);img.src=img.dataset.url;img.style.display='block'};
+$('save').onclick=()=>{
+ const v=validate();if(!v.complete){alert(v.message);return}
+ const cfg=config(),sig=signature(placed,cfg);
+ if(library.some(t=>t.version===version&&t.level===level&&signature(t.pieces,cfg)===sig)){alert('This template already exists, including rotated/mirrored equivalents.');return}
+ const name=$('name').value.trim()||`Template ${library.length+1}`;
+ library.push({id:'lt-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),name,version,level,cols:cfg.cols,rows:cfg.rows,pieces:structuredClone(placed),recordedAt:new Date().toISOString()});
+ try{storage();render();alert('Verified template saved locally. Export JSON to back it up.')}catch(e){library.pop();alert('Browser storage failed: '+e.message)}
+};
+$('export').onclick=()=>{
+ const blob=new Blob([JSON.stringify({schema:'lost-temple-templates-v1',templates:library},null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='lost-temple-templates.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
+};
+$('import').onclick=()=>$('jsonfile').click();
+$('jsonfile').onchange=async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ try{
+  const data=JSON.parse(await file.text());if(data.schema!=='lost-temple-templates-v1'||!Array.isArray(data.templates))throw Error('Unsupported JSON format');
+  let added=0,skipped=0;
+  for(const t of data.templates){
+   const cfg=config(t.version,t.level);
+   if(!['5','6'].includes(t.version)||!Number.isInteger(t.level)||t.level<1||t.level>(t.version==='5'?5:6)||t.cols!==cfg.cols||t.rows!==cfg.rows||!Array.isArray(t.pieces)){skipped++;continue}
+   const old=placed,oldv=version,oldl=level;placed=t.pieces;version=t.version;level=t.level;
+   let valid;try{valid=validate().complete}catch{valid=false}
+   placed=old;version=oldv;level=oldl;
+   if(!valid||library.some(u=>u.version===t.version&&u.level===t.level&&signature(u.pieces,cfg)===signature(t.pieces,cfg))){skipped++;continue}
+   library.push(t);added++
+  }
+  storage();render();alert(`Imported ${added} templates; skipped ${skipped} invalid or duplicate entries.`)
+ }catch(err){alert('Import failed: '+err.message)}
+ e.target.value=''
+};
+levels();reset();
+</script>
+</body></html>
