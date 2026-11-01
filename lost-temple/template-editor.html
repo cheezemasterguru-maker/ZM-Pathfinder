@@ -20,7 +20,7 @@ button.primary{background:#136b9c}button.danger{background:#713a43}
 .cell.placed{border-color:#f4f5ff}.cell.selected{outline:3px solid #70d7ff;z-index:2}
 .cell .tag{position:absolute;top:2px;left:3px;font-size:10px;opacity:.8}
 .cell .coord{position:absolute;bottom:2px;right:3px;font-size:9px;opacity:.8}
-.palette{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.palette{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.palette .piece{padding:8px}
 .piece{display:flex;gap:9px;align-items:center;text-align:left;font-size:.82rem;min-width:0}
 .swatch{width:29px;height:29px;flex:none;border-radius:5px;border:1px solid #ffffff66}
 .status{padding:10px;border-radius:8px;background:#12202f;white-space:pre-wrap;line-height:1.45;font-size:.85rem}
@@ -45,15 +45,13 @@ footer{max-width:1250px;margin:0 auto 25px;padding:0 18px;color:#aebdd0;font-siz
 <div class="controls">
 <button id="rotate">Rotate selected piece ↻</button><button id="undo">Undo</button><button id="clear" class="danger">Clear board</button>
 </div>
-<div class="muted" id="instructions">Select a piece, then tap its top-left placement cell. Tap a placed piece to select/remove it.</div>
+<h2 style="margin-top:15px">Available pieces</h2><div id="palette" class="palette"></div><div class="muted" id="instructions">Select a piece, then tap its top-left cell to place it. Tap a placed piece to rotate it; double-tap to remove it. Invalid placements are silently ignored.</div>
 <div class="gridwrap"><div id="board" class="board" aria-label="Template grid"></div></div>
 <div id="status" class="status"></div>
 </section>
 <aside>
 <section class="panel">
-<h2>Pieces</h2><div id="palette" class="palette"></div>
-<div class="controls"><button id="erase">Remove piece tool</button></div>
-<div class="muted">Piece quantities are enforced. Touching is allowed; overlap is forbidden. Squares do not rotate.</div>
+<h2>Editing tips</h2><p class="muted">Pieces are selected above the grid. The selected orientation is shown in the piece button. Tap a placed rectangular piece once to rotate it in place. Double-tap any placed piece to remove it. Touching is allowed; overlapping is not.</p><div class="controls"><button id="erase">Remove piece tool</button></div>
 </section>
 <section class="panel" style="margin-top:16px">
 <h2>Reference screenshot (optional)</h2>
@@ -66,7 +64,7 @@ footer{max-width:1250px;margin:0 auto 25px;padding:0 18px;color:#aebdd0;font-siz
 <div class="controls"><button id="save" class="primary">Save verified template</button><button id="export">Export library JSON</button><button id="import">Import library JSON</button></div>
 <input type="file" id="jsonfile" accept=".json,application/json" hidden>
 <div id="saved"></div>
-<small>7×8 is available for Level 4 of the 6-puzzle version. The established piece inventory is retained.<br>Saved templates live in this browser's local storage until exported. Export JSON regularly for server backups. A saved board is automatically checked against rotated/mirrored duplicates.</small>
+<small>Each verified board automatically generates all distinct valid rotations and reflections. Duplicates are checked against the existing library before saving or importing. Templates are stored locally until exported; export JSON regularly for backups.</small>
 </section>
 </aside>
 </main>
@@ -77,7 +75,7 @@ const TYPES={
  blue:{label:'Blue',w:2,h:1,fill:'#277edc'},
  green:{label:'Green',w:3,h:1,fill:'#26a957'},
  yellow:{label:'Yellow',w:2,h:2,fill:'#e5b52c'},
- purpleLight:{label:'Light purple',w:3,h:2,fill:'#b38ce5'},
+ purpleLight:{label:'Pink purple',w:3,h:2,fill:'#D946C6'},
  purple:{label:'Purple',w:3,h:3,fill:'#883ed1'},
  cyan:{label:'Light blue',w:1,h:1,fill:'#68d5ec'},
  orange:{label:'Orange / yellow',w:5,h:1,fill:'linear-gradient(120deg,#ffce39,#f58b20)'},
@@ -96,6 +94,7 @@ const CONFIG={
 };
 const $=id=>document.getElementById(id);
 let dimensions='7x6',version='5',level=1,placed=[],selected='blue',rotated=false,history=[];
+let lastPieceTap={index:-1,time:0};
 let library=[];
 try{library=JSON.parse(localStorage.getItem('lt_verified_templates_v1')||'[]');if(!Array.isArray(library))library=[]}catch{library=[]}
 function config(v=version,l=level,d=dimensions){const base=l<=4?CONFIG.common[l]:v==='5'?CONFIG.final:l===5?CONFIG.purpleFinal:CONFIG.final;return v==='6'&&l===4&&d==='7x8'?{...base,cols:7,rows:8}:base}
@@ -103,8 +102,9 @@ function dimensionsUI(){const enabled=version==='6'&&level===4;$('dimensionsLabe
 function count(type){return placed.filter(p=>p.type===type).length}
 function footprint(p){const t=TYPES[p.type],w=p.rotated?t.h:t.w,h=p.rotated?t.w:t.h;return {w,h,cells:Array.from({length:w*h},(_,i)=>[p.x+i%w,p.y+Math.floor(i/w)])}}
 function occupied(){const m=new Map();placed.forEach((p,i)=>footprint(p).cells.forEach(([x,y])=>m.set(`${x},${y}`,i)));return m}
+function occupiedExcept(except){const m=new Set();placed.forEach((p,i)=>{if(i!==except)footprint(p).cells.forEach(([x,y])=>m.add(`${x},${y}`))});return m}
 function snapshot(){history.push(JSON.stringify(placed));if(history.length>100)history.shift()}
-function choose(type){selected=type;rotated=false;render()}
+function choose(type){if(selected===type&&TYPES[type]&&TYPES[type].w!==TYPES[type].h){rotated=!rotated}else{selected=type;rotated=false}render()}
 function render(){
  const cfg=config();$('board').style.setProperty('--cols',cfg.cols);
  const m=occupied(),b=$('board');b.innerHTML='';
@@ -118,7 +118,7 @@ function render(){
  Object.entries(cfg.pieces).forEach(([type,qty])=>{
   const t=TYPES[type],n=count(type),btn=document.createElement('button');
   btn.className='piece'+(selected===type?' active':'');btn.disabled=n>=qty&&selected!==type;
-  btn.innerHTML=`<span class="swatch"></span><span>${t.label}<br><small>${t.w}×${t.h} · ${n}/${qty} placed</small></span>`;
+  btn.innerHTML=`<span class="swatch"></span><span>${t.label}<br><small>${selected===type&&rotated?t.h+'×'+t.w:t.w+'×'+t.h} · ${n}/${qty} placed</small></span>`;
   btn.querySelector('.swatch').style.background=t.fill;btn.onclick=()=>choose(type);pal.appendChild(btn);
  });
  $('erase').classList.toggle('active',selected==='erase');
@@ -131,11 +131,23 @@ function render(){
 }
 function clickCell(x,y){
  const cfg=config(),m=occupied(),i=m.get(`${x},${y}`);
- if(i!==undefined){snapshot();placed.splice(i,1);render();return}
+ if(i!==undefined){
+  const now=Date.now();
+  if(selected==='erase'||(lastPieceTap.index===i&&now-lastPieceTap.time<420)){
+    snapshot();placed.splice(i,1);lastPieceTap={index:-1,time:0};render();return;
+  }
+  lastPieceTap={index:i,time:now};
+  const original=placed[i],t=TYPES[original.type];
+  if(t.w===t.h)return;
+  const candidate={...original,rotated:!original.rotated};
+  const other=occupiedExcept(i),f=footprint(candidate);
+  if(f.cells.some(([a,b])=>a<0||b<0||a>=cfg.cols||b>=cfg.rows||other.has(`${a},${b}`)))return;
+  snapshot();placed[i]=candidate;render();return;
+ }
  if(selected==='erase')return;
  if(!cfg.pieces[selected]||count(selected)>=cfg.pieces[selected])return;
  const p={type:selected,x,y,rotated},f=footprint(p);
- if(f.cells.some(([a,b])=>a<0||b<0||a>=cfg.cols||b>=cfg.rows||m.has(`${a},${b}`))){alert('That piece would overlap another piece or extend outside the grid.');return}
+ if(f.cells.some(([a,b])=>a<0||b<0||a>=cfg.cols||b>=cfg.rows||m.has(`${a},${b}`)))return
  snapshot();placed.push(p);render()
 }
 function validate(){
@@ -146,14 +158,66 @@ function validate(){
  const missing=Object.entries(cfg.pieces).filter(([type,n])=>count(type)!==n).map(([type,n])=>`${TYPES[type].label}: ${count(type)}/${n}`);
  return missing.length?{complete:false,message:'Incomplete — '+missing.join(' · ')}:{complete:true,message:`VALID COMPLETE BOARD — ${placed.length} pieces, ${m.size} occupied cells, ${cfg.cols*cfg.rows-m.size} empty cells. Ready to save.`}
 }
-function transformCells(cells,cols,rows,kind){
- return cells.map(([x,y])=>{switch(kind){case 0:return [x,y];case 1:return [cols-1-x,y];case 2:return [x,rows-1-y];case 3:return [cols-1-x,rows-1-y];case 4:return [y,cols-1-x];case 5:return [cols-1-y,x];case 6:return [rows-1-y,cols-1-x];case 7:return [rows-1-y,x]}})}
-function signature(pieces,cfg){
+// Generate all dimension-preserving elements of the rectangle/square symmetry group.
+function transformPoint(x,y,cols,rows,k){
+ switch(k){
+  case 0:return [x,y]; // identity
+  case 1:return [cols-1-x,y]; // horizontal reflection
+  case 2:return [x,rows-1-y]; // vertical reflection
+  case 3:return [cols-1-x,rows-1-y]; // half turn
+  case 4:return [rows-1-y,x]; // clockwise quarter turn (square only)
+  case 5:return [y,cols-1-x]; // counterclockwise quarter turn (square only)
+  case 6:return [y,x]; // main diagonal reflection (square only)
+  case 7:return [rows-1-y,cols-1-x]; // anti-diagonal reflection (square only)
+ }
+}
+function transformPieces(pieces,cfg,k){
+ return pieces.map(p=>{
+  const points=footprint(p).cells.map(([x,y])=>transformPoint(x,y,cfg.cols,cfg.rows,k));
+  const xs=points.map(a=>a[0]),ys=points.map(a=>a[1]);
+  const x=Math.min(...xs),y=Math.min(...ys),w=Math.max(...xs)-x+1,h=Math.max(...ys)-y+1,t=TYPES[p.type];
+  const rotated=(w===t.h&&h===t.w&&t.w!==t.h);
+  return {type:p.type,x,y,rotated};
+ });
+}
+function exactSignature(pieces){
+ return pieces.map(p=>p.type+':'+footprint(p).cells.map(([x,y])=>x+','+y).sort().join(';')).sort().join('|');
+}
+function variations(pieces,cfg){
  const transforms=cfg.cols===cfg.rows?[0,1,2,3,4,5,6,7]:[0,1,2,3];
- return transforms.map(k=>pieces.map(p=>{
-  const cells=transformCells(footprint(p).cells,cfg.cols,cfg.rows,k);
-  return p.type+':'+cells.map(([x,y])=>x+','+y).sort().join(';')
- }).sort().join('|')).sort()[0]
+ const seen=new Set(),out=[];
+ for(const k of transforms){
+  const transformed=transformPieces(pieces,cfg,k),sig=exactSignature(transformed);
+  if(!seen.has(sig)){seen.add(sig);out.push({pieces:transformed,signature:sig,transform:k})}
+ }
+ return out;
+}
+function signature(pieces,cfg){return variations(pieces,cfg).map(v=>v.signature).sort()[0]}
+function sameBoard(t,v,l,cfg){return t.version===v&&t.level===l&&t.cols===cfg.cols&&t.rows===cfg.rows}
+function existingSignatureSet(v,l,cfg){
+ return new Set(library.filter(t=>sameBoard(t,v,l,cfg)).map(t=>exactSignature(t.pieces)));
+}
+function appendVariations(pieces,meta,cfg){
+ const variants=variations(pieces,cfg),known=existingSignatureSet(meta.version,meta.level,cfg);
+ const canonical=signature(pieces,cfg);
+ let added=0;
+ for(const variant of variants){
+  if(known.has(variant.signature))continue;
+  const label=variant.transform===0?'Original':({
+   1:'Mirror left/right',2:'Mirror top/bottom',3:'Rotate 180°',
+   4:'Rotate 90° clockwise',5:'Rotate 90° counterclockwise',
+   6:'Mirror diagonal',7:'Mirror anti-diagonal'
+  })[variant.transform];
+  library.push({
+   id:'lt-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),
+   name:meta.name+' — '+label,version:meta.version,level:meta.level,
+   cols:cfg.cols,rows:cfg.rows,pieces:variant.pieces,
+   recordedAt:meta.recordedAt||new Date().toISOString(),
+   familyId:canonical,transformation:label
+  });
+  known.add(variant.signature);added++;
+ }
+ return {added,total:variants.length};
 }
 function storage(){localStorage.setItem('lt_verified_templates_v1',JSON.stringify(library))}
 function renderSaved(){
@@ -173,10 +237,15 @@ $('photo').onchange=e=>{const file=e.target.files?.[0];if(!file)return;const img
 $('save').onclick=()=>{
  const v=validate();if(!v.complete){alert(v.message);return}
  const cfg=config(),sig=signature(placed,cfg);
- if(library.some(t=>t.version===version&&t.level===level&&t.cols===cfg.cols&&t.rows===cfg.rows&&signature(t.pieces,cfg)===sig)){alert('This template already exists, including rotated/mirrored equivalents.');return}
- const name=$('name').value.trim()||`Template ${library.length+1}`;
- library.push({id:'lt-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),name,version,level,cols:cfg.cols,rows:cfg.rows,pieces:structuredClone(placed),recordedAt:new Date().toISOString()});
- try{storage();render();alert('Verified template saved locally. Export JSON to back it up.')}catch(e){library.pop();alert('Browser storage failed: '+e.message)}
+ if(library.some(t=>sameBoard(t,version,level,cfg)&&signature(t.pieces,cfg)===sig)){
+  $('status').className='status error';
+  $('status').textContent='Duplicate: this layout or one of its rotations/mirrors already exists in the library.';
+  return;
+ }
+ const name=$('name').value.trim()||`Template ${library.length+1}`,before=library.length;
+ const result=appendVariations(placed,{name,version,level},cfg);
+ try{storage();render();$('status').className='status good';$('status').textContent=`Saved ${result.added} distinct orientations (${result.total} possible). Duplicate orientations were skipped.`}
+ catch(e){library.length=before;alert('Browser storage failed: '+e.message)}
 };
 $('export').onclick=()=>{
  const blob=new Blob([JSON.stringify({schema:'lost-temple-templates-v1',templates:library},null,2)],{type:'application/json'});
@@ -189,15 +258,17 @@ $('jsonfile').onchange=async e=>{
   const data=JSON.parse(await file.text());if(data.schema!=='lost-temple-templates-v1'||!Array.isArray(data.templates))throw Error('Unsupported JSON format');
   let added=0,skipped=0;
   for(const t of data.templates){
+   if(!['5','6'].includes(t.version)||!Number.isInteger(t.level)||t.level<1||t.level>(t.version==='5'?5:6)||!Array.isArray(t.pieces)){skipped++;continue}
    const cfg=config(t.version,t.level,t.cols+'x'+t.rows);
-   if(!['5','6'].includes(t.version)||!Number.isInteger(t.level)||t.level<1||t.level>(t.version==='5'?5:6)||t.cols!==cfg.cols||t.rows!==cfg.rows||!Array.isArray(t.pieces)){skipped++;continue}
-   const old=placed,oldv=version,oldl=level,oldd=dimensions;placed=t.pieces;version=t.version;level=t.level;dimensions=t.cols+'x'+t.rows;
-   let valid;try{valid=validate().complete}catch{valid=false}
+   if(t.cols!==cfg.cols||t.rows!==cfg.rows){skipped++;continue}
+   const old=placed,oldv=version,oldl=level,oldd=dimensions;
+   placed=t.pieces;version=t.version;level=t.level;dimensions=t.cols+'x'+t.rows;
+   let valid=false;try{valid=validate().complete}catch{}
    placed=old;version=oldv;level=oldl;dimensions=oldd;
-   if(!valid||library.some(u=>u.version===t.version&&u.level===t.level&&u.cols===t.cols&&u.rows===t.rows&&signature(u.pieces,cfg)===signature(t.pieces,cfg))){skipped++;continue}
-   library.push(t);added++
+   if(!valid||library.some(u=>sameBoard(u,t.version,t.level,cfg)&&signature(u.pieces,cfg)===signature(t.pieces,cfg))){skipped++;continue}
+   added+=appendVariations(t.pieces,{name:t.name||'Imported template',version:t.version,level:t.level,recordedAt:t.recordedAt},cfg).added;
   }
-  storage();render();alert(`Imported ${added} templates; skipped ${skipped} invalid or duplicate entries.`)
+  storage();render();alert(`Added ${added} unique orientations; skipped ${skipped} invalid or duplicate input entries.`)
  }catch(err){alert('Import failed: '+err.message)}
  e.target.value=''
 };
