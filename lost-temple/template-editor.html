@@ -39,6 +39,7 @@ footer{max-width:1250px;margin:0 auto 25px;padding:0 18px;color:#aebdd0;font-siz
 <div class="controls">
 <label>Game version<select id="version"><option value="5">5-puzzle version</option><option value="6">6-puzzle version</option></select></label>
 <label>Level<select id="level"></select></label>
+<label id="dimensionsLabel" style="display:none">Grid dimensions<select id="dimensions"><option value="7x6">7 wide × 6 high</option><option value="7x8">7 wide × 8 high</option></select></label>
 <label>Template name<input id="name" value="" placeholder="e.g. Verified board 001" maxlength="100"></label>
 </div>
 <div class="controls">
@@ -65,7 +66,7 @@ footer{max-width:1250px;margin:0 auto 25px;padding:0 18px;color:#aebdd0;font-siz
 <div class="controls"><button id="save" class="primary">Save verified template</button><button id="export">Export library JSON</button><button id="import">Import library JSON</button></div>
 <input type="file" id="jsonfile" accept=".json,application/json" hidden>
 <div id="saved"></div>
-<small>Saved templates live in this browser's local storage until exported. Export JSON regularly for server backups. A saved board is automatically checked against rotated/mirrored duplicates.</small>
+<small>7×8 is available for Level 4 of the 6-puzzle version. The established piece inventory is retained.<br>Saved templates live in this browser's local storage until exported. Export JSON regularly for server backups. A saved board is automatically checked against rotated/mirrored duplicates.</small>
 </section>
 </aside>
 </main>
@@ -94,10 +95,11 @@ const CONFIG={
  final:{cols:8,rows:8,pieces:{green:2,blue:2,orange:2,red:1,blueRed:1}}
 };
 const $=id=>document.getElementById(id);
-let version='5',level=1,placed=[],selected='blue',rotated=false,history=[];
+let dimensions='7x6',version='5',level=1,placed=[],selected='blue',rotated=false,history=[];
 let library=[];
 try{library=JSON.parse(localStorage.getItem('lt_verified_templates_v1')||'[]');if(!Array.isArray(library))library=[]}catch{library=[]}
-function config(v=version,l=level){return l<=4?CONFIG.common[l]:v==='5'?CONFIG.final:l===5?CONFIG.purpleFinal:CONFIG.final}
+function config(v=version,l=level,d=dimensions){const base=l<=4?CONFIG.common[l]:v==='5'?CONFIG.final:l===5?CONFIG.purpleFinal:CONFIG.final;return v==='6'&&l===4&&d==='7x8'?{...base,cols:7,rows:8}:base}
+function dimensionsUI(){const enabled=version==='6'&&level===4;$('dimensionsLabel').style.display=enabled?'grid':'none';$('dimensions').value=dimensions}
 function count(type){return placed.filter(p=>p.type===type).length}
 function footprint(p){const t=TYPES[p.type],w=p.rotated?t.h:t.w,h=p.rotated?t.w:t.h;return {w,h,cells:Array.from({length:w*h},(_,i)=>[p.x+i%w,p.y+Math.floor(i/w)])}}
 function occupied(){const m=new Map();placed.forEach((p,i)=>footprint(p).cells.forEach(([x,y])=>m.set(`${x},${y}`,i)));return m}
@@ -155,13 +157,14 @@ function signature(pieces,cfg){
 }
 function storage(){localStorage.setItem('lt_verified_templates_v1',JSON.stringify(library))}
 function renderSaved(){
- const list=library.filter(t=>t.version===version&&t.level===level),el=$('saved');el.innerHTML=`<p class="muted">${list.length} saved for this version/level · ${library.length} total</p>`;
+ const cfg=config();const list=library.filter(t=>t.version===version&&t.level===level&&t.cols===cfg.cols&&t.rows===cfg.rows),el=$('saved');el.innerHTML=`<p class="muted">${list.length} saved for this version/level/grid · ${library.length} total</p>`;
  list.forEach(t=>{const btn=document.createElement('button');btn.textContent=t.name+' · '+t.id.slice(-6);btn.onclick=()=>{if(placed.length&&!confirm('Replace current board with saved template?'))return;placed=structuredClone(t.pieces);history=[];$('name').value=t.name;render()};el.appendChild(btn)})
 }
 function reset(){placed=[];history=[];selected=Object.keys(config().pieces)[0];rotated=false;render()}
-function levels(){const max=version==='5'?5:6;$('level').innerHTML=Array.from({length:max},(_,i)=>`<option value="${i+1}">Level ${i+1} (${config(version,i+1).cols}×${config(version,i+1).rows})</option>`).join('');level=Math.min(level,max);$('level').value=level}
+function levels(){const max=version==='5'?5:6;$('level').innerHTML=Array.from({length:max},(_,i)=>`<option value="${i+1}">Level ${i+1} (${config(version,i+1).cols}×${config(version,i+1).rows})</option>`).join('');level=Math.min(level,max);$('level').value=level;dimensionsUI()}
 $('version').onchange=()=>{version=$('version').value;level=1;levels();reset()};
-$('level').onchange=()=>{level=Number($('level').value);reset()};
+$('level').onchange=()=>{level=Number($('level').value);dimensionsUI();reset()};
+$('dimensions').onchange=()=>{if(placed.length&&!confirm('Switching grid dimensions will clear the current board. Continue?')){$('dimensions').value=dimensions;return}dimensions=$('dimensions').value;reset()};
 $('rotate').onclick=()=>{rotated=!rotated;render()};
 $('erase').onclick=()=>choose('erase');
 $('undo').onclick=()=>{if(history.length){placed=JSON.parse(history.pop());render()}};
@@ -170,7 +173,7 @@ $('photo').onchange=e=>{const file=e.target.files?.[0];if(!file)return;const img
 $('save').onclick=()=>{
  const v=validate();if(!v.complete){alert(v.message);return}
  const cfg=config(),sig=signature(placed,cfg);
- if(library.some(t=>t.version===version&&t.level===level&&signature(t.pieces,cfg)===sig)){alert('This template already exists, including rotated/mirrored equivalents.');return}
+ if(library.some(t=>t.version===version&&t.level===level&&t.cols===cfg.cols&&t.rows===cfg.rows&&signature(t.pieces,cfg)===sig)){alert('This template already exists, including rotated/mirrored equivalents.');return}
  const name=$('name').value.trim()||`Template ${library.length+1}`;
  library.push({id:'lt-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),name,version,level,cols:cfg.cols,rows:cfg.rows,pieces:structuredClone(placed),recordedAt:new Date().toISOString()});
  try{storage();render();alert('Verified template saved locally. Export JSON to back it up.')}catch(e){library.pop();alert('Browser storage failed: '+e.message)}
@@ -186,12 +189,12 @@ $('jsonfile').onchange=async e=>{
   const data=JSON.parse(await file.text());if(data.schema!=='lost-temple-templates-v1'||!Array.isArray(data.templates))throw Error('Unsupported JSON format');
   let added=0,skipped=0;
   for(const t of data.templates){
-   const cfg=config(t.version,t.level);
+   const cfg=config(t.version,t.level,t.cols+'x'+t.rows);
    if(!['5','6'].includes(t.version)||!Number.isInteger(t.level)||t.level<1||t.level>(t.version==='5'?5:6)||t.cols!==cfg.cols||t.rows!==cfg.rows||!Array.isArray(t.pieces)){skipped++;continue}
-   const old=placed,oldv=version,oldl=level;placed=t.pieces;version=t.version;level=t.level;
+   const old=placed,oldv=version,oldl=level,oldd=dimensions;placed=t.pieces;version=t.version;level=t.level;dimensions=t.cols+'x'+t.rows;
    let valid;try{valid=validate().complete}catch{valid=false}
-   placed=old;version=oldv;level=oldl;
-   if(!valid||library.some(u=>u.version===t.version&&u.level===t.level&&signature(u.pieces,cfg)===signature(t.pieces,cfg))){skipped++;continue}
+   placed=old;version=oldv;level=oldl;dimensions=oldd;
+   if(!valid||library.some(u=>u.version===t.version&&u.level===t.level&&u.cols===t.cols&&u.rows===t.rows&&signature(u.pieces,cfg)===signature(t.pieces,cfg))){skipped++;continue}
    library.push(t);added++
   }
   storage();render();alert(`Imported ${added} templates; skipped ${skipped} invalid or duplicate entries.`)
