@@ -45,7 +45,7 @@ footer{max-width:1250px;margin:0 auto 25px;padding:0 18px;color:#aebdd0;font-siz
 <div class="controls">
 <button id="rotate">Rotate selected piece ↻</button><button id="undo">Undo</button><button id="clear" class="danger">Clear board</button>
 </div>
-<h2 style="margin-top:15px">Available pieces</h2><div id="palette" class="palette"></div><div class="muted" id="instructions">Select a piece, then tap its top-left cell to place it. Tap a placed piece to rotate it; double-tap to remove it. Invalid placements are silently ignored.</div>
+<h2 style="margin-top:15px">Available pieces</h2><div id="palette" class="palette"></div><div class="muted" id="instructions">Select a piece, then tap any tile it should cover. Tap a placed piece to rotate it; double-tap to remove it. Invalid placements are silently ignored.</div>
 <div class="gridwrap"><div id="board" class="board" aria-label="Template grid"></div></div>
 <div id="status" class="status"></div>
 </section>
@@ -129,26 +129,58 @@ function render(){
  $('undo').disabled=!history.length;
  renderSaved();
 }
+// Choose a placement containing the tapped tile, never assuming it is the top-left corner.
+// Prefer the requested orientation, then the alternate; within each orientation prefer
+// the position closest to the tap (top-left tie break is deterministic).
+function fitAt(type,tx,ty,preferred,occupiedKeys,cfg){
+ const t=TYPES[type],orientations=t.w===t.h?[false]:[preferred,!preferred];
+ for(const orientation of orientations){
+  const w=orientation?t.h:t.w,h=orientation?t.w:t.h,candidates=[];
+  for(let y=ty-h+1;y<=ty;y++)for(let x=tx-w+1;x<=tx;x++){
+   if(x<0||y<0||x+w>cfg.cols||y+h>cfg.rows)continue;
+   const p={type,x,y,rotated:orientation};
+   if(footprint(p).cells.some(([cx,cy])=>occupiedKeys.has(`${cx},${cy}`)))continue;
+   const centerX=x+(w-1)/2,centerY=y+(h-1)/2;
+   candidates.push({p,score:(centerX-tx)**2+(centerY-ty)**2});
+  }
+  candidates.sort((a,b)=>a.score-b.score||a.p.y-b.p.y||a.p.x-b.p.x);
+  if(candidates.length)return candidates[0].p;
+ }
+ return null;
+}
 function clickCell(x,y){
  const cfg=config(),m=occupied(),i=m.get(`${x},${y}`);
  if(i!==undefined){
   const now=Date.now();
   if(selected==='erase'||(lastPieceTap.index===i&&now-lastPieceTap.time<420)){
-    snapshot();placed.splice(i,1);lastPieceTap={index:-1,time:0};render();return;
+   snapshot();placed.splice(i,1);lastPieceTap={index:-1,time:0};render();return;
   }
   lastPieceTap={index:i,time:now};
   const original=placed[i],t=TYPES[original.type];
   if(t.w===t.h)return;
-  const candidate={...original,rotated:!original.rotated};
-  const other=occupiedExcept(i),f=footprint(candidate);
-  if(f.cells.some(([a,b])=>a<0||b<0||a>=cfg.cols||b>=cfg.rows||other.has(`${a},${b}`)))return;
-  snapshot();placed[i]=candidate;render();return;
+  const other=occupiedExcept(i);
+  // Rotation must actually change orientation, and the tapped cell stays covered.
+  const wanted=!original.rotated;
+  const w=wanted?t.h:t.w,h=wanted?t.w:t.h;
+  const options=[];
+  for(let yy=y-h+1;yy<=y;yy++)for(let xx=x-w+1;xx<=x;xx++){
+   const p={...original,x:xx,y:yy,rotated:wanted};
+   if(xx<0||yy<0||xx+w>cfg.cols||yy+h>cfg.rows)continue;
+   if(footprint(p).cells.some(([a,b])=>other.has(`${a},${b}`)))continue;
+   const oldCenterX=original.x+((original.rotated?t.h:t.w)-1)/2;
+   const oldCenterY=original.y+((original.rotated?t.w:t.h)-1)/2;
+   const newCenterX=xx+(w-1)/2,newCenterY=yy+(h-1)/2;
+   options.push({p,score:(oldCenterX-newCenterX)**2+(oldCenterY-newCenterY)**2});
+  }
+  options.sort((a,b)=>a.score-b.score||a.p.y-b.p.y||a.p.x-b.p.x);
+  if(!options.length)return;
+  snapshot();placed[i]=options[0].p;render();return;
  }
- if(selected==='erase')return;
- if(!cfg.pieces[selected]||count(selected)>=cfg.pieces[selected])return;
- const p={type:selected,x,y,rotated},f=footprint(p);
- if(f.cells.some(([a,b])=>a<0||b<0||a>=cfg.cols||b>=cfg.rows||m.has(`${a},${b}`)))return
- snapshot();placed.push(p);render()
+ lastPieceTap={index:-1,time:0};
+ if(selected==='erase'||!cfg.pieces[selected]||count(selected)>=cfg.pieces[selected])return;
+ const p=fitAt(selected,x,y,rotated,new Set(m.keys()),cfg);
+ if(!p)return;
+ snapshot();placed.push(p);rotated=p.rotated;render();
 }
 function validate(){
  const cfg=config(),m=new Set();
@@ -265,13 +297,4 @@ $('jsonfile').onchange=async e=>{
    placed=t.pieces;version=t.version;level=t.level;dimensions=t.cols+'x'+t.rows;
    let valid=false;try{valid=validate().complete}catch{}
    placed=old;version=oldv;level=oldl;dimensions=oldd;
-   if(!valid||library.some(u=>sameBoard(u,t.version,t.level,cfg)&&signature(u.pieces,cfg)===signature(t.pieces,cfg))){skipped++;continue}
-   added+=appendVariations(t.pieces,{name:t.name||'Imported template',version:t.version,level:t.level,recordedAt:t.recordedAt},cfg).added;
-  }
-  storage();render();alert(`Added ${added} unique orientations; skipped ${skipped} invalid or duplicate input entries.`)
- }catch(err){alert('Import failed: '+err.message)}
- e.target.value=''
-};
-levels();reset();
-</script>
-</body></html>
+   if(!valid||library.some(u=>sameBoard(u,t.version,t.level,cfg)&&signature(u.pieces,cfg)===signature(t.pieces
