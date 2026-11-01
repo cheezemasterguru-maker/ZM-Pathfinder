@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lost Temple — Historical Template Recorder</title>
+<title>Lost Temple — Historical Template Recorder v1.6</title>
 <style>
 :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#edf0f6;background:#111722}
 *{box-sizing:border-box}body{margin:0}header{background:#1c2738;border-bottom:1px solid #36465b;padding:16px 20px}
@@ -51,17 +51,8 @@ footer{max-width:1250px;margin:0 auto 25px;padding:0 18px;color:#aebdd0;font-siz
 </section>
 <aside>
 <section class="panel">
-<h2>Editing tips</h2><p class="muted">Pieces are selected above the grid. The selected orientation is shown in the piece button. Tap a placed rectangular piece once to rotate it in place. Double-tap any placed piece to remove it. Touching is allowed; overlapping is not.</p><div class="controls"><button id="erase">Remove piece tool</button></div>
-</section>
-<section class="panel" style="margin-top:16px">
-<h2>Reference screenshot (optional)</h2>
-<label>Open image locally<input id="photo" type="file" accept="image/*"></label>
-<img id="screenshot" alt="Local reference screenshot">
-<small>The screenshot stays in your browser and is not included in exported templates.</small>
-</section>
-<section class="panel" style="margin-top:16px">
 <h2>Save / export</h2>
-<div class="controls"><button id="save" class="primary">Save verified template</button><button id="export">Export library JSON</button><button id="import">Import library JSON</button></div>
+<div class="controls"><button id="save" class="primary">Save verified template</button><button id="export">Export library JSON</button><button id="import">Import library JSON</button><button id="repair">Generate missing rotations / mirrors</button></div>
 <input type="file" id="jsonfile" accept=".json,application/json" hidden>
 <div id="saved"></div>
 <small>Each verified board automatically generates all distinct valid rotations and reflections. Duplicates are checked against the existing library before saving or importing. Templates are stored locally until exported; export JSON regularly for backups.</small>
@@ -122,7 +113,7 @@ function render(){
   btn.innerHTML=`<span class="swatch"></span><span>${t.label}<br><small>${selected===type&&rotated?t.h+'×'+t.w:t.w+'×'+t.h} · ${n}/${qty} placed</small></span>`;
   btn.querySelector('.swatch').style.background=t.fill;btn.onclick=()=>choose(type);pal.appendChild(btn);
  });
- $('erase').classList.toggle('active',selected==='erase');
+ 
  const valid=validate();$('status').className='status '+(valid.complete?'good':'');
  $('status').textContent=valid.message;
  $('rotate').disabled=selected==='erase'||!TYPES[selected]||TYPES[selected].w===TYPES[selected].h;
@@ -226,7 +217,7 @@ function variations(pieces,cfg){
  return out;
 }
 function signature(pieces,cfg){return variations(pieces,cfg).map(v=>v.signature).sort()[0]}
-function sameBoard(t,v,l,cfg){return t.version===v&&t.level===l&&t.cols===cfg.cols&&t.rows===cfg.rows}
+function sameBoard(t,v,l,cfg){return String(t.version)===String(v)&&Number(t.level)===Number(l)&&Number(t.cols)===cfg.cols&&Number(t.rows)===cfg.rows}
 function existingSignatureSet(v,l,cfg){
  return new Set(library.filter(t=>sameBoard(t,v,l,cfg)).map(t=>exactSignature(t.pieces)));
 }
@@ -254,7 +245,7 @@ function appendVariations(pieces,meta,cfg){
 }
 function storage(){localStorage.setItem('lt_verified_templates_v1',JSON.stringify(library))}
 function renderSaved(){
- const cfg=config();const list=library.filter(t=>String(t.version)===version&&t.level===level&&t.cols===cfg.cols&&t.rows===cfg.rows),el=$('saved');el.innerHTML=`<p class="muted">${list.length} saved for this version/level/grid · ${library.length} total</p>`;
+ const cfg=config();const list=library.filter(t=>String(t.version)===version&&t.level===level&&t.cols===cfg.cols&&t.rows===cfg.rows),el=$('saved');const families=new Set(list.map(t=>t.familyId||signature(t.pieces,cfg))).size;el.innerHTML=`<p class="muted">${families} unique layout families · ${list.length} stored orientations for this version/level/grid · ${library.length} total stored</p>`;
  list.forEach(t=>{const btn=document.createElement('button');btn.textContent=(t.name||'Saved template')+' · '+String(t.id||'legacy').slice(-6);btn.onclick=()=>{if(placed.length&&!confirm('Replace current board with saved template?'))return;placed=structuredClone(t.pieces);history=[];$('name').value=t.name;render()};el.appendChild(btn)})
 }
 function reset(){placed=[];history=[];selected=Object.keys(config().pieces)[0];rotated=false;render()}
@@ -263,10 +254,10 @@ $('version').onchange=()=>{version=$('version').value;level=1;levels();reset()};
 $('level').onchange=()=>{level=Number($('level').value);dimensionsUI();reset()};
 $('dimensions').onchange=()=>{if(placed.length&&!confirm('Switching grid dimensions will clear the current board. Continue?')){$('dimensions').value=dimensions;return}dimensions=$('dimensions').value;reset()};
 $('rotate').onclick=()=>{rotated=!rotated;render()};
-$('erase').onclick=()=>choose('erase');
+
 $('undo').onclick=()=>{if(history.length){placed=JSON.parse(history.pop());render()}};
 $('clear').onclick=()=>{if(placed.length&& !confirm('Clear all placed pieces?'))return;snapshot();placed=[];render()};
-$('photo').onchange=e=>{const file=e.target.files?.[0];if(!file)return;const img=$('screenshot');if(img.dataset.url)URL.revokeObjectURL(img.dataset.url);img.dataset.url=URL.createObjectURL(file);img.src=img.dataset.url;img.style.display='block'};
+
 $('save').onclick=()=>{
  const v=validate();if(!v.complete){alert(v.message);return}
  const cfg=config(),sig=signature(placed,cfg);
@@ -279,6 +270,24 @@ $('save').onclick=()=>{
  const result=appendVariations(placed,{name,version,level},cfg);
  try{storage();render();$('status').className='status good';$('status').textContent=`Saved ${result.added} distinct orientations (${result.total} possible). Duplicate orientations were skipped.`}
  catch(e){library.length=before;alert('Browser storage failed: '+e.message)}
+};
+// Expand previously saved records without deleting or replacing any existing entry.
+$('repair').onclick=()=>{
+ const before=library.length,original=library.slice(),source=library.slice();
+ let families=0,skipped=0;
+ for(const t of source){
+  try{
+   const v=String(t.version),l=Number(t.level),cfg=config(v,l,String(t.cols)+'x'+String(t.rows));
+   if(!sameBoard(t,v,l,cfg)||!Array.isArray(t.pieces)||!t.pieces.every(p=>TYPES[p.type])){skipped++;continue}
+   // A family is expanded once; later records from the same family will be duplicates.
+   const key=signature(t.pieces,cfg);
+   if(!t.familyId)t.familyId=key;
+   const res=appendVariations(t.pieces,{name:(t.name||'Recorded template').replace(/ — (Original|Mirror.*|Rotate.*)$/,'') ,version:v,level:l,recordedAt:t.recordedAt},cfg);
+   if(res.added)families++;
+  }catch(err){skipped++;console.warn('Skipped invalid legacy template',err)}
+ }
+ try{storage();render();alert(`Library expansion complete: ${library.length-before} missing orientations added across ${families} layout families. ${skipped} invalid records skipped. Existing templates were retained.`)}
+ catch(err){library=original;render();alert('Could not save library expansion: '+err.message)}
 };
 $('export').onclick=()=>{
  const blob=new Blob([JSON.stringify({schema:'lost-temple-templates-v1',templates:library},null,2)],{type:'application/json'});
