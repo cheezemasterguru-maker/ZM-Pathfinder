@@ -39,6 +39,12 @@ button.primary{background:#136b9c}button.danger{background:#713a43}
 <section class="panel">
   <h2>Board</h2>
 
+  <div class="panel" style="margin:0 0 12px 0;padding:10px">
+    <h2>Pieces</h2>
+    <div id="palette" class="palette"></div>
+    <div class="controls"><button id="erase">Remove piece</button></div>
+  </div>
+
   <div class="controls">
     <label>Game version
       <select id="version">
@@ -69,12 +75,6 @@ button.primary{background:#136b9c}button.danger{background:#713a43}
 
 <aside>
   <section class="panel">
-    <h2>Pieces</h2>
-    <div id="palette" class="palette"></div>
-    <div class="controls"><button id="erase">Remove piece</button></div>
-  </section>
-
-  <section class="panel" style="margin-top:14px">
     <h2>Saved templates</h2>
     <div class="controls">
       <button id="export">Export server JSON</button>
