@@ -39,12 +39,6 @@ button.primary{background:#136b9c}button.danger{background:#713a43}
 <section class="panel">
   <h2>Board</h2>
 
-  <div class="panel" style="margin:0 0 12px 0;padding:10px">
-    <h2>Pieces</h2>
-    <div id="palette" class="palette"></div>
-    <div class="controls"><button id="erase">Remove piece</button></div>
-  </div>
-
   <div class="controls">
     <label>Game version
       <select id="version">
@@ -62,11 +56,16 @@ button.primary{background:#136b9c}button.danger{background:#713a43}
     <label>Template name<input id="name" maxlength="100" placeholder="Optional name"></label>
   </div>
 
-  <div class="controls">
-    <button id="rotate">Rotate selected piece ↻</button>
-    <button id="undo">Undo</button>
-    <button id="clear" class="danger">Clear board</button>
-    <button id="save" class="primary">Save template</button>
+  <div class="panel" style="margin:0 0 12px 0;padding:10px">
+    <h2>Pieces</h2>
+    <div id="palette" class="palette"></div>
+    <div class="controls">
+      <button id="erase">Remove piece</button>
+      <button id="rotate">Rotate selected piece ↻</button>
+      <button id="undo">Undo</button>
+      <button id="clear" class="danger">Clear board</button>
+      <button id="save" class="primary">Save template</button>
+    </div>
   </div>
 
   <div class="gridwrap"><div id="board" class="board" aria-label="Template grid"></div></div>
@@ -77,10 +76,10 @@ button.primary{background:#136b9c}button.danger{background:#713a43}
   <section class="panel">
     <h2>Saved templates</h2>
     <div class="controls">
-      <button id="export">Export server JSON</button>
-      <button id="import">Import server JSON</button>
+      <button id="export">Export solver templates.js</button>
+      <button id="import">Import solver templates</button>
     </div>
-    <input type="file" id="jsonfile" accept=".json,application/json" hidden>
+    <input type="file" id="jsonfile" accept=".json,.js,.txt,application/json,text/javascript,text/plain" hidden>
     <div id="saved"></div>
   </section>
 
@@ -93,686 +92,488 @@ button.primary{background:#136b9c}button.danger{background:#713a43}
 </main>
 
 <script>
-'use strict';
+"use strict";
 
-/*
-  IMPORTANT:
-  These are the exact internal piece names used by the current Lost Temple
-  templates.js library. Do not change them casually; familyId and duplicate
-  detection depend on them.
-
-  Legacy recorder names are migrated automatically:
-    blue -> Blue
-    green -> Green
-    yellow -> Yellow
-    purpleLight -> Pink
-    purple -> Purple
-    cyan -> Light Blue
-    orange -> Orange
-    red -> Red
-    blueRed -> Blue/Red
-*/
 const TYPES={
-  "Blue":       {label:"Blue",       w:2,h:1,fill:"#277edc"},
-  "Green":      {label:"Green",      w:3,h:1,fill:"#26a957"},
-  "Yellow":     {label:"Yellow",     w:2,h:2,fill:"#e5b52c"},
-  "Pink":       {label:"Pink",       w:3,h:2,fill:"#D946C6"},
-  "Purple":     {label:"Purple",     w:3,h:3,fill:"#883ed1"},
-  "Light Blue": {label:"Light Blue", w:1,h:1,fill:"#68d5ec"},
-  "Orange":     {label:"Orange",     w:5,h:1,fill:"linear-gradient(120deg,#ffce39,#f58b20)"},
-  "Red":        {label:"Red",        w:4,h:2,fill:"#d74b46"},
-  "Blue/Red":   {label:"Blue/Red",   w:4,h:4,fill:"linear-gradient(135deg,#2e7dd9 0%,#4b80d0 40%,#a44f85 65%,#df5347 100%)"}
+  "Blue":{w:2,h:1,color:"#277edc"},
+  "Green":{w:3,h:1,color:"#26a957"},
+  "Yellow":{w:2,h:2,color:"#e5b52c"},
+  "Pink":{w:3,h:2,color:"#D946C6"},
+  "Purple":{w:3,h:3,color:"#883ed1"},
+  "Light Blue":{w:1,h:1,color:"#68d5ec"},
+  "Orange":{w:5,h:1,color:"linear-gradient(90deg,#f59e0b,#f97316)"},
+  "Red":{w:4,h:2,color:"#d74b46"},
+  "Blue/Red":{w:4,h:4,color:"linear-gradient(135deg,#277edc 0 50%,#d74b46 50% 100%)"}
 };
 
-/*
-  These inventories match the current recorder/solver structure:
-  5-puzzle:
-    L1 4x4
-    L2 5x5
-    L3 6x6
-    L4 7x6
-    L5 final 8x8
-  6-puzzle:
-    L1 4x4
-    L2 5x5
-    L3 6x6
-    L4 7x8
-    L5 8x8 purple configuration
-    L6 8x8 final configuration
-*/
 const CONFIG={
-  common:{
-    1:{cols:4,rows:4,pieces:{"Blue":2,"Green":1,"Yellow":1}},
-    2:{cols:5,rows:5,pieces:{"Blue":2,"Green":2,"Pink":1}},
-    3:{cols:6,rows:6,pieces:{"Pink":2,"Yellow":2,"Blue":1,"Light Blue":1}},
-    4:{cols:7,rows:6,pieces:{"Pink":2,"Yellow":2,"Blue":1,"Green":2}}
+  "5":{
+    1:{cols:4,rows:4,pieces:{Blue:2,Green:1,Yellow:1}},
+    2:{cols:5,rows:5,pieces:{Blue:2,Green:2,Pink:1}},
+    3:{cols:6,rows:6,pieces:{Pink:2,Yellow:2,Blue:1,"Light Blue":1}},
+    4:{cols:7,rows:6,pieces:{Pink:2,Yellow:2,Blue:1,Green:2}},
+    5:{cols:8,rows:8,pieces:{Green:2,Blue:2,Orange:2,Red:1,"Blue/Red":1}}
   },
-  purpleFinal:{cols:8,rows:8,pieces:{"Purple":2,"Yellow":2,"Green":2,"Blue":1}},
-  final:{cols:8,rows:8,pieces:{"Green":2,"Blue":2,"Orange":2,"Red":1,"Blue/Red":1}}
+  "6":{
+    1:{cols:4,rows:4,pieces:{Blue:2,Green:1,Yellow:1}},
+    2:{cols:5,rows:5,pieces:{Blue:2,Green:2,Pink:1}},
+    3:{cols:6,rows:6,pieces:{Pink:2,Yellow:2,Blue:1,"Light Blue":1}},
+    4:{cols:7,rows:6,pieces:{Pink:2,Yellow:2,Blue:1,Green:2}},
+    5:{cols:8,rows:8,pieces:{Purple:2,Yellow:2,Green:2,Blue:1}},
+    6:{cols:8,rows:8,pieces:{Purple:2,Yellow:2,Green:2,Blue:1}}
+  }
 };
 
 const LEGACY_TYPE_MAP={
-  blue:"Blue",Blue:"Blue",
-  green:"Green",Green:"Green",
-  yellow:"Yellow",Yellow:"Yellow",
-  purpleLight:"Pink","Light purple":"Pink",Pink:"Pink",
-  purple:"Purple",Purple:"Purple",
-  cyan:"Light Blue","Light blue":"Light Blue","Light Blue":"Light Blue",
-  orange:"Orange","Orange / yellow":"Orange",Orange:"Orange",
-  red:"Red",Red:"Red",
-  blueRed:"Blue/Red","Blue / red":"Blue/Red","Blue/Red":"Blue/Red"
+  blue:"Blue",green:"Green",yellow:"Yellow",purpleLight:"Pink",
+  "Light purple":"Pink",pink:"Pink",purple:"Purple",cyan:"Light Blue",
+  "Light blue":"Light Blue",lightBlue:"Light Blue",orange:"Orange",
+  "Orange / yellow":"Orange",red:"Red",blueRed:"Blue/Red",
+  "Blue / Red":"Blue/Red"
 };
 
-const TRANSFORMATION_NAMES=[
-  "Original","Mirror left/right","Mirror top/bottom","Rotate 180°",
-  "Rotate 90° clockwise","Rotate 90° counterclockwise",
-  "Mirror diagonal","Mirror anti-diagonal"
-];
+let library=[];
+let state={version:"6",level:4,cols:7,rows:6,pieces:[],selectedId:null,history:[]};
 
 const $=id=>document.getElementById(id);
+const key=(version,level,cols,rows)=>`${version}|${level}|${cols}|${rows}`;
 
-let version="5";
-let level=1;
-let dimensions="7x6";
-let placed=[];
-let selected="Blue";
-let rotated=false;
-let history=[];
-let library=[];
-let migrationMessage="";
-
-function readLibrary(){
-  try{
-    const raw=localStorage.getItem("lt_verified_templates_v1");
-    const data=raw?JSON.parse(raw):[];
-    return Array.isArray(data)?data:[];
-  }catch(e){
-    migrationMessage="Existing local template data could not be parsed. A backup was not modified.";
-    return [];
-  }
+function config(){
+  return CONFIG[state.version][state.level];
 }
-
-/* Save a byte-for-byte backup before touching existing local data. */
-function backupLocalLibrary(raw){
-  if(raw===null)return;
-  const stamp=new Date().toISOString().replace(/[:.]/g,"-");
-  const key="lt_verified_templates_v1_backup_"+stamp;
-  try{
-    localStorage.setItem(key,raw);
-    localStorage.setItem("lt_verified_templates_v1_last_backup",key);
-  }catch(e){}
-}
-
-function normalizeType(type){
-  if(type==null)return null;
-  return LEGACY_TYPE_MAP[String(type).trim()]||null;
-}
-
-function config(v=version,l=level,d=dimensions){
-  if(l<=4){
-    const base=CONFIG.common[l];
-    if(v==="6"&&l===4&&d==="7x8")return {
-      cols:7,rows:8,
-      pieces:{"Pink":2,"Yellow":2,"Blue":1,"Green":2}
-    };
-    return base;
-  }
-  if(v==="5")return CONFIG.final;
-  return l===5?CONFIG.purpleFinal:CONFIG.final;
-}
-
 function dimensionsUI(){
-  const enabled=version==="6"&&level===4;
-  $("dimensionsLabel").style.display=enabled?"grid":"none";
-  $("dimensions").value=dimensions;
+  $("dimensionsLabel").style.display=(state.version==="6"&&state.level===4)?"grid":"none";
+  if(state.version==="6"&&state.level===4){
+    const [c,r]=$("dimensions").value.split("x").map(Number);
+    state.cols=c;state.rows=r;
+  }else{
+    state.cols=config().cols;state.rows=config().rows;
+  }
 }
-
 function count(type){
-  return placed.filter(p=>p.type===type).length;
+  return state.pieces.filter(p=>p.type===type).length;
 }
-
-function footprint(p){
-  const t=TYPES[p.type];
-  if(!t)return {w:0,h:0,cells:[]};
-  const w=p.rotated?t.h:t.w;
-  const h=p.rotated?t.w:t.h;
+function footprint(piece){
+  const t=TYPES[piece.type];
+  const w=piece.rotated?t.h:t.w;
+  const h=piece.rotated?t.w:t.h;
+  return {w,h};
+}
+function occupied(piece){
+  const {w,h}=footprint(piece);
   const cells=[];
-  for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++)cells.push([p.x+xx,p.y+yy]);
-  return {w,h,cells};
+  for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)cells.push({x:piece.x+dx,y:piece.y+dy});
+  return cells;
 }
-
-function occupied(){
-  const m=new Map();
-  placed.forEach((p,i)=>footprint(p).cells.forEach(([x,y])=>m.set(x+","+y,i)));
-  return m;
-}
-
 function snapshot(){
-  history.push(JSON.stringify(placed));
-  if(history.length>100)history.shift();
+  return JSON.parse(JSON.stringify(state.pieces));
 }
-
 function choose(type){
-  selected=type;
-  rotated=false;
+  const need=config().pieces[type]||0;
+  if(count(type)>=need)return;
+  saveHistory();
+  const t=TYPES[type];
+  const rotated=false;
+  const w=t.w,h=t.h;
+  let spot=null;
+  for(let y=0;y<=state.rows-h&&!spot;y++){
+    for(let x=0;x<=state.cols-w&&!spot;x++){
+      const trial={id:crypto.randomUUID(),type,x,y,rotated};
+      if(!state.pieces.some(p=>occupied(p).some(a=>occupied(trial).some(b=>a.x===b.x&&a.y===b.y))))spot={x,y};
+    }
+  }
+  if(!spot){
+    state.history.pop();
+    setStatus("No open space is available for another "+type+".","error");
+    return;
+  }
+  const piece={id:crypto.randomUUID(),type,x:spot.x,y:spot.y,rotated:false};
+  state.pieces.push(piece);
+  state.selectedId=piece.id;
   render();
 }
-
 function render(){
-  const cfg=config();
-  $("board").style.setProperty("--cols",cfg.cols);
-  const m=occupied(),b=$("board");
-  b.innerHTML="";
-
-  for(let y=0;y<cfg.rows;y++){
-    for(let x=0;x<cfg.cols;x++){
-      const cell=document.createElement("button");
-      cell.type="button";
-      cell.className="cell";
-      const idx=m.get(x+","+y);
-      if(idx!==undefined){
-        const p=placed[idx],t=TYPES[p.type];
-        cell.classList.add("placed");
-        cell.style.background=t.fill;
-        cell.title=t.label+" piece";
-      }else{
-        cell.title=String.fromCharCode(65+x)+(y+1);
-      }
-      cell.innerHTML='<span class="coord">'+String.fromCharCode(65+x)+(y+1)+"</span>";
-      cell.addEventListener("click",()=>clickCell(x,y));
-      b.appendChild(cell);
+  $("board").style.setProperty("--cols",state.cols);
+  $("board").innerHTML="";
+  const byCell=new Map();
+  for(const p of state.pieces){
+    for(const c of occupied(p))byCell.set(`${c.x},${c.y}`,p);
+  }
+  for(let y=0;y<state.rows;y++)for(let x=0;x<state.cols;x++){
+    const b=document.createElement("button");
+    b.className="cell";
+    const p=byCell.get(`${x},${y}`);
+    if(p){
+      b.classList.add("placed");
+      if(p.id===state.selectedId)b.classList.add("selected");
+      b.style.background=TYPES[p.type].color;
+      b.textContent=p.type;
     }
+    const coord=document.createElement("span");
+    coord.className="coord";
+    coord.textContent=`${x+1},${y+1}`;
+    b.appendChild(coord);
+    b.onclick=()=>clickCell(x,y);
+    $("board").appendChild(b);
   }
 
-  const pal=$("palette");
-  pal.innerHTML="";
-  Object.entries(cfg.pieces).forEach(([type,qty])=>{
-    const t=TYPES[type],n=count(type);
-    const btn=document.createElement("button");
-    btn.className="piece"+(selected===type?" active":"");
-    btn.disabled=n>=qty&&selected!==type;
-    btn.innerHTML='<span class="swatch"></span><span>'+t.label+
-      '<br><small>'+t.w+"×"+t.h+" · "+n+"/"+qty+" placed</small></span>";
-    btn.querySelector(".swatch").style.background=t.fill;
-    btn.onclick=()=>choose(type);
-    pal.appendChild(btn);
-  });
-
-  $("erase").classList.toggle("active",selected==="erase");
-
-  const valid=validate();
-  $("status").className="status "+(valid.complete?"good":"");
-  $("status").textContent=valid.message+(migrationMessage?"\n"+migrationMessage:"");
-
-  $("rotate").disabled=selected==="erase"||!TYPES[selected]||
-    TYPES[selected].w===TYPES[selected].h;
-  $("rotate").textContent="Rotate selected piece ↻"+(rotated?" (rotated)":"");
-  $("undo").disabled=!history.length;
-
+  $("palette").innerHTML="";
+  for(const [type,t] of Object.entries(TYPES)){
+    const need=config().pieces[type]||0;
+    if(!need)continue;
+    const b=document.createElement("button");
+    b.className="piece";
+    b.disabled=count(type)>=need;
+    b.innerHTML=`<span class="swatch" style="background:${t.color}"></span><span>${type} (${count(type)}/${need})</span>`;
+    b.onclick=()=>choose(type);
+    $("palette").appendChild(b);
+  }
   renderSaved();
+  validate();
 }
-
 function clickCell(x,y){
-  const cfg=config(),m=occupied(),i=m.get(x+","+y);
-
-  if(i!==undefined){
-    snapshot();
-    placed.splice(i,1);
-    render();
-    return;
-  }
-
-  if(selected==="erase")return;
-  if(!cfg.pieces[selected]||count(selected)>=cfg.pieces[selected])return;
-
-  const p={type:selected,x,y,rotated};
-  const f=footprint(p);
-
-  if(f.cells.some(([a,b])=>
-    a<0||b<0||a>=cfg.cols||b>=cfg.rows||m.has(a+","+b)
-  )){
-    return;
-  }
-
-  snapshot();
-  placed.push(p);
+  const p=state.pieces.find(p=>occupied(p).some(c=>c.x===x&&c.y===y));
+  state.selectedId=p?p.id:null;
   render();
 }
-
 function validate(){
-  const cfg=config();
-  const m=new Set();
-
-  for(const p of placed){
-    if(!(p.type in cfg.pieces))
-      return {complete:false,message:"Invalid piece type for this level."};
-
-    for(const [x,y] of footprint(p).cells){
-      const key=x+","+y;
-      if(x<0||y<0||x>=cfg.cols||y>=cfg.rows||m.has(key))
-        return {complete:false,message:"Invalid placement: overlap or outside grid."};
-      m.add(key);
-    }
+  const need=config().pieces;
+  const messages=[];
+  for(const [type,n] of Object.entries(need)){
+    const got=count(type);
+    if(got!==n)messages.push(`${type}: ${got}/${n}`);
   }
-
-  const missing=Object.entries(cfg.pieces)
-    .filter(([type,n])=>count(type)!==n)
-    .map(([type,n])=>TYPES[type].label+": "+count(type)+"/"+n);
-
-  if(missing.length)
-    return {complete:false,message:"Incomplete — "+missing.join(" · ")};
-
-  return {
-    complete:true,
-    message:"VALID COMPLETE BOARD — "+placed.length+" pieces, "+
-      m.size+" occupied cells, "+(cfg.cols*cfg.rows-m.size)+
-      " empty cells. Ready to save."
-  };
+  const all=Object.values(need).reduce((a,b)=>a+b,0);
+  if(state.pieces.length===all&&!messages.length){
+    $("status").className="status good";
+    $("status").textContent="Board is complete and ready to save.";
+  }else{
+    $("status").className="status";
+    $("status").textContent=messages.length?messages.join("\n"):"Board incomplete.";
+  }
 }
-
-/*
-  A canonical familyId describes the actual piece footprints, independent
-  of the piece's top-left anchor or rotated flag. This is the same conceptual
-  family representation used by the solver's templates.js.
-*/
-function familyIdFor(pieces,cols,rows){
-  const kinds=cols===rows?[0,1,2,3,4,5,6,7]:[0,1,2,3];
-
-  return kinds.map(k=>{
-    const groups=pieces.map(p=>{
-      const cells=footprint(p).cells
-        .map(c=>transformCell(c,cols,rows,k))
-        .sort((a,b)=>a[1]-b[1]||a[0]-b[0]);
-
-      return p.type+":"+cells.map(([x,y])=>x+","+y).join(";");
-    });
-
-    return groups.sort().join("|");
-  }).sort()[0];
+function setStatus(text,kind=""){
+  $("status").className="status"+(kind?" "+kind:"");
+  $("status").textContent=text;
 }
-
-function transformCell([x,y],cols,rows,k){
-  switch(k){
+function saveHistory(){
+  state.history.push(snapshot());
+  if(state.history.length>100)state.history.shift();
+}
+function undo(){
+  if(!state.history.length)return;
+  state.pieces=state.history.pop();
+  state.selectedId=null;
+  render();
+}
+function clearBoard(){
+  if(!state.pieces.length)return;
+  saveHistory();
+  state.pieces=[];
+  state.selectedId=null;
+  render();
+}
+function rotateSelected(){
+  const p=state.pieces.find(p=>p.id===state.selectedId);
+  if(!p)return;
+  saveHistory();
+  const old=occupied(p);
+  const next=!p.rotated;
+  const t=TYPES[p.type];
+  const w=next?t.h:t.w,h=next?t.w:t.h;
+  let nx=p.x,ny=p.y;
+  if(nx+w>state.cols)nx=state.cols-w;
+  if(ny+h>state.rows)ny=state.rows-h;
+  const test={...p,x:nx,y:ny,rotated:next};
+  const blocked=occupied(test).some(a=>state.pieces.some(q=>q.id!==p.id&&occupied(q).some(b=>a.x===b.x&&a.y===b.y)));
+  if(blocked){
+    state.history.pop();
+    setStatus("The rotated piece would overlap another piece.","error");
+    return;
+  }
+  p.x=nx;p.y=ny;p.rotated=next;
+  render();
+}
+function removeSelected(){
+  if(!state.selectedId)return;
+  saveHistory();
+  state.pieces=state.pieces.filter(p=>p.id!==state.selectedId);
+  state.selectedId=null;
+  render();
+}
+function transformCell(x,y,cols,rows,t){
+  switch(t){
     case 0:return [x,y];
     case 1:return [cols-1-x,y];
     case 2:return [x,rows-1-y];
     case 3:return [cols-1-x,rows-1-y];
-    case 4:return [y,cols-1-x];
-    case 5:return [rows-1-y,x];
-    case 6:return [y,x];
+    case 4:return [rows-1-y,x];
+    case 5:return [y,cols-1-x];
+    case 6:return [y, x];
     case 7:return [rows-1-y,cols-1-x];
   }
 }
-
-function transformPieces(pieces,cols,rows,k){
-  const out=[];
-  for(const p of pieces){
-    const cells=footprint(p).cells.map(c=>transformCell(c,cols,rows,k));
-    const minX=Math.min(...cells.map(c=>c[0]));
-    const minY=Math.min(...cells.map(c=>c[1]));
-    const maxX=Math.max(...cells.map(c=>c[0]));
-    const maxY=Math.max(...cells.map(c=>c[1]));
-    const bw=maxX-minX+1;
-    const bh=maxY-minY+1;
-    const t=TYPES[p.type];
-    let isRotated=p.rotated;
-    if(t.w!==t.h){
-      if(bw===t.h&&bh===t.w)isRotated=true;
-      else if(bw===t.w&&bh===t.h)isRotated=false;
-    }else{
-      isRotated=false;
-    }
-    out.push({type:p.type,x:minX,y:minY,rotated:isRotated});
-  }
-  return out;
+function transformPieces(pieces,cols,rows,t){
+  return pieces.map(p=>{
+    const cells=occupied(p).map(c=>{
+      const [x,y]=transformCell(c.x,c.y,cols,rows,t);
+      return {x,y};
+    });
+    const minX=Math.min(...cells.map(c=>c.x));
+    const minY=Math.min(...cells.map(c=>c.y));
+    const maxX=Math.max(...cells.map(c=>c.x));
+    const maxY=Math.max(...cells.map(c=>c.y));
+    const original=TYPES[p.type];
+    const bw=maxX-minX+1,bh=maxY-minY+1;
+    const rotated=(bw===original.h&&bh===original.w)?!p.rotated:p.rotated;
+    return {type:p.type,x:minX,y:minY,rotated};
+  });
 }
-
-/*
-  Duplicate signature:
-  - square board: all 8 dihedral transformations
-  - rectangular board: only transformations that keep the same dimensions
-    (LR, TB, 180, plus original)
-*/
-function signature(pieces,cfg){
-  const kinds=cfg.cols===cfg.rows?[0,1,2,3,4,5,6,7]:[0,1,2,3];
-  return kinds.map(k=>{
-    const transformed=transformPieces(pieces,cfg.cols,cfg.rows,k);
-    return transformed.map(p=>{
-      const cells=footprint(p).cells.map(([x,y])=>x+","+y).sort();
-      return p.type+":"+cells.join(";");
-    }).sort().join("|");
-  }).sort()[0];
+function signature(template){
+  const {cols,rows,pieces}=template;
+  const transforms=cols===rows?[0,1,2,3,4,5,6,7]:[0,1,2,3];
+  const forms=transforms.map(t=>{
+    const ps=transformPieces(pieces,cols,rows,t).map(p=>`${p.type}@${p.x},${p.y},${p.rotated?1:0}`).sort();
+    return `${template.version}|${template.level}|${cols}x${rows}|${ps.join(";")}`;
+  });
+  return forms.sort()[0];
 }
-
-function makeTemplate(pieces,name,v,l,cols,rows,transformation){
-  const copy=pieces.map(p=>({...p}));
+function familyIdFor(template){
+  return signature(template);
+}
+function makeTemplate(){
   return {
-    id:"lt-"+Date.now()+"-"+Math.random().toString(36).slice(2,8),
-    name,
-    version:v,
-    level:l,
-    cols,
-    rows,
-    pieces:copy,
+    id:crypto.randomUUID(),
+    name:$("name").value.trim()||`Template ${library.length+1}`,
+    version:state.version,
+    level:state.level,
+    cols:state.cols,
+    rows:state.rows,
+    pieces:state.pieces.map(p=>({type:p.type,x:p.x,y:p.y,rotated:!!p.rotated})),
     recordedAt:new Date().toISOString(),
-    familyId:familyIdFor(copy,cols,rows),
-    transformation:transformation||"Original"
+    familyId:"",
+    transformation:"identity"
   };
 }
-
+function normalizeType(type){
+  if(TYPES[type])return type;
+  return LEGACY_TYPE_MAP[type]||LEGACY_TYPE_MAP[String(type).trim()]||null;
+}
+function normalizeTemplate(raw){
+  if(!raw||typeof raw!=="object"||!Array.isArray(raw.pieces))return null;
+  const version=String(raw.version||"6");
+  const level=Number(raw.level);
+  const cols=Number(raw.cols),rows=Number(raw.rows);
+  if(!CONFIG[version]||!CONFIG[version][level]||!Number.isInteger(cols)||!Number.isInteger(rows))return null;
+  const pieces=[];
+  for(const p of raw.pieces){
+    const type=normalizeType(p.type);
+    if(!type||!Number.isInteger(Number(p.x))||!Number.isInteger(Number(p.y)))return null;
+    pieces.push({
+      type,x:Number(p.x),y:Number(p.y),rotated:!!p.rotated
+    });
+  }
+  const out={
+    id:raw.id||crypto.randomUUID(),
+    name:raw.name||"Unnamed template",
+    version,
+    level,
+    cols,
+    rows,
+    pieces,
+    recordedAt:raw.recordedAt||new Date().toISOString(),
+    familyId:"",
+    transformation:raw.transformation||"identity"
+  };
+  out.familyId=familyIdFor(out);
+  return out;
+}
 function storage(){
   localStorage.setItem("lt_verified_templates_v1",JSON.stringify(library));
 }
-
 function renderSaved(){
-  const cfg=config();
-  const list=library.filter(t=>
-    String(t.version)===version&&Number(t.level)===level&&
-    Number(t.cols)===cfg.cols&&Number(t.rows)===cfg.rows
-  );
-  const el=$("saved");
-  el.innerHTML="<p class=\"muted\">"+list.length+
-    " saved for this version/level/grid · "+library.length+" total</p>";
-
-  list.forEach(t=>{
-    const btn=document.createElement("button");
-    btn.textContent=t.name+" · "+String(t.id).slice(-6);
-    btn.onclick=()=>{
-      placed=structuredClone(t.pieces);
-      history=[];
-      $("name").value=t.name||"";
-      render();
-    };
-    el.appendChild(btn);
-  });
-}
-
-/*
-  Migrate every existing local template before the new recorder starts.
-  The original raw value is backed up first. Existing IDs/names/timestamps
-  are retained. Piece identifiers and derived family IDs are corrected.
-  Duplicate symmetry-equivalents are removed only from the active library;
-  the exact pre-migration library remains in the backup.
-*/
-function migrateLibrary(){
-  const raw=localStorage.getItem("lt_verified_templates_v1");
-  if(raw===null)return [];
-
-  backupLocalLibrary(raw);
-
-  let old;
-  try{old=JSON.parse(raw)}catch{return []}
-  if(!Array.isArray(old))return [];
-
-  let migrated=0,duplicates=0,unknown=0;
-  const result=[];
-  const seen=new Set();
-
-  for(const original of old){
-    if(!original||!Array.isArray(original.pieces))continue;
-
-    const t=structuredClone(original);
-    const normalized=[];
-
-    for(const p of t.pieces){
-      const type=normalizeType(p.type);
-      if(!type){
-        unknown++;
-        normalized.push(p);
-        continue;
-      }
-      normalized.push({
-        type,
-        x:Number(p.x),
-        y:Number(p.y),
-        rotated:Boolean(p.rotated)
-      });
-      if(type!==p.type)migrated++;
-    }
-
-    t.pieces=normalized;
-
-    const cfg=config(String(t.version),Number(t.level),String(t.cols)+"x"+String(t.rows));
-
-    if(cfg&&cfg.cols===Number(t.cols)&&cfg.rows===Number(t.rows)&&
-       normalized.every(p=>TYPES[p.type])){
-      t.familyId=familyIdFor(normalized,Number(t.cols),Number(t.rows));
-
-      const sig=signature(normalized,cfg);
-      const key=String(t.version)+"|"+Number(t.level)+"|"+Number(t.cols)+"x"+
-        Number(t.rows)+"|"+sig;
-
-      if(seen.has(key)){
-        duplicates++;
-        continue;
-      }
-      seen.add(key);
-    }
-
-    if(!t.transformation)t.transformation="Original";
-    result.push(t);
-  }
-
-  library=result;
-  storage();
-
-  migrationMessage="Local library migrated: "+migrated+
-    " piece identifiers corrected; "+duplicates+
-    " rotated/mirrored duplicates removed; "+unknown+
-    " unknown piece identifiers preserved in the backup.";
-  return result;
-}
-
-function levels(){
-  const max=version==="5"?5:6;
-  $("level").innerHTML=Array.from({length:max},(_,i)=>{
-    const l=i+1;
-    const c=config(version,l,l===4&&version==="6"?"7x8":"7x6");
-    return '<option value="'+l+'">Level '+l+
-      " ("+c.cols+"×"+c.rows+")</option>";
-  }).join("");
-  level=Math.min(level,max);
-  $("level").value=level;
-  dimensionsUI();
-}
-
-function reset(){
-  placed=[];
-  history=[];
-  const cfg=config();
-  selected=Object.keys(cfg.pieces)[0];
-  rotated=false;
-  render();
-}
-
-$("version").onchange=()=>{
-  version=$("version").value;
-  level=1;
-  dimensions=version==="6"?"7x8":"7x6";
-  levels();
-  reset();
-};
-
-$("level").onchange=()=>{
-  level=Number($("level").value);
-  if(version==="6"&&level===4)dimensions="7x8";
-  dimensionsUI();
-  reset();
-};
-
-$("dimensions").onchange=()=>{
-  dimensions=$("dimensions").value;
-  reset();
-};
-
-$("rotate").onclick=()=>{
-  if(selected==="erase"||!TYPES[selected])return;
-  rotated=!rotated;
-  render();
-};
-
-$("erase").onclick=()=>choose("erase");
-
-$("undo").onclick=()=>{
-  if(history.length){
-    placed=JSON.parse(history.pop());
-    render();
-  }
-};
-
-$("clear").onclick=()=>{
-  snapshot();
-  placed=[];
-  render();
-};
-
-$("photo").onchange=e=>{
-  const file=e.target.files?.[0];
-  if(!file)return;
-  const img=$("screenshot");
-  if(img.dataset.url)URL.revokeObjectURL(img.dataset.url);
-  img.dataset.url=URL.createObjectURL(file);
-  img.src=img.dataset.url;
-  img.style.display="block";
-};
-
-$("save").onclick=()=>{
-  const v=validate();
-  if(!v.complete)return;
-
-  const cfg=config();
-  const sig=signature(placed,cfg);
-
-  const duplicate=library.some(t=>
-    String(t.version)===version&&Number(t.level)===level&&
-    Number(t.cols)===cfg.cols&&Number(t.rows)===cfg.rows&&
-    signature(t.pieces,cfg)===sig
-  );
-
-  if(duplicate){
-    $("status").className="status error";
-    $("status").textContent="DUPLICATE — this template already exists in this orientation, rotation, or mirror.";
+  const wrap=$("saved");
+  wrap.innerHTML="";
+  const current=library.filter(t=>t.version===state.version&&Number(t.level)===Number(state.level)&&t.cols===state.cols&&t.rows===state.rows);
+  if(!current.length){
+    wrap.innerHTML='<div class="muted">No saved templates for this puzzle/grid.</div>';
     return;
   }
-
-  const name=$("name").value.trim()||
-    "Template "+(library.length+1);
-
-  const template=makeTemplate(
-    placed,name,version,level,cfg.cols,cfg.rows,"Original"
-  );
-
-  try{
-    library.push(template);
-    storage();
-    render();
-  }catch(e){
-    library.pop();
-    $("status").className="status error";
-    $("status").textContent="Browser storage failed: "+e.message;
-  }
-};
-
-/*
-  Export is already the solver's JSON format. Nothing needs to be converted
-  before upload.
-*/
-$("export").onclick=()=>{
-  const payload={
-    schema:"lost-temple-templates-v1",
-    templates:library
-  };
-  const blob=new Blob([JSON.stringify(payload,null,2)],{
-    type:"application/json"
+  current.forEach(t=>{
+    const b=document.createElement("button");
+    b.textContent=`${t.name} · ${t.id}`;
+    b.onclick=()=>loadTemplate(t);
+    wrap.appendChild(b);
   });
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="lost-temple-templates.json";
-  a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
-};
+}
+function loadTemplate(t){
+  state.version=String(t.version);
+  state.level=Number(t.level);
+  $("version").value=state.version;
+  levels();
+  $("level").value=String(state.level);
+  if(state.version==="6"&&state.level===4){
+    $("dimensions").value=`${t.cols}x${t.rows}`;
+  }
+  dimensionsUI();
+  state.pieces=t.pieces.map(p=>({...p,id:crypto.randomUUID()}));
+  state.selectedId=null;
+  state.history=[];
+  $("name").value=t.name||"";
+  render();
+}
+function levels(){
+  const sel=$("level");
+  sel.innerHTML="";
+  Object.keys(CONFIG[state.version]).forEach(n=>{
+    const o=document.createElement("option");
+    o.value=n;o.textContent=`Level ${n}`;
+    sel.appendChild(o);
+  });
+  if(!CONFIG[state.version][state.level])state.level=Number(Object.keys(CONFIG[state.version])[0]);
+  sel.value=String(state.level);
+}
+function reset(){
+  dimensionsUI();
+  state.pieces=[];
+  state.selectedId=null;
+  state.history=[];
+  $("name").value="";
+  render();
+}
+function migrateLibrary(){
+  const raw=localStorage.getItem("lt_verified_templates_v1");
+  if(!raw)return;
+  const backupKey="lt_verified_templates_v1_backup_original";
+  if(!localStorage.getItem(backupKey)){
+    localStorage.setItem(backupKey,raw);
+  }
 
-$("import").onclick=()=>$("jsonfile").click();
+  let parsed;
+  try{parsed=JSON.parse(raw)}catch{
+    setStatus("Existing library could not be parsed. Original data was preserved in backup.","error");
+    return;
+  }
+  if(!Array.isArray(parsed))return;
 
-$("jsonfile").onchange=async e=>{
-  const file=e.target.files?.[0];
-  if(!file)return;
+  const active=[];
+  const seen=new Set();
+  let normalized=0,duplicates=0,invalid=0;
 
-  try{
-    const data=JSON.parse(await file.text());
-    if(data.schema!=="lost-temple-templates-v1"||
-       !Array.isArray(data.templates))
-      throw Error("Unsupported Lost Temple template JSON.");
-
-    let added=0,skipped=0;
-    const existing=new Set();
-
-    for(const t of library){
-      try{
-        const cfg=config(String(t.version),Number(t.level),
-          String(t.cols)+"x"+String(t.rows));
-        existing.add(String(t.version)+"|"+Number(t.level)+"|"+
-          Number(t.cols)+"x"+Number(t.rows)+"|"+signature(t.pieces,cfg));
-      }catch(e){}
+  for(const rawTemplate of parsed){
+    const t=normalizeTemplate(rawTemplate);
+    if(!t){invalid++;continue;}
+    if(JSON.stringify(t)!==JSON.stringify(rawTemplate))normalized++;
+    const sig=signature(t);
+    if(seen.has(sig)){
+      duplicates++;
+      continue;
     }
+    seen.add(sig);
+    active.push(t);
+  }
 
-    for(const rawT of data.templates){
-      if(!rawT||!Array.isArray(rawT.pieces)){skipped++;continue}
+  library=active;
+  storage();
 
-      const t=structuredClone(rawT);
-      t.pieces=t.pieces.map(p=>({
-        type:normalizeType(p.type)||p.type,
-        x:Number(p.x),
-        y:Number(p.y),
-        rotated:Boolean(p.rotated)
-      }));
+  if(normalized||duplicates||invalid){
+    const parts=[];
+    if(normalized)parts.push(`${normalized} normalized`);
+    if(duplicates)parts.push(`${duplicates} symmetry duplicates removed`);
+    if(invalid)parts.push(`${invalid} invalid record(s) skipped`);
+    setStatus(`Library migration complete: ${parts.join(", ")}. Original library preserved in backup.`,"good");
+  }
+}
+function saveTemplate(){
+  const need=config().pieces;
+  for(const [type,n] of Object.entries(need)){
+    if(count(type)!==n){
+      setStatus("Complete every required piece before saving.","error");
+      return;
+    }
+  }
+  const t=makeTemplate();
+  t.familyId=familyIdFor(t);
+  const sig=signature(t);
+  if(library.some(existing=>signature(existing)===sig)){
+    setStatus("That template already exists. Rotations and mirrors count as the same template.","error");
+    return;
+  }
+  library.push(t);
+  storage();
+  $("name").value="";
+  render();
+  setStatus(`Saved ${t.name}.`,"good");
+}
+$("version").onchange=()=>{
+  state.version=$("version").value;
+  state.level=Number(Object.keys(CONFIG[state.version])[0]);
+  levels();reset();
+};
+$("level").onchange=()=>{
+  state.level=Number($("level").value);
+  reset();
+};
+$("dimensions").onchange=()=>{dimensionsUI();reset()};
+$("erase").onclick=removeSelected;
+$("rotate").onclick=rotateSelected;
+$("undo").onclick=undo;
+$("clear").onclick=clearBoard;
+$("save").onclick=saveTemplate;
 
-      const cfg=config(String(t.version),Number(t.level),
-        String(t.cols)+"x"+String(t.rows));
+$("export").onclick=()=>{
+  const source="window.LT_TEMPLATES = "+JSON.stringify(library,null,2)+";\n";
+  const blob=new Blob([source],{type:"text/javascript;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="templates.js";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+$("import").onclick=()=>$("jsonfile").click();
+$("jsonfile").onchange=async e=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  try{
+    const text=await file.text();
+    let data=text.trim();
+    const match=data.match(/window\.LT_TEMPLATES\s*=\s*(\[[\s\S]*\])\s*;?\s*$/);
+    if(match)data=match[1];
+    let parsed=JSON.parse(data);
+    if(parsed&&Array.isArray(parsed.templates))parsed=parsed.templates;
+    if(!Array.isArray(parsed))throw new Error("Expected an array of templates.");
 
-      if(!cfg||cfg.cols!==Number(t.cols)||cfg.rows!==Number(t.rows)||
-         t.pieces.some(p=>!TYPES[p.type])){
-        skipped++;
-        continue;
-      }
-
-      const sig=signature(t.pieces,cfg);
-      const key=String(t.version)+"|"+Number(t.level)+"|"+
-        Number(t.cols)+"x"+Number(t.rows)+"|"+sig;
-
-      if(existing.has(key)){
-        skipped++;
-        continue;
-      }
-
-      t.familyId=familyIdFor(t.pieces,Number(t.cols),Number(t.rows));
-      if(!t.transformation)t.transformation="Original";
-      if(!t.id)t.id="lt-"+Date.now()+"-"+Math.random().toString(36).slice(2,8);
-      if(!t.recordedAt)t.recordedAt=new Date().toISOString();
-
+    const seen=new Set(library.map(signature));
+    let added=0,duplicates=0,invalid=0;
+    for(const raw of parsed){
+      const t=normalizeTemplate(raw);
+      if(!t){invalid++;continue;}
+      const sig=signature(t);
+      if(seen.has(sig)){duplicates++;continue;}
+      seen.add(sig);
       library.push(t);
-      existing.add(key);
       added++;
     }
-
     storage();
     render();
-    $("status").className="status good";
-    $("status").textContent="Imported "+added+
-      " templates; skipped "+skipped+
-      " invalid or duplicate entries.";
+    setStatus(`Imported ${added} unique template(s); ${duplicates} duplicate(s) skipped${invalid?`; ${invalid} invalid record(s) skipped`:""}.`,"good");
   }catch(err){
-    $("status").className="status error";
-    $("status").textContent="Import failed: "+err.message;
+    setStatus(`Import failed: ${err.message}`,"error");
+  }finally{
+    e.target.value="";
   }
-
-  e.target.value="";
+};
+$("photo").onchange=e=>{
+  const f=e.target.files[0];
+  if(!f)return;
+  $("screenshot").src=URL.createObjectURL(f);
+  $("screenshot").style.display="block";
 };
 
-/* First-run migration. */
-library=migrateLibrary();
+migrateLibrary();
 levels();
+$("version").value=state.version;
+$("level").value=String(state.level);
 reset();
 </script>
 </body>
