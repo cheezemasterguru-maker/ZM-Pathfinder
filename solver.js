@@ -1,7 +1,8 @@
 (function () {
   console.log("ZM Solver V7.4-route-quality loaded");
 
-  const SOLVER_VERSION = "V7.4-route-quality";
+  const SOLVER_VERSION = "V7.4-badge-cost";
+  const BADGE_COST_MULTIPLIER = 2.67;
 
   const DEFAULT_OBJECT_PRIORITIES = {
     mineralMultiplier: 1,
@@ -276,7 +277,12 @@
     } else if (v === "") {
       baseCost += priorities.blankFlat;
     } else if (typeof v === "number") {
-      baseCost += numberCost(v) * priorities.mineralMultiplier + priorities.mineralFlat;
+      const objectType = typeof options.getCellObjectType === "function"
+        ? String(options.getCellObjectType(r, c) || "").trim().toLowerCase()
+        : "";
+      const mineralCost = numberCost(v) *
+        (objectType === "badge" || objectType === "badges" ? BADGE_COST_MULTIPLIER : 1);
+      baseCost += mineralCost * priorities.mineralMultiplier + priorities.mineralFlat;
       if (v >= priorities.highMineralThreshold) {
         baseCost += priorities.highMineralFlat;
       }
@@ -1195,7 +1201,7 @@ No valid start cells one row below the lowest used row.`,
             penaltyCells,
             objectPriorities: STANDARD_RED_PRIORITIES,
             objectPriorityMap: null,
-            getCellObjectType: null,
+            getCellObjectType,
           });
 
           if (!route) break;
@@ -1234,7 +1240,7 @@ No valid start cells one row below the lowest used row.`,
         goals: [gateGoal],
         objectPriorities: STANDARD_RED_PRIORITIES,
         objectPriorityMap: null,
-        getCellObjectType: null,
+        getCellObjectType,
       });
 
       const candidate = makeStandardRedCandidateFromRoute(
@@ -1455,7 +1461,7 @@ No valid red path to gate.`,
         grid,
         STANDARD_RED_PRIORITIES,
         null,
-        null
+        getCellObjectType
       );
 
       const redObjectPriorityScore = 0;
