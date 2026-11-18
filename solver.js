@@ -1,7 +1,7 @@
 (function () {
-  console.log("ZM Solver V7.4-route-quality loaded");
+  console.log("ZM Solver V7.5-route-quality loaded");
 
-  const SOLVER_VERSION = "V7.4-badge-cost";
+  const SOLVER_VERSION = "V7.5-badge-cost";
   const BADGE_COST_MULTIPLIER = 2.67;
 
   const DEFAULT_OBJECT_PRIORITIES = {
@@ -281,7 +281,7 @@
         ? String(options.getCellObjectType(r, c) || "").trim().toLowerCase()
         : "";
       const mineralCost = numberCost(v) *
-        (objectType === "badge" || objectType === "badges" ? BADGE_COST_MULTIPLIER : 1);
+        (["emblem", "emblems", "badge", "badges"].includes(objectType) ? BADGE_COST_MULTIPLIER : 1);
       baseCost += mineralCost * priorities.mineralMultiplier + priorities.mineralFlat;
       if (v >= priorities.highMineralThreshold) {
         baseCost += priorities.highMineralFlat;
