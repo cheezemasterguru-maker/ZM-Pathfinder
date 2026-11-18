@@ -1761,6 +1761,9 @@
     syncPainterToolState();
   }
 
+  // Expose the same merged metadata used by the board and preview to the solver.
+  window.getCustomBoardTileMeta = getMergedTileMeta;
+
   window.getPainterObject = getPainterObject;
   window.setPainterObjectValue = setPainterObjectValue;
   window.applyPainterObjectToTile = applyPainterObjectToTile;
