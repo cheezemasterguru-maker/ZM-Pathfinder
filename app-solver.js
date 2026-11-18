@@ -202,13 +202,22 @@ function getPriorityVisualMeta(objectType) {
 }
 
 function getCellObjectType(r, c) {
-  const meta = getTileMeta(
-    currentMapContext.eventType,
-    currentMapContext.eventName,
-    currentMapContext.chamberName,
-    r,
-    c
-  );
+  const meta = typeof window.getCustomBoardTileMeta === "function"
+    ? window.getCustomBoardTileMeta(
+        currentMapContext.eventType,
+        currentMapContext.eventName,
+        currentMapContext.eventMine,
+        currentMapContext.chamberName,
+        r,
+        c
+      )
+    : getTileMeta(
+        currentMapContext.eventType,
+        currentMapContext.eventName,
+        currentMapContext.chamberName,
+        r,
+        c
+      );
   return getPriorityObjectTypeFromMeta(meta);
 }
 
