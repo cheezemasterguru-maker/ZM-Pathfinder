@@ -79,6 +79,7 @@ button.primary{background:#136b9c}button.danger{background:#713a43}
     <div class="controls">
       <button id="export">Export solver templates.js</button>
       <button id="import">Import solver templates</button>
+      <button id="auditSymmetries" class="primary">Check / generate missing mirrors</button>
     </div>
     <input type="file" id="jsonfile" accept=".json,.js,.txt,application/json,text/javascript,text/plain" hidden>
     <div id="saved"></div>
@@ -337,28 +338,22 @@ function transformPieces(pieces,cols,rows,t){
       const [x,y]=transformCell(c.x,c.y,cols,rows,t);
       return {x,y};
     });
-    const minX=Math.min(...cells.map(c=>c.x));
-    const minY=Math.min(...cells.map(c=>c.y));
-    const maxX=Math.max(...cells.map(c=>c.x));
-    const maxY=Math.max(...cells.map(c=>c.y));
-    const original=TYPES[p.type];
-    const bw=maxX-minX+1,bh=maxY-minY+1;
-    const rotated=(bw===original.h&&bh===original.w)?!p.rotated:p.rotated;
+    const minX=Math.min(...cells.map(c=>c.x)),minY=Math.min(...cells.map(c=>c.y));
+    const maxX=Math.max(...cells.map(c=>c.x)),maxY=Math.max(...cells.map(c=>c.y));
+    const base=TYPES[p.type],w=maxX-minX+1,h=maxY-minY+1;
+    const rotated=base.w===base.h?false:(w===base.h&&h===base.w);
     return {type:p.type,x:minX,y:minY,rotated};
   });
 }
+function exactSignature(template){
+  return `${template.version}|${template.level}|${template.cols}x${template.rows}|`+
+    template.pieces.map(p=>`${p.type}@${p.x},${p.y},${TYPES[p.type].w===TYPES[p.type].h?0:(p.rotated?1:0)}`).sort().join(';');
+}
 function signature(template){
-  const {cols,rows,pieces}=template;
-  const transforms=cols===rows?[0,1,2,3,4,5,6,7]:[0,1,2,3];
-  const forms=transforms.map(t=>{
-    const ps=transformPieces(pieces,cols,rows,t).map(p=>`${p.type}@${p.x},${p.y},${p.rotated?1:0}`).sort();
-    return `${template.version}|${template.level}|${cols}x${rows}|${ps.join(";")}`;
-  });
-  return forms.sort()[0];
+  const transforms=template.cols===template.rows?[0,1,2,3,4,5,6,7]:[0,1,2,3];
+  return transforms.map(t=>exactSignature({...template,pieces:transformPieces(template.pieces,template.cols,template.rows,t)})).sort()[0];
 }
-function familyIdFor(template){
-  return signature(template);
-}
+function familyIdFor(template){return signature(template);}
 function makeTemplate(){
   return {
     id:crypto.randomUUID(),
@@ -484,7 +479,7 @@ function migrateLibrary(){
     const t=normalizeTemplate(rawTemplate);
     if(!t){invalid++;continue;}
     if(JSON.stringify(t)!==JSON.stringify(rawTemplate))normalized++;
-    const sig=signature(t);
+    const sig=exactSignature(t);
     if(seen.has(sig)){
       duplicates++;
       continue;
@@ -504,26 +499,101 @@ function migrateLibrary(){
     setStatus(`Library migration complete: ${parts.join(", ")}. Original library preserved in backup.`,"good");
   }
 }
+// Reconcile every existing family, including older libraries that contain only one orientation.
+// This is additive: existing records are never deleted or overwritten.
+function auditAllSymmetries(){
+  const original=library.slice();
+  const existing=new Set(original.map(exactSignature));
+  const families=new Map();
+  let invalid=0;
+  for(const t of original){
+    try{
+      if(!t || !Array.isArray(t.pieces) || !t.pieces.length ||
+         !t.pieces.every(p=>TYPES[p.type] && Number.isInteger(p.x) && Number.isInteger(p.y))){invalid++;continue;}
+      const used=new Set();
+      let valid=true;
+      for(const p of t.pieces)for(const c of occupied(p)){
+        const k=c.x+','+c.y;
+        if(c.x<0||c.y<0||c.x>=t.cols||c.y>=t.rows||used.has(k))valid=false;
+        used.add(k);
+      }
+      if(!valid){invalid++;continue;}
+      const family=signature(t);
+      if(!families.has(family))families.set(family,t);
+    }catch(e){invalid++;}
+  }
+  const labels=['Original','Mirror left/right','Mirror top/bottom','Rotate 180°',
+    'Rotate 90° clockwise','Rotate 90° counterclockwise','Mirror diagonal','Mirror anti-diagonal'];
+  const additions=[];
+  let alreadyPresent=0;
+  for(const [family,representative] of families){
+    const transforms=representative.cols===representative.rows?[0,1,2,3,4,5,6,7]:[0,1,2,3];
+    const baseName=String(representative.name||'Template').replace(/ — (Original|Mirror .*|Rotate .*|identity)$/i,'');
+    for(const transform of transforms){
+      const candidate={...representative,
+        id:crypto.randomUUID(),
+        name:baseName+' — '+labels[transform],
+        pieces:transformPieces(representative.pieces,representative.cols,representative.rows,transform),
+        familyId:family,
+        transformation:labels[transform]};
+      const exact=exactSignature(candidate);
+      if(existing.has(exact)){alreadyPresent++;continue;}
+      existing.add(exact);
+      additions.push(candidate);
+    }
+  }
+  // Keep a recoverable pre-audit snapshot, including when this is run more than once.
+  // Store the snapshot before touching the active library. Do not mutate on storage failure.
+  try{
+    const backupKey='lt_verified_templates_v1_before_symmetry_audit_'+Date.now();
+    localStorage.setItem(backupKey,JSON.stringify(original));
+    if(additions.length){
+      localStorage.setItem('lt_verified_templates_v1',JSON.stringify(original.concat(additions)));
+      library=original.concat(additions);
+    }
+  }catch(e){
+    setStatus('Symmetry audit stopped: unable to save a backup or updated library ('+e.message+'). Existing templates were not changed.','error');
+    return;
+  }
+  render();
+  setStatus('Symmetry check complete: '+families.size+' families checked; '+
+    additions.length+' missing orientation(s) added; '+alreadyPresent+
+    ' existing/equivalent variation(s) skipped'+
+    (invalid?'; '+invalid+' invalid record(s) left unchanged':'')+
+    '. Original library backed up locally. Export templates.js to update the solver.', 'good');
+}
+
 function saveTemplate(){
   const need=config().pieces;
   for(const [type,n] of Object.entries(need)){
-    if(count(type)!==n){
-      setStatus("Complete every required piece before saving.","error");
-      return;
-    }
+    if(count(type)!==n){setStatus("Complete every required piece before saving.","error");return;}
   }
-  const t=makeTemplate();
-  t.familyId=familyIdFor(t);
-  const sig=signature(t);
-  if(library.some(existing=>signature(existing)===sig)){
-    setStatus("That template already exists. Rotations and mirrors count as the same template.","error");
+  const original=makeTemplate();
+  const family=familyIdFor(original);
+  const transforms=original.cols===original.rows?[0,1,2,3,4,5,6,7]:[0,1,2,3];
+  const names=['Original','Mirror left/right','Mirror top/bottom','Rotate 180°',
+    'Rotate 90° clockwise','Rotate 90° counterclockwise','Mirror diagonal','Mirror anti-diagonal'];
+  const seen=new Set(library.map(exactSignature));
+  const existingFamilies=new Set(library.map(signature));
+  if(existingFamilies.has(family)){
+    setStatus('This layout family already exists. No duplicate orientations were saved.','error');
     return;
   }
-  library.push(t);
+  let added=0,duplicates=0;
+  for(const t of transforms){
+    const variant={...original,id:crypto.randomUUID(),
+      name:`${original.name} — ${names[t]}`,
+      pieces:transformPieces(original.pieces,original.cols,original.rows,t),
+      familyId:family,transformation:names[t]};
+    const sig=exactSignature(variant);
+    if(seen.has(sig)){duplicates++;continue;}
+    seen.add(sig);library.push(variant);added++;
+  }
+  if(!added){setStatus('No new orientations to save.','error');return;}
   storage();
-  $("name").value="";
+  $('name').value='';
   render();
-  setStatus(`Saved ${t.name}.`,"good");
+  setStatus(`Saved ${original.name}: ${added} unique orientation(s); ${duplicates} duplicate variation(s) skipped.`, 'good');
 }
 $("version").onchange=()=>{
   state.version=$("version").value;
@@ -551,6 +621,7 @@ $("export").onclick=()=>{
   URL.revokeObjectURL(a.href);
 };
 $("import").onclick=()=>$("jsonfile").click();
+$("auditSymmetries").onclick=auditAllSymmetries;
 $("jsonfile").onchange=async e=>{
   const file=e.target.files[0];
   if(!file)return;
@@ -563,12 +634,12 @@ $("jsonfile").onchange=async e=>{
     if(parsed&&Array.isArray(parsed.templates))parsed=parsed.templates;
     if(!Array.isArray(parsed))throw new Error("Expected an array of templates.");
 
-    const seen=new Set(library.map(signature));
+    const seen=new Set(library.map(exactSignature));
     let added=0,duplicates=0,invalid=0;
     for(const raw of parsed){
       const t=normalizeTemplate(raw);
       if(!t){invalid++;continue;}
-      const sig=signature(t);
+      const sig=exactSignature(t);
       if(seen.has(sig)){duplicates++;continue;}
       seen.add(sig);
       library.push(t);
