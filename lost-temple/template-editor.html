@@ -58,6 +58,7 @@ button.primary{background:#136b9c}button.danger{background:#713a43}
 
   <div class="panel" style="margin:0 0 12px 0;padding:10px">
     <h2>Pieces</h2>
+    <small>Select a piece, then tap the board square where it should begin. Rotate before placing if needed.</small>
     <div id="palette" class="palette"></div>
     <div class="controls">
       <button id="erase">Remove piece</button>
@@ -134,6 +135,7 @@ const LEGACY_TYPE_MAP={
 
 let library=[];
 let state={version:"6",level:4,cols:7,rows:6,pieces:[],selectedId:null,history:[]};
+let pendingType=null,pendingRotated=false;
 
 const $=id=>document.getElementById(id);
 const key=(version,level,cols,rows)=>`${version}|${level}|${cols}|${rows}`;
@@ -171,26 +173,14 @@ function snapshot(){
 function choose(type){
   const need=config().pieces[type]||0;
   if(count(type)>=need)return;
-  saveHistory();
-  const t=TYPES[type];
-  const rotated=false;
-  const w=t.w,h=t.h;
-  let spot=null;
-  for(let y=0;y<=state.rows-h&&!spot;y++){
-    for(let x=0;x<=state.cols-w&&!spot;x++){
-      const trial={id:crypto.randomUUID(),type,x,y,rotated};
-      if(!state.pieces.some(p=>occupied(p).some(a=>occupied(trial).some(b=>a.x===b.x&&a.y===b.y))))spot={x,y};
-    }
-  }
-  if(!spot){
-    state.history.pop();
-    setStatus("No open space is available for another "+type+".","error");
-    return;
-  }
-  const piece={id:crypto.randomUUID(),type,x:spot.x,y:spot.y,rotated:false};
-  state.pieces.push(piece);
-  state.selectedId=piece.id;
+  if(pendingType===type){pendingType=null;pendingRotated=false;}
+  else {pendingType=type;pendingRotated=false;state.selectedId=null;}
   render();
+}
+function canPlace(piece){
+  const {w,h}=footprint(piece);
+  if(piece.x<0||piece.y<0||piece.x+w>state.cols||piece.y+h>state.rows)return false;
+  return !state.pieces.some(p=>occupied(p).some(a=>occupied(piece).some(b=>a.x===b.x&&a.y===b.y)));
 }
 function render(){
   $("board").style.setProperty("--cols",state.cols);
@@ -224,16 +214,41 @@ function render(){
     const b=document.createElement("button");
     b.className="piece";
     b.disabled=count(type)>=need;
+    if(pendingType===type)b.classList.add("active");
     b.innerHTML=`<span class="swatch" style="background:${t.color}"></span><span>${type} (${count(type)}/${need})</span>`;
     b.onclick=()=>choose(type);
     $("palette").appendChild(b);
   }
   renderSaved();
   validate();
+  if(pendingType)setStatus(`Selected ${pendingType}${pendingRotated?" (rotated)":""}. Tap an empty board square to place it.`);
 }
 function clickCell(x,y){
   const p=state.pieces.find(p=>occupied(p).some(c=>c.x===x&&c.y===y));
-  state.selectedId=p?p.id:null;
+  if(p){
+    pendingType=null;pendingRotated=false;
+    state.selectedId=p.id;
+    render();
+    return;
+  }
+  if(pendingType){
+    const type=pendingType;
+    if(count(type)>=(config().pieces[type]||0)){
+      pendingType=null;pendingRotated=false;render();return;
+    }
+    const piece={id:crypto.randomUUID(),type,x,y,rotated:pendingRotated};
+    if(!canPlace(piece)){
+      setStatus("That piece does not fit here. Select another empty tile or rotate the piece.","error");
+      return;
+    }
+    saveHistory();
+    state.pieces.push(piece);
+    state.selectedId=piece.id;
+    pendingType=null;pendingRotated=false;
+    render();
+    return;
+  }
+  state.selectedId=null;
   render();
 }
 function validate(){
@@ -261,19 +276,22 @@ function saveHistory(){
   if(state.history.length>100)state.history.shift();
 }
 function undo(){
-  if(!state.history.length)return;
+  pendingType=null;pendingRotated=false;
+  if(!state.history.length){render();return;}
   state.pieces=state.history.pop();
   state.selectedId=null;
   render();
 }
 function clearBoard(){
-  if(!state.pieces.length)return;
+  pendingType=null;pendingRotated=false;
+  if(!state.pieces.length){render();return;}
   saveHistory();
   state.pieces=[];
   state.selectedId=null;
   render();
 }
 function rotateSelected(){
+  if(pendingType){pendingRotated=!pendingRotated;render();return;}
   const p=state.pieces.find(p=>p.id===state.selectedId);
   if(!p)return;
   saveHistory();
@@ -407,6 +425,7 @@ function renderSaved(){
   });
 }
 function loadTemplate(t){
+  pendingType=null;pendingRotated=false;
   state.version=String(t.version);
   state.level=Number(t.level);
   $("version").value=state.version;
@@ -434,6 +453,7 @@ function levels(){
   sel.value=String(state.level);
 }
 function reset(){
+  pendingType=null;pendingRotated=false;
   dimensionsUI();
   state.pieces=[];
   state.selectedId=null;
